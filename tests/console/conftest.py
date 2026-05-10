@@ -68,3 +68,61 @@ def admin_token(client, admin_user):
     )
     assert resp.status_code == 200
     return resp.json()["access_token"]
+
+
+@pytest.fixture
+def inactive_user():
+    from auth.jwt import get_password_hash
+    db = TestingSessionLocal()
+    user = User(
+        email="inactive@example.com",
+        username="inactive1",
+        full_name="Inactive User",
+        hashed_password=get_password_hash("Inactive123!"),
+        role=UserRole.VIEWER,
+        status=UserStatus.INACTIVE,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    db.close()
+    return user
+
+
+@pytest.fixture
+def viewer_user():
+    from auth.jwt import get_password_hash
+    db = TestingSessionLocal()
+    user = User(
+        email="viewer@example.com",
+        username="viewer1",
+        full_name="Viewer User",
+        hashed_password=get_password_hash("Viewer123!"),
+        role=UserRole.VIEWER,
+        status=UserStatus.ACTIVE,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    db.close()
+    return user
+
+
+@pytest.fixture
+def viewer_token(client, viewer_user):
+    resp = client.post(
+        "/api/v1/auth/token",
+        data={"username": "viewer@example.com", "password": "Viewer123!"},
+    )
+    assert resp.status_code == 200
+    return resp.json()["access_token"]
+
+
+@pytest.fixture
+def db_session():
+    """Yield a database session for direct DB manipulation in tests."""
+    db = TestingSessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

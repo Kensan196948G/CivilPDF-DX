@@ -1,4 +1,5 @@
 """Authentication API tests."""
+from models.user import User
 
 
 class TestLogin:
@@ -53,6 +54,29 @@ class TestLogin:
 
     def test_token_refresh_with_access_token_fails(self, client, admin_token):
         resp = client.post("/api/v1/auth/refresh", json={"refresh_token": admin_token})
+        assert resp.status_code == 401
+
+    def test_login_inactive_user(self, client, inactive_user):
+        resp = client.post(
+            "/api/v1/auth/token",
+            data={"username": "inactive@example.com", "password": "Inactive123!"},
+        )
+        assert resp.status_code == 403
+
+    def test_refresh_token_inactive_user(self, client, admin_user, db_session):
+        from models.user import UserStatus
+        login_resp = client.post(
+            "/api/v1/auth/token",
+            data={"username": "admin@example.com", "password": "Admin1234!"},
+        )
+        refresh_token = login_resp.json()["refresh_token"]
+
+        # Deactivate user directly in DB after obtaining the token
+        user = db_session.query(User).filter_by(email="admin@example.com").first()
+        user.status = UserStatus.INACTIVE
+        db_session.commit()
+
+        resp = client.post("/api/v1/auth/refresh", json={"refresh_token": refresh_token})
         assert resp.status_code == 401
 
 
