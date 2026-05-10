@@ -73,6 +73,6 @@ jobs:
           node-version: '24'
           cache: 'npm'
           cache-dependency-path: src/console/frontend/package-lock.json
-      - run: npm ci --omit=optional
+      - run: npm ci
       - run: npm run lint
       - run: npm run build
