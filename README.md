@@ -1,11 +1,47 @@
 # CivilPDF-DX
 
 **現場が止まらないPDF管理を。**
-図面の赤入れ、承認フロー、電子納品チェックまでを一気通貫でカバーする、建設業特化のオープンソースPDFプラットフォームです。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![CI](https://github.com/kensan1969/CivilPDF-DX/actions/workflows/ci.yml/badge.svg)](https://github.com/kensan1969/CivilPDF-DX/actions/workflows/ci.yml)
+[![CI](https://github.com/Kensan196948G/CivilPDF-DX/actions/workflows/ci.yml/badge.svg)](https://github.com/Kensan196948G/CivilPDF-DX/actions/workflows/ci.yml)
 [![Built with Claude Code](https://img.shields.io/badge/Built%20with-Claude%20Code-blueviolet)](https://claude.ai)
+
+---
+
+## 何を作るか
+
+CivilPDF-DX は **建設・土木業務に特化したオープンソース PDF プラットフォーム**です。  
+図面の赤入れ・承認フロー・電子納品チェック・OCR・AI検索を一気通貫でカバーします。
+
+2つのモジュールで構成されます：
+
+| モジュール | 形態 | 主な機能 |
+|---|---|---|
+| **GUIアプリ** | Windows デスクトップ exe | PDF 閲覧・編集・注釈・OCR・電子印鑑・図面比較・AI検索 |
+| **管理コンソール** | Web ブラウザ（React） | ユーザー管理・文書管理・承認ワークフロー・監査ログ |
+
+## 誰向けか
+
+| 対象 | 役割 | 使い方 |
+|---|---|---|
+| **現場エンジニア** | 図面・施工記録の作成・赤入れ | GUI アプリ |
+| **現場監督** | 承認・押印・指示書発行 | GUI アプリ + WebUI |
+| **管理者・PMO** | プロジェクト管理・ユーザー権限 | 管理コンソール WebUI |
+| **品質管理担当** | 電子納品チェック・監査 | 管理コンソール WebUI |
+
+主なターゲット規模：**中堅〜大手ゼネコン・サブコン（従業員 50〜5,000 名）**
+
+## なぜ必要か
+
+建設業の PDF 業務には根深い課題があります：
+
+- 📂 **属人化した紙・PDF 管理** — 図面バージョンが現場・事務所・本社でバラバラ
+- 🔄 **承認フローの非効率** — 押印のためだけに出社・郵送が発生
+- 📋 **電子納品の煩雑さ** — 国交省要領準拠チェックが手動で属人的
+- 🔍 **検索不能な PDF 群** — 手書き・スキャン PDF はテキスト検索できない
+- 🔒 **セキュリティ統制の欠如** — 誰がどの図面を閲覧したか追跡できない
+
+CivilPDF-DX はこれらをソフトウェアで解決し、**建設現場のペーパーレス化・DX 推進**を支援します。
 
 ---
 
@@ -29,6 +65,20 @@ CivilPDF-DX は、建設・土木業における PDF 業務を統合管理する
 | 📁 プロジェクト管理 | 作成・一覧・削除・ステータス管理 |
 | 📄 文書管理 | PDF アップロード（最大 50MB）・一覧・削除・種別分類 |
 | ✅ 承認ワークフロー | 多段階承認（ステップ単位の承認 / 却下 / コメント） |
+
+---
+
+## ドキュメント
+
+| 文書 | リンク | 内容 |
+|---|---|---|
+| 要件定義書 | [docs/requirements.md](docs/requirements.md) | 機能要件・非機能要件・セキュリティ・AI・PDF処理・受け入れ基準 |
+| DB設計書 | [docs/database-design.md](docs/database-design.md) | ER図・テーブル定義・インデックス・マイグレーション方針 |
+| システム構成図 | [docs/architecture/system-architecture.md](docs/architecture/system-architecture.md) | 全体構成・認証フロー・デプロイ構成 |
+| GUI画面一覧 | [docs/gui-screens.md](docs/gui-screens.md) | Windowsデスクトップアプリ 10画面仕様 |
+| WebUI画面一覧 | [docs/webui-screens.md](docs/webui-screens.md) | 管理コンソール 11画面仕様（MVP 6画面 + 計画中 5画面） |
+| フォント一覧 | [docs/civilpdf-font-docs/fonts-README.md](docs/civilpdf-font-docs/fonts-README.md) | 3層16書体・ダウンロード手順 |
+| API リファレンス | [docs/api/README.md](docs/api/README.md) | REST エンドポイント一覧 |
 
 ---
 
