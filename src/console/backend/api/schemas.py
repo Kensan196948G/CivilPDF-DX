@@ -103,6 +103,7 @@ class WorkflowCreate(BaseModel):
 class ApprovalStepResponse(BaseModel):
     id: str
     order: int
+    approver_id: str
     status: str
     comment: Optional[str]
     decided_at: Optional[datetime]
@@ -120,6 +121,19 @@ class WorkflowResponse(BaseModel):
     steps: List[ApprovalStepResponse]
 
     model_config = {"from_attributes": True}
+
+
+class WorkflowListItem(BaseModel):
+    id: str
+    document_id: str
+    document_title: str
+    status: str
+    created_at: datetime
+    completed_at: Optional[datetime]
+    step_count: int
+    pending_step_count: int
+
+    model_config = {"from_attributes": False}
 
 
 class ApprovalDecision(BaseModel):

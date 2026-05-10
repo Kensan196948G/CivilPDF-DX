@@ -5,20 +5,14 @@ export interface ProjectResponse {
   name: string
   code: string
   description: string | null
-  status: string
-  start_date: string | null
-  end_date: string | null
-  owner_id: string
+  is_active: boolean
   created_at: string
-  updated_at: string | null
 }
 
 export interface CreateProjectRequest {
   name: string
   code: string
   description?: string
-  start_date?: string
-  end_date?: string
 }
 
 export async function listProjects(): Promise<ProjectResponse[]> {
