@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Grep",
+      "Glob",
+      "Bash(npm run *)",
+      "Bash(npm test *)",
+      "Bash(npm run lint *)",
+      "Bash(pytest *)",
+      "Bash(uvicorn *)",
+      "Bash(pip install *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)"
+    ],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(git push *)",
+      "Bash(git merge *)"
+    ]
+  },
+  "env": {
+    "NODE_ENV": "development",
+    "PYTHONDONTWRITEBYTECODE": "1"
+  }
+}

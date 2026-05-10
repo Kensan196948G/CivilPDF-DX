@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+__pycache__/
+.venv/
+
+# Build artifacts
+dist/
+build/
+out/
+*.exe
+
+# Large binary assets
+assets/templates/*.pdf
+assets/stamps/*.png
+
+# Test coverage
+coverage/
+htmlcov/
+
+# Logs
+*.log
+logs/
