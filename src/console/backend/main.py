@@ -11,6 +11,7 @@ from api import (
     documents_router,
     workflows_router,
     projects_router,
+    audit_logs_router,
 )
 
 logging.basicConfig(level=logging.INFO)
@@ -49,6 +50,7 @@ app.include_router(users_router, prefix=API_PREFIX)
 app.include_router(documents_router, prefix=API_PREFIX)
 app.include_router(workflows_router, prefix=API_PREFIX)
 app.include_router(projects_router, prefix=API_PREFIX)
+app.include_router(audit_logs_router, prefix=API_PREFIX)
 
 
 @app.get("/health")

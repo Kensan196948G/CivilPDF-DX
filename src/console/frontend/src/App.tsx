@@ -8,6 +8,7 @@ import { Documents } from './pages/Documents'
 import { Projects } from './pages/Projects'
 import { Workflows } from './pages/Workflows'
 import { Users } from './pages/Users'
+import { AuditLogs } from './pages/AuditLogs'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -33,6 +34,7 @@ export default function App() {
             <Route path="projects" element={<Projects />} />
             <Route path="workflows" element={<Workflows />} />
             <Route path="users" element={<Users />} />
+            <Route path="audit-logs" element={<AuditLogs />} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
