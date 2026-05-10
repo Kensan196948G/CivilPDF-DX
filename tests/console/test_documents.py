@@ -1,5 +1,6 @@
 """Document management API tests."""
 import io
+from unittest.mock import patch
 
 
 def _make_pdf_bytes() -> bytes:
@@ -111,3 +112,77 @@ class TestDocumentUpload:
             files={"file": ("f.pdf", io.BytesIO(_make_pdf_bytes()), "application/pdf")},
         )
         assert resp.status_code == 401
+
+    def test_list_documents_with_status_filter(self, client, admin_token):
+        project_id = self._create_project(client, admin_token)
+        client.post(
+            "/api/v1/documents/",
+            data={"project_id": project_id, "title": "Draft Doc"},
+            files={"file": ("s.pdf", io.BytesIO(_make_pdf_bytes()), "application/pdf")},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        resp = client.get(
+            "/api/v1/documents/?status=draft",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 200
+        assert len(resp.json()) == 1
+
+    def test_upload_file_too_large(self, client, admin_token):
+        project_id = self._create_project(client, admin_token)
+        # Patch MAX_FILE_BYTES to 100 bytes to avoid 100MB allocation in tests
+        with patch("api.documents.MAX_FILE_BYTES", 100):
+            small_but_over_limit = b"%PDF-1.4\n" + b"x" * 200
+            resp = client.post(
+                "/api/v1/documents/",
+                data={"project_id": project_id, "title": "Too Large"},
+                files={"file": ("big.pdf", io.BytesIO(small_but_over_limit), "application/pdf")},
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
+        assert resp.status_code == 413
+
+    def test_update_document_not_found(self, client, admin_token):
+        resp = client.patch(
+            "/api/v1/documents/nonexistent-id",
+            json={"title": "New Title"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 404
+
+    def test_update_document_forbidden(self, client, admin_token, viewer_token):
+        project_id = self._create_project(client, admin_token)
+        upload = client.post(
+            "/api/v1/documents/",
+            data={"project_id": project_id, "title": "Admin Doc"},
+            files={"file": ("a.pdf", io.BytesIO(_make_pdf_bytes()), "application/pdf")},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        doc_id = upload.json()["id"]
+        resp = client.patch(
+            f"/api/v1/documents/{doc_id}",
+            json={"title": "Hijacked"},
+            headers={"Authorization": f"Bearer {viewer_token}"},
+        )
+        assert resp.status_code == 403
+
+    def test_delete_document_not_found(self, client, admin_token):
+        resp = client.delete(
+            "/api/v1/documents/nonexistent-id",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 404
+
+    def test_delete_document_forbidden(self, client, admin_token, viewer_token):
+        project_id = self._create_project(client, admin_token)
+        upload = client.post(
+            "/api/v1/documents/",
+            data={"project_id": project_id, "title": "Protected Doc"},
+            files={"file": ("p.pdf", io.BytesIO(_make_pdf_bytes()), "application/pdf")},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        doc_id = upload.json()["id"]
+        resp = client.delete(
+            f"/api/v1/documents/{doc_id}",
+            headers={"Authorization": f"Bearer {viewer_token}"},
+        )
+        assert resp.status_code == 403
