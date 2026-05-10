@@ -42,12 +42,15 @@ export async function createWorkflow(data: CreateWorkflowRequest): Promise<Workf
   return res.data
 }
 
-export async function approveStep(workflowId: string, stepId: string, comment?: string): Promise<WorkflowResponse> {
-  const res = await api.post<WorkflowResponse>(`/workflows/${workflowId}/steps/${stepId}/approve`, { comment })
-  return res.data
-}
-
-export async function rejectStep(workflowId: string, stepId: string, comment: string): Promise<WorkflowResponse> {
-  const res = await api.post<WorkflowResponse>(`/workflows/${workflowId}/steps/${stepId}/reject`, { comment })
+export async function decideStep(
+  workflowId: string,
+  stepId: string,
+  decision: 'approve' | 'reject',
+  comment?: string,
+): Promise<WorkflowResponse> {
+  const res = await api.post<WorkflowResponse>(
+    `/workflows/${workflowId}/steps/${stepId}/decide`,
+    { decision, comment },
+  )
   return res.data
 }
