@@ -8,9 +8,17 @@ interface AuthState {
   logout: () => void
 }
 
+function getInitialAuthState(): boolean {
+  try {
+    return !!localStorage.getItem('access_token')
+  } catch {
+    return false
+  }
+}
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
-  isAuthenticated: !!localStorage.getItem('access_token'),
+  isAuthenticated: getInitialAuthState(),
   setUser: (user) => set({ user, isAuthenticated: !!user }),
   logout: () => {
     localStorage.clear()

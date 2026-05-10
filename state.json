@@ -13,7 +13,7 @@
   "kpi": {
     "ci_success_rate": 1.0,
     "test_pass_rate": 1.0,
-    "test_count": 63,
+    "test_count": 87,
     "coverage_percent": 98,
     "review_blocker_count": 0,
     "security_issue_count": 0,
@@ -45,17 +45,19 @@
     "Alembic マイグレーション",
     "Docker Compose",
     "CI/CD（GitHub Actions）",
-    "ユニットテスト 63件 98%カバレッジ",
+    "ユニットテスト 87件（backend 71件 98%カバレッジ + frontend 16件）",
     "API型整合修正（frontend/backend スキーマ一致）",
     "Viteコードスプリット（554KB→366KB）",
-    "conftest.py clean-slate修正"
+    "conftest.py clean-slate修正",
+    "監査ログ機能（AuditLog モデル + API + UI + 8テスト）",
+    "フロントエンドテスト（Vitest 16件: Login / ProtectedRoute / authStore / AuditLogs）"
   ],
   "next_targets": [
-    "監査ログ機能（AuditLog モデル + API + UI）",
-    "フロントエンドテスト（Vitest + React Testing Library）",
+    "ワークフロー詳細UI（承認ステップ操作）",
     "ワークフロー詳細UI（承認ステップ操作）",
     "ドキュメント検索・フィルタリング強化",
-    "PDF プレビュー機能"
+    "PDF プレビュー機能",
+    "フロントエンドテスト拡充（Dashboard / Documents ページ）"
   ],
   "learning": {
     "failure_patterns": [
