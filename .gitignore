@@ -45,3 +45,9 @@ logs/
 # Claude Code local settings
 CLAUDE.local.md
 .claude/settings.local.json
+
+# Fonts (downloaded by scripts/download-fonts.sh)
+assets/fonts/**/*.ttf
+assets/fonts/**/*.otf
+assets/fonts/**/*.woff
+assets/fonts/**/*.woff2
