@@ -49,6 +49,7 @@ describe('Login', () => {
     vi.mocked(login).mockResolvedValueOnce({
       access_token: 'access123',
       refresh_token: 'refresh123',
+      token_type: 'bearer',
     })
     vi.mocked(getMe).mockResolvedValueOnce({
       id: '1',
@@ -56,8 +57,9 @@ describe('Login', () => {
       username: 'admin',
       full_name: 'Admin User',
       role: 'admin',
-      is_active: true,
+      status: 'active',
       created_at: '2026-01-01T00:00:00Z',
+      last_login: null,
     })
     const user = userEvent.setup()
 

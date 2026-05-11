@@ -20,9 +20,10 @@ describe('useAuthStore', () => {
       email: 'admin@test.com',
       username: 'admin',
       full_name: 'Admin',
-      role: 'admin',
-      is_active: true,
+      role: 'admin' as const,
+      status: 'active' as const,
       created_at: '2026-01-01T00:00:00Z',
+      last_login: null,
     }
     useAuthStore.getState().setUser(mockUser)
     expect(useAuthStore.getState().isAuthenticated).toBe(true)
