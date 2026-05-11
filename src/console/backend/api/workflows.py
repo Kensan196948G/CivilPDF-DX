@@ -6,7 +6,12 @@ from database import get_db
 from models.user import User
 from models.document import Document, DocumentStatus, ApprovalWorkflow, ApprovalStep
 from auth.dependencies import get_current_user
-from api.schemas import WorkflowCreate, WorkflowResponse, WorkflowListItem, ApprovalDecision
+from api.schemas import (
+    WorkflowCreate,
+    WorkflowResponse,
+    WorkflowListItem,
+    ApprovalDecision,
+)
 
 router = APIRouter(prefix="/workflows", tags=["Approval Workflows"])
 
@@ -16,21 +21,25 @@ def list_workflows(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    workflows = db.query(ApprovalWorkflow).order_by(ApprovalWorkflow.created_at.desc()).all()
+    workflows = (
+        db.query(ApprovalWorkflow).order_by(ApprovalWorkflow.created_at.desc()).all()
+    )
     result = []
     for wf in workflows:
         all_steps = wf.steps
         pending = sum(1 for s in all_steps if s.status == "pending")
-        result.append(WorkflowListItem(
-            id=wf.id,
-            document_id=wf.document_id,
-            document_title=wf.document.title if wf.document else "",
-            status=wf.status,
-            created_at=wf.created_at,
-            completed_at=wf.completed_at,
-            step_count=len(all_steps),
-            pending_step_count=pending,
-        ))
+        result.append(
+            WorkflowListItem(
+                id=wf.id,
+                document_id=wf.document_id,
+                document_title=wf.document.title if wf.document else "",
+                status=wf.status,
+                created_at=wf.created_at,
+                completed_at=wf.completed_at,
+                step_count=len(all_steps),
+                pending_step_count=pending,
+            )
+        )
     return result
 
 

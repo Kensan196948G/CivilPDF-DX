@@ -1,4 +1,5 @@
 """Audit logging middleware — records every mutating API request."""
+
 import time
 import json
 import logging

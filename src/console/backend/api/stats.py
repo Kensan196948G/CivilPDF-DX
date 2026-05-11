@@ -28,9 +28,7 @@ def get_stats(
         or 0
     )
     active_users = (
-        db.query(func.count(User.id))
-        .filter(User.status == UserStatus.ACTIVE)
-        .scalar()
+        db.query(func.count(User.id)).filter(User.status == UserStatus.ACTIVE).scalar()
         or 0
     )
     approved_this_month = (

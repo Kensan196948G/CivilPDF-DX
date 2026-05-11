@@ -4,6 +4,7 @@ These endpoints expose config management and user lookup for the M365
 integration UI. Actual AAD / MSAL flows are handled by the desktop app;
 the console stores org-level M365 config and exposes a lookup endpoint.
 """
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 from typing import Optional

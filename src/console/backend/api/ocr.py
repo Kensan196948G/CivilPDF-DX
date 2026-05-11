@@ -41,7 +41,9 @@ class OcrResultResponse(BaseModel):
     pages: list[dict]  # [{page: int, text: str}]
 
 
-@router.post("/process", response_model=OcrJobResponse, status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/process", response_model=OcrJobResponse, status_code=status.HTTP_202_ACCEPTED
+)
 def start_ocr(
     body: OcrJobRequest,
     db: Session = Depends(get_db),
@@ -50,7 +52,9 @@ def start_ocr(
     """Queue an OCR job for a document. Returns job_id for status polling."""
     doc = db.query(Document).filter(Document.id == body.document_id).first()
     if not doc:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        )
 
     job_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
@@ -75,7 +79,9 @@ def get_ocr_job(
     """Poll OCR job status."""
     job = _jobs.get(job_id)
     if not job:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="OCR job not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="OCR job not found"
+        )
     return OcrJobResponse(**job)
 
 
@@ -87,14 +93,20 @@ def get_ocr_result(
     """Return OCR extracted text. Returns stub data until Tesseract is integrated."""
     job = _jobs.get(job_id)
     if not job:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="OCR job not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="OCR job not found"
+        )
     if job["status"] not in ("completed", "queued", "processing"):
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="OCR job not completed")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT, detail="OCR job not completed"
+        )
 
     # Stub result — real Tesseract integration will populate this
     return OcrResultResponse(
         job_id=job_id,
         document_id=job["document_id"],
         status=job["status"],
-        pages=[{"page": 1, "text": "(OCR テキスト抽出はTesseract統合後に有効になります)"}],
+        pages=[
+            {"page": 1, "text": "(OCR テキスト抽出はTesseract統合後に有効になります)"}
+        ],
     )
