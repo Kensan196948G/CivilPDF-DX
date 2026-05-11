@@ -7,7 +7,6 @@ from database import get_db
 from models.user import User, UserStatus
 from models.document import Document, DocumentStatus, ApprovalWorkflow
 from auth.dependencies import get_current_user
-from api.schemas import UserResponse
 
 router = APIRouter(prefix="/stats", tags=["Stats"])
 

@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from typing import Optional
 
 from models.user import User
-from auth.dependencies import get_current_user, require_admin
+from auth.dependencies import require_admin
 
 router = APIRouter(prefix="/m365", tags=["M365"])
 
