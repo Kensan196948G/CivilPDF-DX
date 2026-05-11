@@ -6,6 +6,7 @@ from api.projects import router as projects_router
 from api.audit_logs import router as audit_logs_router
 from api.stats import router as stats_router
 from api.m365 import router as m365_router
+from api.ocr import router as ocr_router
 
 __all__ = [
     "auth_router",
@@ -16,4 +17,5 @@ __all__ = [
     "audit_logs_router",
     "stats_router",
     "m365_router",
+    "ocr_router",
 ]

@@ -1,4 +1,6 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
+import { uploadDocument } from '../../../api/documents'
+import { listProjects, type ProjectResponse } from '../../../api/projects'
 
 interface ViewProps {
   onNavigate: (view: string) => void
@@ -62,15 +64,98 @@ function fileIconBg(type: string): { bg: string; color: string } {
   }
 }
 
+function formatSize(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)}MB`
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(0)}KB`
+  return `${bytes}B`
+}
+
+function guessType(filename: string): string {
+  const ext = filename.split('.').pop()?.toUpperCase() ?? ''
+  if (['XLS', 'XLSX'].includes(ext)) return 'XLS'
+  if (['JPG', 'JPEG', 'PNG', 'TIFF', 'TIF'].includes(ext)) return 'IMG'
+  return ext || 'FILE'
+}
+
+function guessDocumentType(filename: string): string {
+  const ext = filename.split('.').pop()?.toLowerCase() ?? ''
+  if (ext === 'pdf') return 'drawing'
+  if (['xls', 'xlsx'].includes(ext)) return 'specification'
+  if (['dwg', 'dxf'].includes(ext)) return 'drawing'
+  return 'other'
+}
+
 export function UploadView({ onNavigate, onShowToast }: ViewProps) {
   const [files, setFiles] = useState<UploadFile[]>(INITIAL_FILES)
   const [options, setOptions] = useState<ProcessingOption[]>(INITIAL_OPTIONS)
   const [standards, setStandards] = useState<StandardChip[]>(INITIAL_STANDARDS)
   const [isDragging, setIsDragging] = useState(false)
+  const [projects, setProjects] = useState<ProjectResponse[]>([])
+  const [selectedProjectId, setSelectedProjectId] = useState<string>('')
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    listProjects()
+      .then((data) => {
+        setProjects(data)
+        if (data.length > 0) setSelectedProjectId(data[0].id)
+      })
+      .catch(() => { /* no project list — user must enter manually */ })
+  }, [])
+
+  const uploadFiles = useCallback(async (rawFiles: FileList | File[]) => {
+    const fileArray = Array.from(rawFiles)
+    if (fileArray.length === 0) return
+
+    const projectId = selectedProjectId
+    if (!projectId) {
+      onShowToast('プロジェクトを選択してください', 'warn')
+      return
+    }
+
+    const newEntries: UploadFile[] = fileArray.map((f) => ({
+      id: `upload-${Date.now()}-${f.name}`,
+      name: f.name,
+      subLabel: `${guessType(f.name)} · ${formatSize(f.size)}`,
+      type: guessType(f.name),
+      size: formatSize(f.size),
+      progress: 0,
+      status: 'uploading',
+    }))
+    setFiles((prev) => [...prev.filter((f) => f.status !== 'uploading'), ...newEntries])
+
+    await Promise.all(
+      fileArray.map(async (f, idx) => {
+        const entry = newEntries[idx]
+        try {
+          setFiles((prev) =>
+            prev.map((pf) => pf.id === entry.id ? { ...pf, progress: 30 } : pf)
+          )
+          await uploadDocument(projectId, f.name.replace(/\.[^/.]+$/, ''), guessDocumentType(f.name), f)
+          setFiles((prev) =>
+            prev.map((pf) => pf.id === entry.id ? { ...pf, progress: 100, status: 'done' } : pf)
+          )
+          onShowToast(`${f.name} をアップロードしました`, 'ok')
+        } catch {
+          setFiles((prev) =>
+            prev.map((pf) => pf.id === entry.id ? { ...pf, progress: 100, status: 'warn' } : pf)
+          )
+          onShowToast(`${f.name} のアップロードに失敗しました`, 'error')
+        }
+      })
+    )
+  }, [selectedProjectId, onShowToast])
 
   const handleDropzoneClick = useCallback(() => {
-    onShowToast('ファイルを選択してください')
-  }, [onShowToast])
+    fileInputRef.current?.click()
+  }, [])
+
+  const handleFileInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      void uploadFiles(e.target.files)
+      e.target.value = ''
+    }
+  }, [uploadFiles])
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault()
@@ -84,8 +169,10 @@ export function UploadView({ onNavigate, onShowToast }: ViewProps) {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault()
     setIsDragging(false)
-    onShowToast('ファイルを選択してください')
-  }, [onShowToast])
+    if (e.dataTransfer.files.length > 0) {
+      void uploadFiles(e.dataTransfer.files)
+    }
+  }, [uploadFiles])
 
   const removeFile = useCallback((id: string) => {
     setFiles((prev) => prev.filter((f) => f.id !== id))
@@ -108,8 +195,39 @@ export function UploadView({ onNavigate, onShowToast }: ViewProps) {
 
   return (
     <div className="ep-upload-grid">
+      {/* Hidden file input */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        accept=".pdf,.dwg,.dxf,.xlsx,.xls,.csv,.jpg,.jpeg,.png,.tiff,.tif,.zip"
+        style={{ display: 'none' }}
+        onChange={handleFileInputChange}
+        aria-hidden="true"
+      />
+
       {/* Left: dropzone + file list */}
       <div>
+        {/* Project selector */}
+        {projects.length > 0 && (
+          <div style={{ marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <label htmlFor="project-select" style={{ fontSize: '12px', color: 'var(--muted)', whiteSpace: 'nowrap' }}>
+              プロジェクト:
+            </label>
+            <select
+              id="project-select"
+              className="ep-select"
+              value={selectedProjectId}
+              onChange={(e) => setSelectedProjectId(e.target.value)}
+              style={{ flex: 1 }}
+            >
+              {projects.map((p) => (
+                <option key={p.id} value={p.id}>{p.name} ({p.code})</option>
+              ))}
+            </select>
+          </div>
+        )}
+
         {/* Dropzone */}
         <div
           className={`ep-dropzone${isDragging ? ' drag' : ''}`}
@@ -206,7 +324,14 @@ export function UploadView({ onNavigate, onShowToast }: ViewProps) {
           <button
             className="ep-btn ep-btn-primary"
             type="button"
-            onClick={() => onNavigate('viewer')}
+            onClick={() => {
+              const doneFiles = files.filter((f) => f.status === 'done')
+              if (doneFiles.length === 0) {
+                onShowToast('アップロード完了のファイルがありません', 'warn')
+                return
+              }
+              onNavigate('viewer')
+            }}
           >
             処理を実行 →
           </button>

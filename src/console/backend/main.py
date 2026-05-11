@@ -14,6 +14,7 @@ from api import (
     audit_logs_router,
     stats_router,
     m365_router,
+    ocr_router,
 )
 from middleware import AuditMiddleware
 
@@ -57,6 +58,7 @@ app.include_router(projects_router, prefix=API_PREFIX)
 app.include_router(audit_logs_router, prefix=API_PREFIX)
 app.include_router(stats_router, prefix=API_PREFIX)
 app.include_router(m365_router, prefix=API_PREFIX)
+app.include_router(ocr_router, prefix=API_PREFIX)
 
 
 @app.get("/health")
