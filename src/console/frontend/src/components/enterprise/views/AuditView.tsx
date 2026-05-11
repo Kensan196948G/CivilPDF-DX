@@ -1,4 +1,5 @@
-import { type FC, useState } from 'react'
+import { type FC, useState, useEffect } from 'react'
+import { listAuditLogs, type AuditLogItem } from '../../../api/auditLogs'
 
 interface ViewProps {
   onNavigate: (view: string) => void
@@ -139,11 +140,37 @@ const resultLabel: Record<AuditRow['result'], string> = {
 const buildModalBody = (row: AuditRow): string =>
   `監査イベント詳細\n\nイベントID: ${row.id}\n日時: ${row.time}\n\n実行者: ${row.actor}\n操作: ${row.action}\n対象: ${row.target}\n結果: ${resultLabel[row.result]}\n\nクライアント: ${row.client}\nIPアドレス: ${row.ip}\n\nハッシュ（SHA-256）: a3f5c2e1d8b4...（改ざん検知済み）`
 
+function mapApiRowToAuditRow(item: AuditLogItem): AuditRow {
+  return {
+    id: item.id.slice(0, 8).toUpperCase(),
+    time: item.created_at.replace('T', ' ').slice(0, 19),
+    actor: item.user?.full_name ?? item.user?.email ?? '不明ユーザー',
+    action: item.action,
+    target: item.resource_type ? `${item.resource_type}:${item.resource_id ?? ''}` : (item.detail ?? '—'),
+    result: 'success' as const,
+    client: 'Web Console',
+    ip: item.ip_address ?? '—',
+  }
+}
+
 export const AuditView: FC<ViewProps> = ({ onShowModal }) => {
   const [search, setSearch] = useState('')
   const [actionFilter, setActionFilter] = useState<ActionFilter>('すべて')
+  const [apiRows, setApiRows] = useState<AuditRow[]>([])
+  const [totalEvents, setTotalEvents] = useState<number | null>(null)
 
-  const filtered = AUDIT_ROWS.filter((row) => {
+  useEffect(() => {
+    listAuditLogs({ per_page: 50 })
+      .then((data) => {
+        setApiRows(data.items.map(mapApiRowToAuditRow))
+        setTotalEvents(data.total)
+      })
+      .catch(() => { /* fallback to static rows */ })
+  }, [])
+
+  const rows = apiRows.length > 0 ? apiRows : AUDIT_ROWS
+
+  const filtered = rows.filter((row) => {
     const matchesAction =
       actionFilter === 'すべて'
         ? true
@@ -163,8 +190,8 @@ export const AuditView: FC<ViewProps> = ({ onShowModal }) => {
       <div className="ep-stat-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: '16px' }}>
         <div className="ep-stat">
           <div className="lbl">総イベント数</div>
-          <div className="val">42,612</div>
-          <div className="delta up">+8.3% 先月比</div>
+          <div className="val">{totalEvents !== null ? totalEvents.toLocaleString() : '42,612'}</div>
+          <div className="delta up">累計</div>
         </div>
         <div className="ep-stat">
           <div className="lbl">ダウンロード数</div>

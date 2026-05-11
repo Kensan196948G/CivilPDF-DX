@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import { listWorkflows, type WorkflowListItem } from '../../../api/workflows'
 
 interface ViewProps {
   onNavigate: (view: string) => void
@@ -85,10 +86,40 @@ function wfStatusPillClass(status: WfStatus): string {
   }
 }
 
+function mapApiWorkflow(item: WorkflowListItem): WfItem {
+  const statusMap: Record<string, WfStatus> = {
+    pending: '審査中',
+    in_progress: 'レビュー中',
+    approved: '承認済',
+    rejected: '却下',
+  }
+  return {
+    id: item.id,
+    title: item.document_title,
+    from: `${item.pending_step_count}/${item.step_count} ステップ`,
+    due: item.completed_at?.slice(0, 10) ?? item.created_at.slice(0, 10),
+    dueSoon: item.pending_step_count > 0 && item.status === 'in_progress',
+    status: statusMap[item.status] ?? '審査中',
+  }
+}
+
 export function WorkflowView({ onNavigate, onShowModal, onShowToast }: ViewProps) {
   const [activeWfId, setActiveWfId] = useState<string>('wf1')
+  const [apiItems, setApiItems] = useState<WfItem[]>([])
 
-  const activeWf = WF_ITEMS.find((w) => w.id === activeWfId) ?? WF_ITEMS[0]
+  useEffect(() => {
+    listWorkflows()
+      .then((data) => {
+        if (data.length > 0) {
+          setApiItems(data.map(mapApiWorkflow))
+          setActiveWfId(data[0].id)
+        }
+      })
+      .catch(() => { /* fallback to static */ })
+  }, [])
+
+  const wfItems = apiItems.length > 0 ? apiItems : WF_ITEMS
+  const activeWf = wfItems.find((w) => w.id === activeWfId) ?? wfItems[0]
 
   const handleReject = useCallback(() => {
     onShowModal({
@@ -144,10 +175,10 @@ export function WorkflowView({ onNavigate, onShowModal, onShowToast }: ViewProps
         {/* Left: WF list */}
         <div className="ep-wf-list">
           <div className="ep-wf-list-head">
-            <span>承認待ち ({WF_ITEMS.length})</span>
-            <span style={{ color: 'var(--danger)', fontSize: '9.5px' }}>期限超過 2</span>
+            <span>承認待ち ({wfItems.length})</span>
+<span style={{ color: 'var(--danger)', fontSize: '9.5px' }}>期限超過 2</span>
           </div>
-          {WF_ITEMS.map((wf) => (
+          {wfItems.map((wf) => (
             <div
               key={wf.id}
               className={`ep-wf-item${activeWfId === wf.id ? ' active' : ''}`}

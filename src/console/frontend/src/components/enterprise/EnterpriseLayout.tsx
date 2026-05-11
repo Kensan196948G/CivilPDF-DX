@@ -10,8 +10,11 @@ import { AppsView } from './views/AppsView'
 import { SecurityView } from './views/SecurityView'
 import { AuditView } from './views/AuditView'
 import { M365View } from './views/M365View'
+import { SettingsView } from './views/SettingsView'
+import { useAuthStore } from '../../store/auth'
+import type { UserResponse } from '../../api/auth'
 
-type ViewId = 'lp' | 'dashboard' | 'documents' | 'upload' | 'viewer' | 'workflow' | 'apps' | 'security' | 'audit' | 'm365'
+type ViewId = 'lp' | 'dashboard' | 'documents' | 'upload' | 'viewer' | 'workflow' | 'apps' | 'security' | 'audit' | 'm365' | 'settings'
 type DashSubView = 'overview' | 'stats' | 'dist' | 'users'
 type Role = 'op' | 'rev' | 'adm'
 type ToastType = 'ok' | 'warn' | 'error'
@@ -32,6 +35,7 @@ interface Notification {
   text: string
   time: string
   read: boolean
+  targetView?: ViewId
 }
 
 const NAV_GROUPS = [
@@ -57,7 +61,8 @@ const NAV_GROUPS = [
       { id: 'apps', label: 'アプリ配布' },
       { id: 'security', label: 'セキュリティ' },
       { id: 'audit', label: '監査' },
-      { id: 'm365', label: 'M365連携' },
+      { id: 'm365', label: 'Microsoft365' },
+      { id: 'settings', label: 'システム設定' },
     ],
   },
 ]
@@ -68,11 +73,37 @@ const ROLE_LABELS: Record<Role, string> = {
   adm: '管理者',
 }
 
+/** Map system user role → display role */
+const SYSTEM_ROLE_MAP: Record<UserResponse['role'], Role> = {
+  admin: 'adm',
+  manager: 'rev',
+  engineer: 'op',
+  viewer: 'op',
+}
+
+const ROLE_BADGE_LABELS: Record<UserResponse['role'], string> = {
+  admin: '管理者',
+  manager: 'マネージャー',
+  engineer: 'エンジニア',
+  viewer: '閲覧者',
+}
+
 const INITIAL_NOTIFICATIONS: Notification[] = [
-  { id: 1, text: '特記仕様書 R6-04rev2 が承認されました', time: '3分前', read: false },
-  { id: 2, text: '数量計算書 R6-04 でNGを検出', time: '12分前', read: false },
-  { id: 3, text: 'v2.4.1 アップデートが配布されました', time: '2時間前', read: true },
-  { id: 4, text: '山田 直人 がログイン', time: '1時間前', read: true },
+  { id: 1, text: '特記仕様書 R6-04rev2 が承認されました', time: '3分前', read: false, targetView: 'workflow' },
+  { id: 2, text: '数量計算書 R6-04 でNGを検出', time: '12分前', read: false, targetView: 'documents' },
+  { id: 3, text: 'v2.4.1 アップデートが配布されました', time: '2時間前', read: true, targetView: 'apps' },
+  { id: 4, text: '山田 直人 がログイン', time: '1時間前', read: true, targetView: 'audit' },
+]
+
+let _notifSeq = 10
+const PUSH_POOL: { text: string; view: ViewId }[] = [
+  { text: '橋梁設計図 R6-05 のアップロードが完了しました', view: 'documents' },
+  { text: 'PDF/A適合率が95%を下回りました', view: 'audit' },
+  { text: '承認待ちドキュメントが5件あります', view: 'workflow' },
+  { text: '現場事務所ABCの同期エージェントがオフライン', view: 'dashboard' },
+  { text: 'ストレージ使用率が85%を超えました', view: 'settings' },
+  { text: '道路改良工事 図面R6-08 の承認リクエスト', view: 'workflow' },
+  { text: 'セキュリティスキャンが完了しました（警告なし）', view: 'security' },
 ]
 
 const SEARCH_INDEX = [
@@ -85,7 +116,8 @@ const SEARCH_INDEX = [
   { label: 'アプリ配布', desc: 'Desktop Client配布管理', view: 'apps', icon: '📱' },
   { label: 'セキュリティ', desc: 'SSO・MFA・ポリシー', view: 'security', icon: '🔒' },
   { label: '監査ログ', desc: '操作履歴・証跡管理', view: 'audit', icon: '📋' },
-  { label: 'M365連携', desc: 'SharePoint・Teams連携', view: 'm365', icon: '☁️' },
+  { label: 'Microsoft365', desc: 'SharePoint・Teams連携', view: 'm365', icon: '☁️' },
+  { label: 'システム設定', desc: '一般・ユーザー・セキュリティ設定', view: 'settings', icon: '⚙️' },
 ]
 
 let _toastSeq = 0
@@ -105,6 +137,8 @@ function ModalBody({ text }: { text: string }) {
 }
 
 export const EnterpriseLayout: FC = () => {
+  const { user, logout } = useAuthStore()
+
   const [currentView, setCurrentView] = useState<ViewId>('lp')
   const [dashSubView, setDashSubView] = useState<DashSubView>('overview')
   const [period, setPeriod] = useState<number>(30)
@@ -114,6 +148,7 @@ export const EnterpriseLayout: FC = () => {
   const [modal, setModal] = useState<ModalContent | null>(null)
   const [notifications, setNotifications] = useState<Notification[]>(INITIAL_NOTIFICATIONS)
   const [showNotif, setShowNotif] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
   const [showPalette, setShowPalette] = useState(false)
   const [paletteQuery, setPaletteQuery] = useState('')
   const [paletteCursor, setPaletteCursor] = useState(0)
@@ -125,7 +160,15 @@ export const EnterpriseLayout: FC = () => {
 
   const notifRef = useRef<HTMLDivElement>(null)
   const tweaksRef = useRef<HTMLDivElement>(null)
+  const profileRef = useRef<HTMLDivElement>(null)
   const paletteInputRef = useRef<HTMLInputElement>(null)
+
+  // ── Auto-select role from logged-in user ────────────────────────────
+  useEffect(() => {
+    if (!user) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setRole(SYSTEM_ROLE_MAP[user.role])
+  }, [user])
 
   // ── Dark mode / density / accent apply ──────────────────────────────
   useEffect(() => {
@@ -149,6 +192,9 @@ export const EnterpriseLayout: FC = () => {
       if (tweaksRef.current && !tweaksRef.current.contains(e.target as Node)) {
         setShowTweaks(false)
       }
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) {
+        setShowProfile(false)
+      }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
@@ -166,6 +212,7 @@ export const EnterpriseLayout: FC = () => {
       if (e.key === 'Escape') {
         setShowPalette(false)
         setModal(null)
+        setShowProfile(false)
       }
     }
     document.addEventListener('keydown', handler)
@@ -206,6 +253,38 @@ export const EnterpriseLayout: FC = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
   }
 
+  function clearAll() {
+    setNotifications([])
+  }
+
+  function handleNotifClick(n: Notification) {
+    setNotifications((prev) =>
+      prev.map((x) => x.id === n.id ? { ...x, read: true } : x)
+    )
+    if (n.targetView) {
+      setShowNotif(false)
+      navigate(n.targetView)
+    }
+  }
+
+  // Push a new notification every ~40 seconds (demo)
+  useEffect(() => {
+    let poolIdx = 0
+    const timer = setInterval(() => {
+      const item = PUSH_POOL[poolIdx % PUSH_POOL.length]
+      poolIdx++
+      const newNotif: Notification = {
+        id: ++_notifSeq,
+        text: item.text,
+        time: 'たった今',
+        read: false,
+        targetView: item.view,
+      }
+      setNotifications((prev) => [newNotif, ...prev].slice(0, 20))
+    }, 40000)
+    return () => clearInterval(timer)
+  }, [])
+
   // ── Palette results ──────────────────────────────────────────────────
   const paletteResults = paletteQuery
     ? SEARCH_INDEX.filter(
@@ -242,6 +321,26 @@ export const EnterpriseLayout: FC = () => {
     else if (id === 'fok') setFilter('ok')
     else if (id === 'fng') setFilter('ng')
   }
+
+  // ── Logout ───────────────────────────────────────────────────────────
+  function handleLogout() {
+    logout()
+    setShowProfile(false)
+    showToast('ログアウトしました', 'ok')
+  }
+
+  // ── Profile display data ─────────────────────────────────────────────
+  const profileData = user ?? {
+    full_name: '管理者ユーザー',
+    email: 'admin@civilpdf.local',
+    role: 'admin' as const,
+    status: 'active' as const,
+    created_at: '',
+    last_login: null,
+    id: 'demo',
+    username: 'admin',
+  }
+  const avatarInitial = profileData.full_name?.[0]?.toUpperCase() ?? '管'
 
   // ── View renderer ────────────────────────────────────────────────────
   const viewProps = { onNavigate: navigate, onShowModal: showModal, onShowToast: showToast }
@@ -331,6 +430,8 @@ export const EnterpriseLayout: FC = () => {
         return <AuditView {...viewProps} />
       case 'm365':
         return <M365View {...viewProps} />
+      case 'settings':
+        return <SettingsView {...viewProps} />
       default:
         return null
     }
@@ -378,16 +479,18 @@ export const EnterpriseLayout: FC = () => {
             <span className="ep-search-placeholder">検索… ⌘K</span>
           </button>
 
+          {/* Role selector — auto-selected from logged-in user */}
           <select
             className="ep-role-select"
             value={role}
-            onChange={(e) => { setRole(e.target.value as Role); showToast(`ロール: ${ROLE_LABELS[e.target.value as Role]}`, 'ok') }}
+            onChange={(e) => { setRole(e.target.value as Role); showToast(`表示ロール: ${ROLE_LABELS[e.target.value as Role]}`, 'ok') }}
           >
             {(Object.keys(ROLE_LABELS) as Role[]).map((r) => (
               <option key={r} value={r}>{ROLE_LABELS[r]}</option>
             ))}
           </select>
 
+          {/* Notification bell */}
           <div className="ep-notif-wrapper" ref={notifRef}>
             <button
               className="ep-icon-btn"
@@ -400,24 +503,35 @@ export const EnterpriseLayout: FC = () => {
             {showNotif && (
               <div className="ep-notif-dropdown">
                 <div className="ep-notif-header">
-                  <span>通知</span>
-                  <button className="ep-notif-mark-all" onClick={markAllRead}>すべて既読</button>
-                </div>
-                {notifications.map((n) => (
-                  <div
-                    key={n.id}
-                    className={`ep-notif-item${n.read ? ' read' : ''}`}
-                    onClick={() => setNotifications((prev) =>
-                      prev.map((x) => x.id === n.id ? { ...x, read: true } : x)
-                    )}
-                  >
-                    <span className="ep-notif-dot-inline" style={{ opacity: n.read ? 0 : 1 }} />
-                    <div>
-                      <p className="ep-notif-text">{n.text}</p>
-                      <p className="ep-notif-time">{n.time}</p>
-                    </div>
+                  <span>通知 {unreadCount > 0 && <span className="ep-notif-count-badge">{unreadCount}件未読</span>}</span>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <button className="ep-notif-mark-all" onClick={markAllRead}>全既読</button>
+                    <button className="ep-notif-mark-all" onClick={clearAll}>クリア</button>
                   </div>
-                ))}
+                </div>
+                {notifications.length === 0 ? (
+                  <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--muted)', fontSize: '12px' }}>
+                    通知はありません
+                  </div>
+                ) : (
+                  notifications.map((n) => (
+                    <div
+                      key={n.id}
+                      className={`ep-notif-item${n.read ? ' read' : ''}${n.targetView ? ' clickable' : ''}`}
+                      onClick={() => handleNotifClick(n)}
+                      title={n.targetView ? '클릭して移動' : undefined}
+                    >
+                      <span className="ep-notif-dot-inline" style={{ opacity: n.read ? 0 : 1 }} />
+                      <div style={{ flex: 1 }}>
+                        <p className="ep-notif-text">{n.text}</p>
+                        <p className="ep-notif-time">{n.time}</p>
+                      </div>
+                      {n.targetView && !n.read && (
+                        <span className="ep-notif-arrow">›</span>
+                      )}
+                    </div>
+                  ))
+                )}
               </div>
             )}
           </div>
@@ -486,9 +600,87 @@ export const EnterpriseLayout: FC = () => {
             )}
           </div>
 
-          <button className="ep-avatar" onClick={() => showToast('プロフィール（準備中）', 'warn')}>
-            管
-          </button>
+          {/* Profile avatar + dropdown */}
+          <div className="ep-profile-wrapper" ref={profileRef}>
+            <button
+              className="ep-avatar"
+              onClick={() => setShowProfile((v) => !v)}
+              aria-label="プロフィール"
+              title={profileData.full_name}
+            >
+              {avatarInitial}
+            </button>
+            {showProfile && (
+              <div className="ep-profile-dropdown">
+                {/* Header: avatar + name + email */}
+                <div className="ep-profile-header">
+                  <div className="ep-profile-avatar-lg">{avatarInitial}</div>
+                  <div className="ep-profile-header-text">
+                    <p className="ep-profile-name">{profileData.full_name}</p>
+                    <p className="ep-profile-email">{profileData.email}</p>
+                  </div>
+                </div>
+
+                <div className="ep-profile-divider" />
+
+                {/* Info rows */}
+                <div className="ep-profile-info-section">
+                  <div className="ep-profile-info-row">
+                    <span className="ep-profile-info-key">ロール</span>
+                    <span className="ep-profile-role-badge" data-role={profileData.role}>
+                      {ROLE_BADGE_LABELS[profileData.role]}
+                    </span>
+                  </div>
+                  <div className="ep-profile-info-row">
+                    <span className="ep-profile-info-key">ステータス</span>
+                    <span className={`ep-user-status ep-user-status-${profileData.status}`}>
+                      {profileData.status === 'active' ? '有効' : profileData.status === 'inactive' ? '無効' : '停止中'}
+                    </span>
+                  </div>
+                  <div className="ep-profile-info-row">
+                    <span className="ep-profile-info-key">最終ログイン</span>
+                    <span className="ep-profile-info-val">
+                      {profileData.last_login
+                        ? new Date(profileData.last_login).toLocaleDateString('ja-JP')
+                        : '—'
+                      }
+                    </span>
+                  </div>
+                  {profileData.created_at && (
+                    <div className="ep-profile-info-row">
+                      <span className="ep-profile-info-key">登録日</span>
+                      <span className="ep-profile-info-val">
+                        {new Date(profileData.created_at).toLocaleDateString('ja-JP')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="ep-profile-divider" />
+
+                {/* Note about editing */}
+                <p className="ep-profile-edit-note">
+                  プロフィールの編集はユーザー管理から行えます
+                </p>
+
+                {/* Action buttons */}
+                <div className="ep-profile-actions">
+                  <button
+                    className="ep-profile-action-btn"
+                    onClick={() => { setShowProfile(false); navigate('settings') }}
+                  >
+                    ✏️ ユーザー管理で編集
+                  </button>
+                  <button
+                    className="ep-profile-action-btn ep-profile-action-logout"
+                    onClick={handleLogout}
+                  >
+                    🚪 ログアウト
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </header>
 
