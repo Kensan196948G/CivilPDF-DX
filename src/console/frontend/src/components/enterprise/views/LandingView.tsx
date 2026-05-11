@@ -41,7 +41,7 @@ const pillars = [
   },
   {
     id: 'm365',
-    title: 'M365連携',
+    title: 'Microsoft365連携',
     icon: '🔗',
     desc: 'SharePoint・OneDrive・Teams・Exchange・Entra IDとシームレスに統合。',
     feats: ['SharePoint', 'Teams', 'OneDrive', 'Exchange'],
@@ -72,7 +72,8 @@ const footerLinks: { label: string; view: string }[] = [
   { label: 'セキュリティ', view: 'security' },
   { label: '監査ログ', view: 'audit' },
   { label: 'アプリ配布', view: 'apps' },
-  { label: 'M365連携', view: 'm365' },
+  { label: 'Microsoft365', view: 'm365' },
+  { label: 'システム設定', view: 'settings' },
 ]
 
 export const LandingView: FC<ViewProps> = ({ onNavigate }) => {

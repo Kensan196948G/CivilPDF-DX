@@ -199,7 +199,7 @@ export function ViewerView({ onNavigate, onShowModal }: ViewProps) {
             type="button"
             onClick={() => onNavigate('workflow')}
           >
-            WFへ送る →
+            ワークフローへ送る →
           </button>
         </div>
 
