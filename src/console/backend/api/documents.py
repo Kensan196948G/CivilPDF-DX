@@ -11,6 +11,7 @@ from fastapi import (
     Query,
     status,
 )
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import aiofiles
@@ -136,6 +137,28 @@ def update_document(
     db.commit()
     db.refresh(doc)
     return doc
+
+
+@router.get("/{doc_id}/download")
+def download_document(
+    doc_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        )
+    if not os.path.exists(doc.file_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="File not found on disk"
+        )
+    return FileResponse(
+        path=doc.file_path,
+        filename=doc.filename,
+        media_type="application/pdf",
+    )
 
 
 @router.delete("/{doc_id}", status_code=status.HTTP_204_NO_CONTENT)

@@ -7,6 +7,7 @@ const navItems = [
   { to: '/projects', label: 'プロジェクト' },
   { to: '/workflows', label: '承認ワークフロー' },
   { to: '/users', label: 'ユーザー管理' },
+  { to: '/audit-logs', label: '監査ログ' },
 ]
 
 export function Layout() {

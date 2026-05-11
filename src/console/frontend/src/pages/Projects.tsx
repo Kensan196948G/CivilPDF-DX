@@ -81,7 +81,9 @@ export function Projects() {
                   <td className="px-4 py-3 font-medium">{p.name}</td>
                   <td className="px-4 py-3 text-gray-500 font-mono">{p.code}</td>
                   <td className="px-4 py-3">
-                    <span className="px-2 py-0.5 rounded-full text-xs bg-green-100 text-green-700">{p.status}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${p.is_active ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                      {p.is_active ? '有効' : '無効'}
+                    </span>
                   </td>
                   <td className="px-4 py-3 text-gray-400">{new Date(p.created_at).toLocaleDateString('ja-JP')}</td>
                 </tr>

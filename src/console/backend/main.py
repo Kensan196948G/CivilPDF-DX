@@ -11,7 +11,12 @@ from api import (
     documents_router,
     workflows_router,
     projects_router,
+    audit_logs_router,
+    stats_router,
+    m365_router,
+    ocr_router,
 )
+from middleware import AuditMiddleware
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -41,6 +46,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
 )
+app.add_middleware(AuditMiddleware)
 
 # API routes
 API_PREFIX = "/api/v1"
@@ -49,6 +55,10 @@ app.include_router(users_router, prefix=API_PREFIX)
 app.include_router(documents_router, prefix=API_PREFIX)
 app.include_router(workflows_router, prefix=API_PREFIX)
 app.include_router(projects_router, prefix=API_PREFIX)
+app.include_router(audit_logs_router, prefix=API_PREFIX)
+app.include_router(stats_router, prefix=API_PREFIX)
+app.include_router(m365_router, prefix=API_PREFIX)
+app.include_router(ocr_router, prefix=API_PREFIX)
 
 
 @app.get("/health")
