@@ -100,17 +100,17 @@ export const LandingView: FC<ViewProps> = ({ onNavigate }) => {
             </button>
             <button
               className="ep-btn ep-btn-secondary"
-              onClick={() => onNavigate('documents')}
+              onClick={() => onNavigate('dashboard')}
             >
-              <span aria-hidden="true">📁</span>
-              ドキュメントを管理する
+              <span aria-hidden="true">🖥️</span>
+              管理コンソールへ
             </button>
             <button
               className="ep-btn ep-btn-secondary"
-              onClick={() => onNavigate('dashboard')}
+              onClick={() => onNavigate('upload')}
             >
-              <span aria-hidden="true">📊</span>
-              ダッシュボードへ
+              <span aria-hidden="true">🔍</span>
+              PDFを解析する
             </button>
           </div>
           <div className="ep-hero-meta">
