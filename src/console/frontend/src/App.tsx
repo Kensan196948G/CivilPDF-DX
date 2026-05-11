@@ -1,14 +1,8 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Layout } from './components/Layout'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Login } from './pages/Login'
-import { Dashboard } from './pages/Dashboard'
-import { Documents } from './pages/Documents'
-import { Projects } from './pages/Projects'
-import { Workflows } from './pages/Workflows'
-import { Users } from './pages/Users'
-import { AuditLogs } from './pages/AuditLogs'
+import { EnterpriseLayout } from './components/enterprise/EnterpriseLayout'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
@@ -21,22 +15,14 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route
-            path="/"
+            path="/*"
             element={
               <ProtectedRoute>
-                <Layout />
+                <EnterpriseLayout />
               </ProtectedRoute>
             }
-          >
-            <Route index element={<Navigate to="/dashboard" replace />} />
-            <Route path="dashboard" element={<Dashboard />} />
-            <Route path="documents" element={<Documents />} />
-            <Route path="projects" element={<Projects />} />
-            <Route path="workflows" element={<Workflows />} />
-            <Route path="users" element={<Users />} />
-            <Route path="audit-logs" element={<AuditLogs />} />
-          </Route>
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>
