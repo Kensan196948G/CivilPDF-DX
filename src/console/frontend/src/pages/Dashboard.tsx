@@ -25,7 +25,7 @@ export function Dashboard() {
     <div className="p-8">
       <h1 className="text-2xl font-bold text-gray-800 mb-1">ダッシュボード</h1>
       <p className="text-sm text-gray-500 mb-8">
-        ようこそ、{user?.full_name ?? user?.email} さん
+        ようこそ、{user?.full_name || user?.email} さん
       </p>
       <div className="grid grid-cols-2 gap-6 mb-8 lg:grid-cols-4">
         <StatCard label="ドキュメント" value={documents.length} color="border-blue-500" />
