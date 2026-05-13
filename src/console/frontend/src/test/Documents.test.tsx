@@ -13,7 +13,7 @@ vi.mock('../api/documents', () => ({
 }))
 vi.mock('../api/projects', () => ({ listProjects: vi.fn() }))
 
-import { listDocuments, uploadDocument, deleteDocument } from '../api/documents'
+import { listDocuments, deleteDocument } from '../api/documents'
 import { listProjects } from '../api/projects'
 
 const mockDoc = {
