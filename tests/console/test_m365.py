@@ -112,6 +112,28 @@ class TestM365Config:
         assert resp.status_code == 403
 
 
+class TestM365TestConnection:
+    def test_test_connection_returns_503_when_config_missing(
+        self, client, admin_token
+    ):
+        # Default singleton has enabled=False → test_connection returns {ok:False, stage:"config"}
+        resp = client.post(
+            "/api/v1/m365/test-connection",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 503
+        body = resp.json()
+        assert body["detail"]["ok"] is False
+        assert body["detail"]["stage"] == "config"
+
+    def test_test_connection_non_admin_forbidden(self, client, viewer_token):
+        resp = client.post(
+            "/api/v1/m365/test-connection",
+            headers={"Authorization": f"Bearer {viewer_token}"},
+        )
+        assert resp.status_code == 403
+
+
 class TestM365Lookup:
     def test_lookup_user_when_m365_disabled_returns_503(self, client, admin_token):
         # M365 is disabled by default in tests — _require_enabled raises M365ConfigError

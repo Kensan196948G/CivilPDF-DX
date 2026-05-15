@@ -81,7 +81,16 @@ def test_connection(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin),
 ):
-    return m365_service.test_connection(db)
+    result = m365_service.test_connection(db)
+    if not result.get("ok"):
+        stage = result.get("stage", "unknown")
+        http_status = (
+            status.HTTP_503_SERVICE_UNAVAILABLE
+            if stage == "config"
+            else status.HTTP_502_BAD_GATEWAY
+        )
+        raise HTTPException(status_code=http_status, detail=result)
+    return result
 
 
 @router.get("/users/lookup")

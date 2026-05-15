@@ -361,3 +361,116 @@ class TestInputValidation:
     def test_missing_email_returns_422(self, client):
         resp = client.post("/api/v1/auth/m365/login", json={})
         assert resp.status_code == 422
+
+
+# --- T9: Network boundary check -------------------------------------------
+
+
+class TestNetworkBoundary:
+    def test_blocked_ip_returns_403_and_audits(
+        self, client, db_session, monkeypatch
+    ):
+        monkeypatch.setenv("M365_ALLOWED_NETWORKS", "10.0.0.0/8")
+
+        resp = client.post(
+            "/api/v1/auth/m365/login",
+            json={"email": "alice@example.com"},
+        )
+        assert resp.status_code == 403
+        assert "not allowed from this network" in resp.json()["detail"]
+
+        log = (
+            db_session.query(AuditLog)
+            .filter(AuditLog.action == "m365_login_failed")
+            .filter(AuditLog.detail.like("%network_blocked%"))
+            .first()
+        )
+        assert log is not None
+
+    def test_empty_allowed_networks_allows_all(
+        self, client, db_session, monkeypatch, fernet_key, mock_lookup_ok
+    ):
+        monkeypatch.setenv("M365_ALLOWED_NETWORKS", "")
+        _set_m365_settings(db_session, enabled=True, auto_provision=True)
+        mock_lookup_ok(_make_graph_user(email="any@example.com"))
+
+        resp = client.post(
+            "/api/v1/auth/m365/login", json={"email": "any@example.com"}
+        )
+        assert resp.status_code == 200
+
+
+# --- T10: Identity conflict (entra_id mismatch) ----------------------------
+
+
+class TestIdentityConflict:
+    def test_email_bound_to_different_entra_id_returns_409(
+        self, client, db_session, fernet_key, mock_lookup_ok
+    ):
+        _set_m365_settings(db_session, enabled=True, auto_provision=True)
+
+        # Create a local user with an entra_id already bound
+        existing = User(
+            email="conflict@example.com",
+            username="conflict",
+            full_name="Existing User",
+            role=UserRole.VIEWER,
+            status=UserStatus.ACTIVE,
+            entra_id="original-entra-id",
+        )
+        db_session.add(existing)
+        db_session.commit()
+
+        # Graph returns a different entra_id for the same email
+        mock_lookup_ok(
+            _make_graph_user(
+                user_id="different-entra-id",
+                email="conflict@example.com",
+            )
+        )
+
+        resp = client.post(
+            "/api/v1/auth/m365/login", json={"email": "conflict@example.com"}
+        )
+        assert resp.status_code == 409
+        assert "different M365 identity" in resp.json()["detail"]
+
+        log = (
+            db_session.query(AuditLog)
+            .filter(AuditLog.action == "m365_login_failed")
+            .filter(AuditLog.detail.like("%identity_conflict%"))
+            .first()
+        )
+        assert log is not None
+
+    def test_entra_id_lookup_takes_priority_over_email(
+        self, client, db_session, fernet_key, mock_lookup_ok
+    ):
+        """User found by entra_id even when email has drifted (rename scenario)."""
+        _set_m365_settings(db_session, enabled=True, auto_provision=True)
+
+        # Local user has old email but correct entra_id
+        user = User(
+            email="oldemail@example.com",
+            username="driftuser",
+            full_name="Drift User",
+            role=UserRole.VIEWER,
+            status=UserStatus.ACTIVE,
+            entra_id="stable-entra-id",
+        )
+        db_session.add(user)
+        db_session.commit()
+
+        # Graph now returns the new email but same entra_id
+        mock_lookup_ok(
+            _make_graph_user(
+                user_id="stable-entra-id",
+                email="newemail@example.com",
+            )
+        )
+
+        resp = client.post(
+            "/api/v1/auth/m365/login", json={"email": "newemail@example.com"}
+        )
+        # Should succeed: found by entra_id, not rejected by email mismatch
+        assert resp.status_code == 200
