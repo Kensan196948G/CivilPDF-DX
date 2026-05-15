@@ -152,8 +152,11 @@ def login_m365(
 
     if not _is_m365_allowed_ip(ip):
         _log_audit(
-            db, action="m365_login_failed", user_id=None,
-            detail=f"network_blocked ip={ip} email={email}", ip=ip,
+            db,
+            action="m365_login_failed",
+            user_id=None,
+            detail=f"network_blocked ip={ip} email={email}",
+            ip=ip,
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -164,16 +167,22 @@ def login_m365(
         graph_user = m365_service.lookup_user(db, email)
     except m365_service.M365ConfigError as exc:
         _log_audit(
-            db, action="m365_login_failed", user_id=None,
-            detail=f"config_error: {exc} ({email})", ip=ip,
+            db,
+            action="m365_login_failed",
+            user_id=None,
+            detail=f"config_error: {exc} ({email})",
+            ip=ip,
         )
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
         ) from exc
     except m365_service.M365UserNotFound:
         _log_audit(
-            db, action="m365_user_not_found", user_id=None,
-            detail=f"email={email}", ip=ip,
+            db,
+            action="m365_user_not_found",
+            user_id=None,
+            detail=f"email={email}",
+            ip=ip,
         )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -181,8 +190,11 @@ def login_m365(
         )
     except m365_service.M365AuthError as exc:
         _log_audit(
-            db, action="m365_login_failed", user_id=None,
-            detail=f"auth_error: {exc} ({email})", ip=ip,
+            db,
+            action="m365_login_failed",
+            user_id=None,
+            detail=f"auth_error: {exc} ({email})",
+            ip=ip,
         )
         raise HTTPException(
             status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)
@@ -190,8 +202,11 @@ def login_m365(
 
     if not graph_user.get("account_enabled", True):
         _log_audit(
-            db, action="m365_login_failed", user_id=None,
-            detail=f"account_disabled email={email}", ip=ip,
+            db,
+            action="m365_login_failed",
+            user_id=None,
+            detail=f"account_disabled email={email}",
+            ip=ip,
         )
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -212,8 +227,11 @@ def login_m365(
             if user_by_email.entra_id and user_by_email.entra_id != entra_id:
                 # Conflict: this email row is already claimed by a different Entra identity
                 _log_audit(
-                    db, action="m365_login_failed", user_id=None,
-                    detail=f"identity_conflict email={email} entra_id={entra_id}", ip=ip,
+                    db,
+                    action="m365_login_failed",
+                    user_id=None,
+                    detail=f"identity_conflict email={email} entra_id={entra_id}",
+                    ip=ip,
                 )
                 raise HTTPException(
                     status_code=status.HTTP_409_CONFLICT,
@@ -224,8 +242,11 @@ def login_m365(
     if user is None:
         if not settings_row.auto_provision:
             _log_audit(
-                db, action="m365_login_failed", user_id=None,
-                detail=f"no_local_user_and_auto_provision_off email={email}", ip=ip,
+                db,
+                action="m365_login_failed",
+                user_id=None,
+                detail=f"no_local_user_and_auto_provision_off email={email}",
+                ip=ip,
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -247,14 +268,20 @@ def login_m365(
         db.commit()
         db.refresh(user)
         _log_audit(
-            db, action="m365_user_provisioned", user_id=user.id,
-            detail=f"role={role.value} email={email}", ip=ip,
+            db,
+            action="m365_user_provisioned",
+            user_id=user.id,
+            detail=f"role={role.value} email={email}",
+            ip=ip,
         )
     else:
         if user.status != UserStatus.ACTIVE.value and user.status != UserStatus.ACTIVE:
             _log_audit(
-                db, action="m365_login_failed", user_id=user.id,
-                detail=f"local_account_not_active status={user.status}", ip=ip,
+                db,
+                action="m365_login_failed",
+                user_id=user.id,
+                detail=f"local_account_not_active status={user.status}",
+                ip=ip,
             )
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
@@ -269,8 +296,11 @@ def login_m365(
     role_value = user.role.value if hasattr(user.role, "value") else str(user.role)
     token_data = {"sub": user.id, "email": user.email, "role": role_value}
     _log_audit(
-        db, action="m365_login_success", user_id=user.id,
-        detail=f"email={email}", ip=ip,
+        db,
+        action="m365_login_success",
+        user_id=user.id,
+        detail=f"email={email}",
+        ip=ip,
     )
     return TokenResponse(
         access_token=create_access_token(token_data),
