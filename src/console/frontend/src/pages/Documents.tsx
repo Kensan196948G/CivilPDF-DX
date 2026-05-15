@@ -52,16 +52,18 @@ export function Documents() {
           <h2 className="font-semibold text-gray-700 mb-4">ドキュメントのアップロード</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-600 mb-1">タイトル</label>
+              <label htmlFor="doc-title" className="block text-sm text-gray-600 mb-1">タイトル</label>
               <input
+                id="doc-title"
                 className="w-full border rounded px-3 py-2 text-sm"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">プロジェクト</label>
+              <label htmlFor="doc-project" className="block text-sm text-gray-600 mb-1">プロジェクト</label>
               <select
+                id="doc-project"
                 className="w-full border rounded px-3 py-2 text-sm"
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
@@ -73,8 +75,9 @@ export function Documents() {
               </select>
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">種別</label>
+              <label htmlFor="doc-type" className="block text-sm text-gray-600 mb-1">種別</label>
               <select
+                id="doc-type"
                 className="w-full border rounded px-3 py-2 text-sm"
                 value={docType}
                 onChange={(e) => setDocType(e.target.value)}
@@ -87,8 +90,8 @@ export function Documents() {
               </select>
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">PDFファイル</label>
-              <input type="file" accept=".pdf" ref={fileRef} className="text-sm" />
+              <label htmlFor="doc-file" className="block text-sm text-gray-600 mb-1">PDFファイル</label>
+              <input id="doc-file" type="file" accept=".pdf" ref={fileRef} className="text-sm" />
             </div>
           </div>
           {upload.error && (
