@@ -49,3 +49,10 @@ export async function uploadDocument(
 export async function deleteDocument(id: string): Promise<void> {
   await api.delete(`/documents/${id}`)
 }
+
+export async function fetchDocumentBlob(id: string): Promise<Blob> {
+  const res = await api.get<Blob>(`/documents/${id}/download`, {
+    responseType: 'blob',
+  })
+  return res.data
+}
