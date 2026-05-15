@@ -7,6 +7,7 @@ from models.document import (
     ApprovalWorkflow,
     ApprovalStep,
 )
+from models.m365_setting import M365Setting
 
 __all__ = [
     "User",
@@ -19,4 +20,5 @@ __all__ = [
     "DocumentType",
     "ApprovalWorkflow",
     "ApprovalStep",
+    "M365Setting",
 ]
