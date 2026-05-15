@@ -29,5 +29,9 @@ class Settings(BaseSettings):
 
     anthropic_api_key: str = ""
 
+    # Microsoft 365 integration — Fernet key for client_secret encryption.
+    # Generate with: python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+    m365_fernet_key: str = ""
+
 
 settings = Settings()
