@@ -1,7 +1,13 @@
 import { useState, useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { listDocuments, uploadDocument, deleteDocument } from '../api/documents'
+import {
+  listDocuments,
+  uploadDocument,
+  deleteDocument,
+  type DocumentResponse,
+} from '../api/documents'
 import { listProjects } from '../api/projects'
+import { DocumentPreviewModal } from '../components/DocumentPreviewModal'
 
 export function Documents() {
   const qc = useQueryClient()
@@ -15,6 +21,7 @@ export function Documents() {
   const [title, setTitle] = useState('')
   const [projectId, setProjectId] = useState('')
   const [docType, setDocType] = useState('drawing')
+  const [previewDoc, setPreviewDoc] = useState<DocumentResponse | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const upload = useMutation({
@@ -149,12 +156,20 @@ export function Documents() {
                     {new Date(doc.created_at).toLocaleDateString('ja-JP')}
                   </td>
                   <td className="px-4 py-3">
-                    <button
-                      onClick={() => remove.mutate(doc.id)}
-                      className="text-red-500 hover:text-red-700 text-xs"
-                    >
-                      削除
-                    </button>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => setPreviewDoc(doc)}
+                        className="text-blue-600 hover:text-blue-800 text-xs"
+                      >
+                        プレビュー
+                      </button>
+                      <button
+                        onClick={() => remove.mutate(doc.id)}
+                        className="text-red-500 hover:text-red-700 text-xs"
+                      >
+                        削除
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -162,6 +177,13 @@ export function Documents() {
           </table>
         )}
       </div>
+
+      <DocumentPreviewModal
+        documentId={previewDoc?.id ?? null}
+        filename={previewDoc?.filename}
+        title={previewDoc?.title}
+        onClose={() => setPreviewDoc(null)}
+      />
     </div>
   )
 }

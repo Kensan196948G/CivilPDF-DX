@@ -10,10 +10,11 @@ vi.mock('../api/documents', () => ({
   listDocuments: vi.fn(),
   uploadDocument: vi.fn(),
   deleteDocument: vi.fn(),
+  fetchDocumentBlob: vi.fn(),
 }))
 vi.mock('../api/projects', () => ({ listProjects: vi.fn() }))
 
-import { listDocuments, deleteDocument } from '../api/documents'
+import { listDocuments, deleteDocument, fetchDocumentBlob } from '../api/documents'
 import { listProjects } from '../api/projects'
 
 const mockDoc = {
@@ -176,6 +177,26 @@ describe('Documents', () => {
     await waitFor(() => {
       expect(vi.mocked(deleteDocument).mock.calls[0]?.[0]).toBe('doc-1')
     }, { timeout: 3000 })
+  })
+
+  it('opens preview modal when preview button clicked', async () => {
+    vi.mocked(listDocuments).mockResolvedValue([mockDoc])
+    vi.mocked(listProjects).mockResolvedValue([])
+    vi.mocked(fetchDocumentBlob).mockResolvedValue(new Blob(['pdf'], { type: 'application/pdf' }))
+    const createUrl = vi.fn(() => 'blob:mock-url')
+    const revokeUrl = vi.fn()
+    ;(URL as unknown as { createObjectURL: typeof createUrl }).createObjectURL = createUrl
+    ;(URL as unknown as { revokeObjectURL: typeof revokeUrl }).revokeObjectURL = revokeUrl
+    const user = userEvent.setup()
+
+    render(<Documents />, { wrapper: makeWrapper() })
+
+    const previewBtn = await screen.findByRole('button', { name: 'プレビュー' })
+    await user.click(previewBtn)
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog', { name: 'ドキュメントプレビュー' })).toBeInTheDocument()
+    })
   })
 
   it('shows multiple documents in table', async () => {
