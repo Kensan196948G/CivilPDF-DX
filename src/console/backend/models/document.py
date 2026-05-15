@@ -55,6 +55,27 @@ class Document(Base):
     # PDF/A compliance
     is_pdfa = Column(Boolean, default=False)
     pdfa_version = Column(String, nullable=True)  # "PDF/A-1b", "PDF/A-2b", etc.
+    pdfa_validation_result = Column(JSON, nullable=True)  # veraPDF detailed result
+
+    # RFC 3161 timestamp (電子帳簿保存法・e-文書法)
+    timestamp_verified_at = Column(DateTime(timezone=True), nullable=True)
+    timestamp_hash = Column(String, nullable=True)  # SHA-256 of file at timestamp
+    timestamp_token = Column(Text, nullable=True)  # base64-encoded TSA token
+    timestamp_tsa_url = Column(String, nullable=True)  # TSA endpoint used
+
+    # Retention policy (電子帳簿保存法・公共工事品確法)
+    retention_policy_id = Column(String, ForeignKey("retention_policies.id"), nullable=True)
+    retention_expires_at = Column(DateTime(timezone=True), nullable=True)
+    is_archived = Column(Boolean, default=False)
+    archived_at = Column(DateTime(timezone=True), nullable=True)
+    deletion_requested_at = Column(DateTime(timezone=True), nullable=True)  # GDPR削除権
+
+    # ISO 19650 metadata (BIM情報管理)
+    iso19650_originator = Column(String, nullable=True)  # 作成者コード (例: ABC)
+    iso19650_functional_breakdown = Column(String, nullable=True)  # 機能分類 (例: 00)
+    iso19650_form = Column(String, nullable=True)  # 情報形式 (例: DR=図面)
+    iso19650_discipline = Column(String, nullable=True)  # 分野コード (例: ST=構造)
+    iso19650_number = Column(String, nullable=True)  # 連番 (例: 0001)
 
     # OCR
     ocr_text = Column(Text, nullable=True)
@@ -78,6 +99,7 @@ class Document(Base):
     workflow = relationship(
         "ApprovalWorkflow", back_populates="document", uselist=False
     )
+    retention_policy = relationship("RetentionPolicy", foreign_keys=[retention_policy_id])
 
 
 class DocumentVersion(Base):
