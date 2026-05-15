@@ -47,7 +47,7 @@ class Document(Base):
 
     # File info
     filename = Column(String, nullable=False)
-    file_path = Column(String, nullable=False)
+    file_path = Column(String, nullable=True)  # nullable for GDPR physical deletion
     file_size = Column(BigInteger, nullable=False)
     page_count = Column(Integer, nullable=True)
     mime_type = Column(String, default="application/pdf")
@@ -109,7 +109,7 @@ class DocumentVersion(Base):
     document_id = Column(String, ForeignKey("documents.id"), nullable=False)
     version_number = Column(Integer, nullable=False)
     filename = Column(String, nullable=False)
-    file_path = Column(String, nullable=False)
+    file_path = Column(String, nullable=True)  # nullable for GDPR physical deletion
     file_size = Column(BigInteger, nullable=False)
     change_note = Column(String, nullable=True)
     created_by = Column(String, ForeignKey("users.id"), nullable=False)

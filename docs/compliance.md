@@ -1,6 +1,6 @@
 # CivilPDF-DX コンプライアンス設計書
 
-**Phase 5.1 Compliance Foundation** — Loop 1 実装完了
+**Phase 5.1 Compliance Foundation** — ✅ Loop 1 + Loop 2 実装完了
 
 ---
 
@@ -19,7 +19,7 @@
 | EU | NIS2指令 | ✅ ハッシュチェーン監査ログ |
 | 米国 | CCPA/CPRA | ✅ 削除権・開示義務API |
 | 国際 | ISO 19650 (BIM) | ✅ 文書メタデータフィールド |
-| 国際 | PDF/A-3 | 🚧 Loop 2 (veraPDF統合) |
+| 国際 | PDF/A-3 | ✅ veraPDF + pypdf フォールバック実装済み |
 
 ---
 
@@ -182,17 +182,83 @@ TABLE retention_policies (
 
 ---
 
-## 5. 未完了 (Loop 2 予定)
+## 5. Loop 2 実装詳細
 
-| 機能 | 対応法規 | 優先度 |
-|---|---|---|
-| PDF/A-3 バリデーション (veraPDF) | ISO 19005-3 | HIGH |
-| フロントエンド プライバシー管理画面 | GDPR UX要件 | HIGH |
-| 同意管理UI | GDPR Art.7 | HIGH |
-| 文書一覧の保存期限警告バッジ | 電子帳簿保存法 | MEDIUM |
-| ISO 19650 メタデータ入力フォーム | 国交省電子納品要領 | MEDIUM |
-| 物理削除バックグラウンドジョブ | GDPR Art.17 | MEDIUM |
+### 5.1 PDF/A バリデーション (veraPDF + pypdf フォールバック)
+
+**ファイル**: `src/console/backend/services/pdfa_validator.py`
+
+```
+uploadDocument()
+  └→ validate_pdfa(pdf_bytes, file_path)
+       ├── VERA_PDF_CMD あり + ファイル存在 → veraPDF (subprocess, JSON出力)
+       └── fallback → pypdf XMP メタデータ検査
+```
+
+- タイムアウト: 60秒
+- `is_pdfa`, `pdfa_version`, `conformant`, `validator`, `warnings`, `errors` を返す
+- 本番: `VERA_PDF_CMD=/usr/bin/verapdf` を環境変数に設定
+
+### 5.2 GDPR 物理削除ジョブ
+
+**ファイル**: `src/console/backend/services/deletion_job.py`
+
+- `run_deletion_job(db, grace_days=30)` — 猶予期間超過ドキュメントを物理削除
+- `file_path = None` でパス無効化 (`nullable=True` に変更済み)
+- 監査ログ (`gdpr_physical_deletion`) は保持 (法的証跡義務)
+- `Alembic migration c3f8a1b2d4e5` で `documents.file_path`, `document_versions.file_path` を `nullable=True` へ変更
+
+### 5.3 ISO 19650 メタデータ入力フォーム
+
+**ファイル**: `src/console/frontend/src/components/enterprise/views/UploadView.tsx`
+
+アップロード画面右サイドバーに ISO 19650 メタデータパネルを追加:
+
+| UI 要素 | フィールド |
+|---|---|
+| テキスト入力 (max 6文字・大文字) | 作成者コード (originator) |
+| テキスト入力 | 機能分類 (functional_breakdown) |
+| セレクト (DR/SP/CA/CO/MS/HS/PH) | 情報形式 (form) |
+| セレクト (CI/ST/EL/ME/GE/SU/LA/GN) | 分野 (discipline) |
+| テキスト入力 | 連番 (number) |
+
+**API 連携**: `src/console/frontend/src/api/documents.ts` の `uploadDocument()` に `iso19650` オプション引数を追加
 
 ---
 
-*Generated: Phase 5.1 Loop 1 — 2026-05-16*
+## 6. テスト カバレッジ
+
+| テストファイル | 対象 | テスト数 | 結果 |
+|---|---|---|---|
+| `tests/console/test_pdfa_validator.py` | PDF/A バリデーション | 9 | ✅ 全パス |
+| `tests/console/test_deletion_job.py` | GDPR 物理削除ジョブ | 9 | ✅ 全パス |
+
+```bash
+.venv/bin/python -m pytest tests/console/test_pdfa_validator.py tests/console/test_deletion_job.py -v
+# 18 passed in ~25s
+```
+
+---
+
+## 7. セキュリティ考慮事項
+
+- `TIMESTAMP_HMAC_KEY` は必ず環境変数で設定。コードへのハードコード禁止
+- TSA 通信は HTTPS のみ使用
+- プライバシーAPI の操作はすべて監査ログ (ハッシュチェーン) に記録
+- 削除権行使後も監査証跡は保持 (日本法の証跡保持義務に準拠)
+- `VERA_PDF_CMD` 未設定時は pypdf フォールバック (veraPDF より低精度)
+
+---
+
+## 8. 残課題
+
+| 機能 | 対応法規 | 優先度 |
+|---|---|---|
+| RFC 3161 TSA エンドポイント連携 | 電子帳簿保存法 | P2 |
+| veraPDF Docker サイドカー | ISO 19005-3 | P2 |
+| GDPR 削除完了通知メール | GDPR Art.17 | P3 |
+| ISO 19650 originator コード形式バリデーション | 国交省電子納品要領 | P3 |
+
+---
+
+*Generated: Phase 5.1 Loop 1 — 2026-05-16 / Updated: Loop 2 complete — 2026-05-16*
