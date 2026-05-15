@@ -8,12 +8,14 @@
   "phase": {
     "current": "build",
     "week": 1,
-    "milestone": "MVP Phase 3 - API型整合・コードスプリット・品質強化"
+    "milestone": "MVP Phase 3.2 - PDF プレビュー機能 (Blob URL + iframe) 実装完了"
   },
   "kpi": {
     "ci_success_rate": 1.0,
     "test_pass_rate": 1.0,
-    "test_count": 87,
+    "test_count": 137,
+    "backend_test_count": 85,
+    "frontend_test_count": 52,
     "coverage_percent": 98,
     "review_blocker_count": 0,
     "security_issue_count": 0,
@@ -31,8 +33,11 @@
     "current_phase": "build",
     "stable": true,
     "deploy_ready": false,
-    "last_pr": 8,
-    "last_pr_status": "merged"
+    "last_pr": 14,
+    "last_pr_status": "merged",
+    "last_closed_issue": 13,
+    "frontend_lan_url": "http://192.168.0.185:5181/",
+    "frontend_systemd_unit": "civilpdf-frontend.service (dev:lan @ 5181)"
   },
   "completed": [
     "FastAPI バックエンド基盤",
@@ -45,28 +50,32 @@
     "Alembic マイグレーション",
     "Docker Compose",
     "CI/CD（GitHub Actions）",
-    "ユニットテスト 87件（backend 71件 98%カバレッジ + frontend 16件）",
+    "ユニットテスト 137件（backend 85件 98%カバレッジ + frontend 52件）",
     "API型整合修正（frontend/backend スキーマ一致）",
     "Viteコードスプリット（554KB→366KB）",
     "conftest.py clean-slate修正",
     "監査ログ機能（AuditLog モデル + API + UI + 8テスト）",
-    "フロントエンドテスト（Vitest 16件: Login / ProtectedRoute / authStore / AuditLogs）"
+    "フロントエンドテスト 60件（Login/ProtectedRoute/authStore/AuditLogs/Dashboard/Documents/Workflows）",
+    "frontend LAN systemd 公開（dev:lan @ port 5181 / strictPort / proxy→backend:8000）",
+    "PDF プレビュー機能（DocumentPreviewModal: Blob URL + iframe, Escape/×閉じる, JWT 保護, 7テスト）"
   ],
   "next_targets": [
     "ワークフロー詳細UI（承認ステップ操作）",
-    "ワークフロー詳細UI（承認ステップ操作）",
     "ドキュメント検索・フィルタリング強化",
-    "PDF プレビュー機能",
-    "フロントエンドテスト拡充（Dashboard / Documents ページ）"
+    "Settings/Users ページのテスト追加",
+    "E2E テスト整備（Playwright）"
   ],
   "learning": {
     "failure_patterns": [
       "SQLite test_console.db が残存すると UNIQUE 制約エラー → conftest で drop_all→create_all",
-      "Rollup manualChunks はオブジェクトではなく関数形式で指定する必要あり（Vite 8）"
+      "Rollup manualChunks はオブジェクトではなく関数形式で指定する必要あり（Vite 8）",
+      "systemd unit / vite config / 期待ポートの三重食い違いで dev サーバが LAN から見えない → strictPort + 専用 config で固定化"
     ],
     "success_patterns": [
       "frontend/backend スキーマを対応させることで API 404/型エラーを一括解消",
-      "Vite manualChunks で 33% チャンクサイズ削減"
+      "Vite manualChunks で 33% チャンクサイズ削減",
+      "vite.lan.config.ts を分離し dev:lan スクリプトで明示的に LAN モード切替",
+      "JWT 保護下 PDF は axios responseType:'blob' → URL.createObjectURL → iframe → unmount で revokeObjectURL でメモリ回収"
     ]
   }
 }

@@ -64,6 +64,7 @@ CivilPDF-DX は、建設・土木業における PDF 業務を統合管理する
 | 👥 ユーザー管理 | CRUD・ロールベースアクセス（admin / manager / engineer / viewer） | ✅ |
 | 📁 プロジェクト管理 | 作成・一覧・削除・ステータス管理 | ✅ |
 | 📄 文書管理 | PDF アップロード（最大 50MB）・一覧・削除・種別分類・ダウンロード | ✅ |
+| 👁 PDF プレビュー | ブラウザ内 iframe で PDF 表示（Blob URL・JWT 保護・Escape / × クローズ） | ✅ |
 | ✅ 承認ワークフロー | 多段階承認（ステップ単位の承認 / 却下 / コメント） | ✅ |
 | 📊 ダッシュボード統計 | 文書数・承認待ち・アクティブユーザー・月次承認数をリアルタイム集計 | ✅ |
 | 🔍 監査ログ | 全操作の監査証跡（閲覧・DL・署名・拒否）、フィルタ・検索対応 | ✅ |
@@ -121,7 +122,7 @@ CivilPDF-DX/
 │   └── app/                   # GUIアプリ（計画中）
 │
 ├── tests/
-│   └── console/               # pytest + SQLite in-memory (79 tests)
+│   └── console/               # pytest + SQLite in-memory (backend 85 / frontend 52 / 計 137 tests)
 ├── .github/workflows/ci.yml   # CI: lint / test / security scan
 └── CLAUDE.md                  # Claude Code プロジェクト設定
 ```
@@ -275,12 +276,13 @@ npm run build
 
 ```bash
 # バックエンド（SQLite in-memory で DB 不要）
-pytest tests/console/ -v      # 79 tests
+pytest tests/console/ -v      # 85 tests（カバレッジ 98%）
 
 # フロントエンド
 cd src/console/frontend
 npm run lint
 npm run build
+npx vitest run               # 52 tests（Login / ProtectedRoute / authStore / AuditLogs / Dashboard / Documents / Workflows / DocumentPreviewModal）
 ```
 
 ---
@@ -292,9 +294,9 @@ GitHub Actions (`.github/workflows/ci.yml`) が以下を自動検査します。
 | ジョブ | 内容 | 状態 |
 |---|---|---|
 | `backend-lint` | ruff check + ruff format --check | ✅ |
-| `backend-test` | pytest **79 テスト**（SQLite in-memory） | ✅ |
+| `backend-test` | pytest **85 テスト**（SQLite in-memory・カバレッジ 98%） | ✅ |
 | `backend-security` | pip-audit による依存脆弱性スキャン | ✅ |
-| `frontend-lint-test` | ESLint 0 errors + TypeScript build (Vite) | ✅ |
+| `frontend-lint-test` | ESLint 0 errors + Vitest **52 テスト** + TypeScript build (Vite) | ✅ |
 
 ---
 
@@ -305,6 +307,8 @@ GitHub Actions (`.github/workflows/ci.yml`) が以下を自動検査します。
 | Phase 1 — 管理コンソール MVP | JWT 認証・ユーザー・プロジェクト・文書・ワークフロー | ✅ 完成 |
 | Phase 2 — Alembic マイグレーション | DB バージョン管理・ゼロダウンタイムスキーマ変更 | ✅ 完成 |
 | Phase 3 — 監査ログ・API 拡張 | 監査証跡・統計 API・M365 統合・ダウンロード・テスト 79本 | ✅ 完成 |
+| Phase 3.1 — フロントエンドテスト拡充 | Dashboard / Documents / Workflows / AuditLogs 等 52 テスト整備 | ✅ 完成 |
+| Phase 3.2 — PDF プレビュー | DocumentPreviewModal による iframe + Blob URL プレビュー（JWT 保護） | ✅ 完成 |
 | Phase 4 — API 完全接続 | フロントエンド全画面をリアル API に接続（グレースフルフォールバック） | ✅ 完成 |
 | Phase 5 — OCR / AI | 文書要約・自動分類・テキスト抽出 | 📋 未着手 |
 | Phase 6 — GUIアプリ | Windows デスクトップ PDF エディタ | 📋 未着手 |
