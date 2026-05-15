@@ -46,6 +46,7 @@ logs/
 # Claude Code local settings
 CLAUDE.local.md
 .claude/settings.local.json
+.claude/claude_startup_bridge.sh
 
 # Fonts (downloaded by scripts/download-fonts.sh)
 assets/fonts/**/*.ttf
