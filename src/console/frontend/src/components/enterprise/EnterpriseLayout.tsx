@@ -11,10 +11,11 @@ import { SecurityView } from './views/SecurityView'
 import { AuditView } from './views/AuditView'
 import { M365View } from './views/M365View'
 import { SettingsView } from './views/SettingsView'
+import { PrivacyView } from './views/PrivacyView'
 import { useAuthStore } from '../../store/auth'
 import type { UserResponse } from '../../api/auth'
 
-type ViewId = 'lp' | 'dashboard' | 'documents' | 'upload' | 'viewer' | 'workflow' | 'apps' | 'security' | 'audit' | 'm365' | 'settings'
+type ViewId = 'lp' | 'dashboard' | 'documents' | 'upload' | 'viewer' | 'workflow' | 'apps' | 'security' | 'audit' | 'm365' | 'settings' | 'privacy'
 type DashSubView = 'overview' | 'stats' | 'dist' | 'users'
 type Role = 'op' | 'rev' | 'adm'
 type ToastType = 'ok' | 'warn' | 'error'
@@ -62,6 +63,7 @@ const NAV_GROUPS = [
       { id: 'security', label: 'セキュリティ' },
       { id: 'audit', label: '監査' },
       { id: 'm365', label: 'Microsoft365' },
+      { id: 'privacy', label: 'プライバシー' },
       { id: 'settings', label: 'システム設定' },
     ],
   },
@@ -117,6 +119,7 @@ const SEARCH_INDEX = [
   { label: 'セキュリティ', desc: 'SSO・MFA・ポリシー', view: 'security', icon: '🔒' },
   { label: '監査ログ', desc: '操作履歴・証跡管理', view: 'audit', icon: '📋' },
   { label: 'Microsoft365', desc: 'SharePoint・Teams連携', view: 'm365', icon: '☁️' },
+  { label: 'プライバシー管理', desc: '同意管理・データエクスポート・削除権 (GDPR/CCPA)', view: 'privacy', icon: '🔐' },
   { label: 'システム設定', desc: '一般・ユーザー・セキュリティ設定', view: 'settings', icon: '⚙️' },
 ]
 
@@ -430,6 +433,8 @@ export const EnterpriseLayout: FC = () => {
         return <AuditView {...viewProps} />
       case 'm365':
         return <M365View {...viewProps} />
+      case 'privacy':
+        return <PrivacyView {...viewProps} />
       case 'settings':
         return <SettingsView {...viewProps} />
       default:

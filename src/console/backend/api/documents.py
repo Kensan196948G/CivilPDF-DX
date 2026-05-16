@@ -23,6 +23,7 @@ from auth.dependencies import get_current_user
 from api.schemas import DocumentResponse, DocumentUpdate
 from config import settings
 from services import timestamp_service
+from services.pdfa_validator import validate_pdfa
 from services.retention_service import apply_retention_policy
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
@@ -107,6 +108,15 @@ async def upload_document(
     )
     db.add(doc)
     db.flush()  # get doc.id and doc.created_at assigned
+
+    # PDF/A-3 validation (ISO 14289 — 電子帳簿保存法・e-文書法要件)
+    try:
+        pdfa_result = validate_pdfa(content, str(file_path))
+        doc.is_pdfa = pdfa_result["is_pdfa"]
+        doc.pdfa_version = pdfa_result.get("pdfa_version")
+        doc.pdfa_validation_result = pdfa_result
+    except Exception:
+        pass  # validation failure is non-fatal
 
     # Apply retention policy based on document type
     apply_retention_policy(db, doc)

@@ -5,6 +5,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -21,20 +22,12 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/privacy", tags=["Privacy & Compliance"])
 
 
-def _require_admin(current_user: User) -> None:
-    if current_user.role not in (UserRole.ADMIN,):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin role required for privacy operations",
-        )
-
-
 # ---------- GDPR/CCPA Data Deletion ----------
 
 class DeletionRequestResponse(BaseModel):
     user_id: str
     documents_marked: int
-    message: str
+    deletion_requested_at: str
     audit_log_id: str
 
 
@@ -43,7 +36,7 @@ class DeletionRequestResponse(BaseModel):
     response_model=DeletionRequestResponse,
     summary="GDPR/CCPA データ削除権 (Right to Erasure)",
     description=(
-        "ユーザーの全文書に削除フラグを立てます（論理削除）。"
+        "ユーザー自身または管理者が全文書に削除フラグを立てます（論理削除）。"
         "物理削除はバックグラウンドジョブが `archive_grace_days` 経過後に実行します。"
         "監査ログへの記録は削除されません（法的証跡保持義務）。"
     ),
@@ -53,7 +46,12 @@ def request_data_deletion(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    _require_admin(current_user)
+    # GDPR Art.17: users may request erasure of their own data; admins may act for any user
+    if current_user.id != user_id and current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied",
+        )
 
     target_user = db.query(User).filter(User.id == user_id).first()
     if not target_user:
@@ -96,7 +94,7 @@ def request_data_deletion(
     return DeletionRequestResponse(
         user_id=user_id,
         documents_marked=len(docs),
-        message=f"{len(docs)}件の文書に削除フラグを設定しました。物理削除は猶予期間後に実行されます。",
+        deletion_requested_at=now.isoformat(),
         audit_log_id=audit.id,
     )
 
@@ -106,11 +104,14 @@ def request_data_deletion(
 class DataExportResponse(BaseModel):
     user_id: str
     email: str
+    username: str
     full_name: Optional[str]
     role: str
+    status: str
     created_at: Optional[str]
     documents: list[dict]
     consent_records: list[dict]
+    exported_at: str
 
 
 @router.get(
@@ -154,9 +155,12 @@ def export_user_data(
     return DataExportResponse(
         user_id=target_user.id,
         email=target_user.email,
+        username=target_user.username,
         full_name=target_user.full_name,
         role=target_user.role.value if hasattr(target_user.role, "value") else str(target_user.role),
+        status=target_user.status.value if hasattr(target_user.status, "value") else str(target_user.status),
         created_at=target_user.created_at.isoformat() if target_user.created_at else None,
+        exported_at=datetime.now(timezone.utc).isoformat(),
         documents=[
             {
                 "id": d.id,
@@ -282,3 +286,37 @@ def get_consent_status(
         )
         for r in records
     ]
+
+
+# ---------- Physical Deletion Job (Admin) ----------
+
+class DeletionJobResponse(BaseModel):
+    processed: int
+    deleted_files: int
+    errors: int
+    grace_days: int
+    run_at: str
+
+
+@router.post(
+    "/admin/run-deletion-job",
+    response_model=DeletionJobResponse,
+    summary="物理削除ジョブ実行 (Admin only)",
+    description=(
+        "削除フラグ済み文書のうち猶予期間を過ぎたものを物理削除します。"
+        "監査ログは保持されます（法的証跡保持義務）。"
+    ),
+)
+def run_deletion_job_endpoint(
+    grace_days: int = Query(30, ge=1, le=365, description="猶予期間（日数）"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin role required",
+        )
+    from services.deletion_job import run_deletion_job
+    result = run_deletion_job(db, grace_days=grace_days)
+    return DeletionJobResponse(**result)
