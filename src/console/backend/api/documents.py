@@ -22,6 +22,9 @@ from models.document import Document, DocumentStatus, DocumentType
 from auth.dependencies import get_current_user
 from api.schemas import DocumentResponse, DocumentUpdate
 from config import settings
+from services import timestamp_service
+from services.pdfa_validator import validate_pdfa
+from services.retention_service import apply_retention_policy
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
@@ -57,6 +60,12 @@ async def upload_document(
     title: str = Form(...),
     document_type: DocumentType = Form(DocumentType.OTHER),
     file: UploadFile = File(...),
+    # ISO 19650 metadata fields
+    iso19650_originator: Optional[str] = Form(None),
+    iso19650_functional_breakdown: Optional[str] = Form(None),
+    iso19650_form: Optional[str] = Form(None),
+    iso19650_discipline: Optional[str] = Form(None),
+    iso19650_number: Optional[str] = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -91,8 +100,38 @@ async def upload_document(
         mime_type="application/pdf",
         project_id=project_id,
         owner_id=current_user.id,
+        iso19650_originator=iso19650_originator,
+        iso19650_functional_breakdown=iso19650_functional_breakdown,
+        iso19650_form=iso19650_form,
+        iso19650_discipline=iso19650_discipline,
+        iso19650_number=iso19650_number,
     )
     db.add(doc)
+    db.flush()  # get doc.id and doc.created_at assigned
+
+    # PDF/A-3 validation (ISO 14289 — 電子帳簿保存法・e-文書法要件)
+    try:
+        pdfa_result = validate_pdfa(content, str(file_path))
+        doc.is_pdfa = pdfa_result["is_pdfa"]
+        doc.pdfa_version = pdfa_result.get("pdfa_version")
+        doc.pdfa_validation_result = pdfa_result
+    except Exception:
+        pass  # validation failure is non-fatal
+
+    # Apply retention policy based on document type
+    apply_retention_policy(db, doc)
+
+    # Generate timestamp (電子帳簿保存法・e-文書法)
+    try:
+        ts = timestamp_service.generate_timestamp(content, file.filename or "upload.pdf")
+        from datetime import datetime, timezone
+        doc.timestamp_hash = ts["file_hash"]
+        doc.timestamp_token = ts["token_b64"]
+        doc.timestamp_tsa_url = ts["tsa_url"]
+        doc.timestamp_verified_at = datetime.now(timezone.utc)
+    except Exception:
+        pass  # timestamp failure is non-fatal; log but continue
+
     db.commit()
     db.refresh(doc)
     return doc

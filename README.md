@@ -310,6 +310,7 @@ GitHub Actions (`.github/workflows/ci.yml`) が以下を自動検査します。
 | Phase 3.1 — フロントエンドテスト拡充 | Dashboard / Documents / Workflows / AuditLogs 等 52 テスト整備 | ✅ 完成 |
 | Phase 3.2 — PDF プレビュー | DocumentPreviewModal による iframe + Blob URL プレビュー（JWT 保護） | ✅ 完成 |
 | Phase 4 — API 完全接続 | フロントエンド全画面をリアル API に接続（グレースフルフォールバック） | ✅ 完成 |
+| Phase 5.1 — コンプライアンス基盤 | ISO 14289 (PDF/A) バリデーション・GDPR Art.17 物理削除・ISO 19650 メタデータ入力UI | ✅ 完成 |
 | Phase 5 — OCR / AI | 文書要約・自動分類・テキスト抽出 | 📋 未着手 |
 | Phase 6 — GUIアプリ | Windows デスクトップ PDF エディタ | 📋 未着手 |
 | Phase 7 — 電子納品 | 国交省電子納品要領準拠 PDF/A 変換 | 📋 未着手 |

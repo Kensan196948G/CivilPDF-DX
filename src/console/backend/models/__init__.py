@@ -7,6 +7,10 @@ from models.document import (
     ApprovalWorkflow,
     ApprovalStep,
 )
+from models.m365_setting import M365Setting
+from models.audit_log import AuditLog
+from models.retention_policy import RetentionPolicy, RetentionCategory, DEFAULT_POLICIES
+from models.consent import ConsentRecord, ConsentType
 
 __all__ = [
     "User",
@@ -19,4 +23,11 @@ __all__ = [
     "DocumentType",
     "ApprovalWorkflow",
     "ApprovalStep",
+    "M365Setting",
+    "AuditLog",
+    "RetentionPolicy",
+    "RetentionCategory",
+    "DEFAULT_POLICIES",
+    "ConsentRecord",
+    "ConsentType",
 ]
