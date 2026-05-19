@@ -18,7 +18,7 @@ CivilPDF-DX は、**建設・土木業における PDF 業務を一気通貫で�
 JWT 認証・M365 統合・多段階承認ワークフロー・PDF/A バリデーション・GDPR 対応プライバシー管理・ISO 19650 メタデータ管理・改ざん検知付き監査チェーンを LAN 上のブラウザから即座に利用できます。
 
 対象規模は**中堅〜大手ゼネコン・サブコン（従業員 50〜5,000 名）**。  
-Phase 5.1 コンプライアンス基盤 + Phase 6 フロントエンドテスト強化まで実装済み。ユニットテスト 157 件・E2E テスト 20 件・フロントエンドテスト 98 件（計 275 件）、CI カバレッジ 98%。
+Phase 5.1 コンプライアンス基盤 + Phase 6 フロントエンドテスト強化 + プロフィール管理 API まで実装済み。バックエンドテスト 164 件・E2E テスト 20 件・フロントエンドテスト 103 件（計 287 件）、CI カバレッジ 98%。
 
 ---
 
@@ -174,10 +174,10 @@ open http://192.168.0.185:5181/
 
 | スイート | テスト数 | カバレッジ | 実行コマンド |
 |---|---|---|---|
-| Backend ユニットテスト | 157 件 | 98% | `pytest tests/console/ -v` |
+| Backend ユニットテスト | 164 件 | 98% | `pytest tests/console/ -v` |
 | Backend E2E 統合テスト | 20 件 | — | `pytest tests/integration/ -v` |
-| Frontend（Vitest） | 98 件 | — | `cd src/console/frontend && npx vitest run` |
-| **合計** | **275 件** | — | — |
+| Frontend（Vitest） | 103 件 | — | `cd src/console/frontend && npx vitest run` |
+| **合計** | **287 件** | — | — |
 
 ```bash
 # バックエンド（SQLite in-memory、DB 不要）
@@ -368,8 +368,9 @@ CivilPDF-DX/
 | Phase 3.1 | フロントエンドテスト拡充（Dashboard / Documents / Workflows 等 52 件） | ✅ 完成 |
 | Phase 4 | フロントエンド全画面 リアル API 接続（グレースフルフォールバック） | ✅ 完成 |
 | **Phase 5.1** | **コンプライアンス基盤（PDF/A / GDPR Art.17 / ISO 19650 / 監査チェーン）** | ✅ **完成** |
-| **Phase 6** | **フロントエンドテスト強化（Projects/Dashboard/Settings テスト、計 98 件）** | ✅ **完成** |
-| Phase 7 | プロフィール更新 API / パスワード変更 / OCR・AI 統合 | 📋 未着手 |
+| **Phase 6** | **フロントエンドテスト強化（Projects/Dashboard/Settings テスト、計 103 件）** | ✅ **完成** |
+| **Phase 6.1** | **プロフィール更新 API（PATCH /auth/me・POST /auth/me/password）** | ✅ **完成** |
+| Phase 7 | OCR・AI 統合（文書要約・自動分類・テキスト抽出） | 📋 未着手 |
 | Phase 7 | 電子納品（国交省電子納品要領準拠 PDF/A 変換） | 📋 未着手 |
 
 ---
