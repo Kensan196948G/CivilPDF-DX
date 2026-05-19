@@ -31,3 +31,12 @@ export async function getMe(): Promise<UserResponse> {
   const res = await api.get<UserResponse>('/auth/me')
   return res.data
 }
+
+export async function updateMe(full_name: string): Promise<UserResponse> {
+  const res = await api.patch<UserResponse>('/auth/me', { full_name })
+  return res.data
+}
+
+export async function changePassword(current_password: string, new_password: string): Promise<void> {
+  await api.post('/auth/me/password', { current_password, new_password })
+}

@@ -8,15 +8,15 @@
   "phase": {
     "current": "build",
     "week": 2,
-    "milestone": "Phase 5.1 コンプライアンス基盤 + E2E テスト整備 完了"
+    "milestone": "Phase 6 フロントエンドテスト強化 完了（98件）"
   },
   "kpi": {
     "ci_success_rate": 1.0,
     "test_pass_rate": 1.0,
-    "test_count": 251,
-    "backend_unit_test_count": 157,
+    "test_count": 287,
+    "backend_unit_test_count": 164,
     "backend_e2e_test_count": 20,
-    "frontend_test_count": 74,
+    "frontend_test_count": 103,
     "coverage_percent": 98,
     "review_blocker_count": 0,
     "security_issue_count": 0,
@@ -24,7 +24,7 @@
   },
   "execution": {
     "max_duration_minutes": 300,
-    "loop_count": 5,
+    "loop_count": 8,
     "max_loops": 10,
     "ci_retry_limit": 15,
     "same_error_limit": 3,
@@ -37,7 +37,7 @@
     "current_phase": "build",
     "stable": true,
     "deploy_ready": false,
-    "last_pr": 19,
+    "last_pr": 20,
     "last_pr_status": "open",
     "last_merged_pr": 18,
     "last_closed_issue": 13,
@@ -69,15 +69,25 @@
     "ドキュメント検索・フィルタリング（タイトル検索 + 種別/ステータスフィルター）",
     "Users ページテスト（RBAC 権限分岐 + 操作 UI）",
     "E2E 統合テスト（tests/integration/ 20件: 認証/文書/承認/GDPR/RBAC 5シナリオ）",
-    "CI: integration-test ジョブ追加"
+    "CI: integration-test ジョブ追加",
+    "Dashboard KPI stats API 統合（getStats エンドポイント利用）",
+    "Projects ページ RBAC+検索+削除テスト（13件）",
+    "vitest .claude/ 除外設定（exclude パターン追加）",
+    "全フロントエンドテスト 89件通過",
+    "Settings ページ実装（プロフィール/システム情報/セキュリティポリシー）+ テスト9件",
+    "全フロントエンドテスト 98件通過（PR #20 CI 通過）",
+    "PATCH /auth/me（プロフィール更新 API）実装",
+    "POST /auth/me/password（パスワード変更 API）実装",
+    "Settings ページ編集機能（氏名変更・パスワード変更フォーム）",
+    "auth テスト 7件追加（合計 164件）",
+    "全フロントエンドテスト 103件通過"
   ],
   "next_targets": [
-    "PR #19 (E2E テスト) CI 確認・マージ",
-    "PR #17 (systemd installer) レビュー・マージ",
-    "PR #16 (M365 auth) レビュー・マージ",
-    "Projects ページのテスト追加",
-    "Settings ページのテスト追加",
-    "フロントエンドビルドチャンクサイズ最適化"
+    "PR #20 CI 確認・マージ",
+    "README 更新（テスト数 287件反映）",
+    "ruff lint チェック（新規 backend ファイル）",
+    "フロントエンド型定義整合（auth.ts 新関数）",
+    "OCR/AI 統合検討（Phase 7）"
   ],
   "learning": {
     "failure_patterns": [
@@ -97,7 +107,9 @@
       "JWT 保護下 PDF は axios responseType:'blob' → URL.createObjectURL → iframe → unmount で revokeObjectURL でメモリ回収",
       "useMemo でクライアントサイドフィルタリングを実装すると再レンダリング最小化かつシンプル",
       "WorkflowDetailModal を独立コンポーネントにして selectedId state で開閉制御するパターンが再利用しやすい",
-      "E2E テストは FastAPI TestClient + SQLite で完全分離できる。CI コストも低い"
+      "E2E テストは FastAPI TestClient + SQLite で完全分離できる。CI コストも低い",
+      "vitest の exclude に **/.claude/** を追加することで ClaudeOS 内部テストが混入するのを防げる",
+      "waitFor の外に非同期値の検証を置くと、ラベルテキストが先に表示されて waitFor がすぐ解決してしまい値が 0 のまま失敗する"
     ]
   }
 }

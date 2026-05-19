@@ -80,6 +80,62 @@ class TestLogin:
         assert resp.status_code == 401
 
 
+class TestProfileUpdate:
+    def test_update_full_name(self, client, admin_token):
+        resp = client.patch(
+            "/api/v1/auth/me",
+            json={"full_name": "Updated Name"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 200
+        assert resp.json()["full_name"] == "Updated Name"
+
+    def test_update_full_name_empty_rejected(self, client, admin_token):
+        resp = client.patch(
+            "/api/v1/auth/me",
+            json={"full_name": "   "},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 422
+
+    def test_update_profile_unauthenticated(self, client):
+        resp = client.patch("/api/v1/auth/me", json={"full_name": "Hacker"})
+        assert resp.status_code == 401
+
+
+class TestPasswordChange:
+    def test_change_password_success(self, client, admin_token):
+        resp = client.post(
+            "/api/v1/auth/me/password",
+            json={"current_password": "Admin1234!", "new_password": "NewPass5678!"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 204
+
+    def test_change_password_wrong_current(self, client, admin_token):
+        resp = client.post(
+            "/api/v1/auth/me/password",
+            json={"current_password": "WrongPass!", "new_password": "NewPass5678!"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 400
+
+    def test_change_password_too_short(self, client, admin_token):
+        resp = client.post(
+            "/api/v1/auth/me/password",
+            json={"current_password": "Admin1234!", "new_password": "short"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 422
+
+    def test_change_password_unauthenticated(self, client):
+        resp = client.post(
+            "/api/v1/auth/me/password",
+            json={"current_password": "Admin1234!", "new_password": "NewPass5678!"},
+        )
+        assert resp.status_code == 401
+
+
 class TestHealthCheck:
     def test_health(self, client):
         resp = client.get("/health")
