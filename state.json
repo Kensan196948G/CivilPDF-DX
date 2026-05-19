@@ -8,15 +8,15 @@
   "phase": {
     "current": "build",
     "week": 2,
-    "milestone": "Phase 5.1 コンプライアンス基盤 + E2E テスト整備 完了"
+    "milestone": "Phase 6 フロントエンドテスト強化 完了（98件）"
   },
   "kpi": {
     "ci_success_rate": 1.0,
     "test_pass_rate": 1.0,
-    "test_count": 266,
+    "test_count": 275,
     "backend_unit_test_count": 157,
     "backend_e2e_test_count": 20,
-    "frontend_test_count": 89,
+    "frontend_test_count": 98,
     "coverage_percent": 98,
     "review_blocker_count": 0,
     "security_issue_count": 0,
@@ -24,7 +24,7 @@
   },
   "execution": {
     "max_duration_minutes": 300,
-    "loop_count": 6,
+    "loop_count": 7,
     "max_loops": 10,
     "ci_retry_limit": 15,
     "same_error_limit": 3,
@@ -73,14 +73,16 @@
     "Dashboard KPI stats API 統合（getStats エンドポイント利用）",
     "Projects ページ RBAC+検索+削除テスト（13件）",
     "vitest .claude/ 除外設定（exclude パターン追加）",
-    "全フロントエンドテスト 89件通過"
+    "全フロントエンドテスト 89件通過",
+    "Settings ページ実装（プロフィール/システム情報/セキュリティポリシー）+ テスト9件",
+    "全フロントエンドテスト 98件通過（PR #20 CI 通過）"
   ],
   "next_targets": [
-    "PR #19 (E2E テスト) CI 確認・マージ",
-    "PR #17 (systemd installer) レビュー・マージ",
-    "PR #16 (M365 auth) レビュー・マージ",
-    "Settings ページのテスト追加",
-    "フロントエンドビルドチャンクサイズ最適化"
+    "PR #20 マージ",
+    "プロフィール更新 API (PATCH /auth/me) 実装",
+    "パスワード変更 API 実装",
+    "フロントエンド Settings ページを編集可能にする",
+    "README 更新（テスト数 275件反映）"
   ],
   "learning": {
     "failure_patterns": [
@@ -100,7 +102,9 @@
       "JWT 保護下 PDF は axios responseType:'blob' → URL.createObjectURL → iframe → unmount で revokeObjectURL でメモリ回収",
       "useMemo でクライアントサイドフィルタリングを実装すると再レンダリング最小化かつシンプル",
       "WorkflowDetailModal を独立コンポーネントにして selectedId state で開閉制御するパターンが再利用しやすい",
-      "E2E テストは FastAPI TestClient + SQLite で完全分離できる。CI コストも低い"
+      "E2E テストは FastAPI TestClient + SQLite で完全分離できる。CI コストも低い",
+      "vitest の exclude に **/.claude/** を追加することで ClaudeOS 内部テストが混入するのを防げる",
+      "waitFor の外に非同期値の検証を置くと、ラベルテキストが先に表示されて waitFor がすぐ解決してしまい値が 0 のまま失敗する"
     ]
   }
 }
