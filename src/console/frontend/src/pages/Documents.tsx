@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   listDocuments,
@@ -9,6 +9,21 @@ import {
 import { listProjects } from '../api/projects'
 import { DocumentPreviewModal } from '../components/DocumentPreviewModal'
 
+const DOC_TYPE_LABELS: Record<string, string> = {
+  drawing: '図面',
+  specification: '仕様書',
+  report: '報告書',
+  contract: '契約書',
+  other: 'その他',
+}
+
+const STATUS_LABELS: Record<string, { label: string; cls: string }> = {
+  draft: { label: '下書き', cls: 'bg-gray-100 text-gray-600' },
+  pending_review: { label: 'レビュー待ち', cls: 'bg-yellow-100 text-yellow-700' },
+  approved: { label: '承認済', cls: 'bg-green-100 text-green-700' },
+  rejected: { label: '却下', cls: 'bg-red-100 text-red-700' },
+}
+
 export function Documents() {
   const qc = useQueryClient()
   const { data: documents = [], isLoading } = useQuery({
@@ -17,12 +32,29 @@ export function Documents() {
   })
   const { data: projects = [] } = useQuery({ queryKey: ['projects'], queryFn: listProjects })
 
+  // Upload form state
   const [showUpload, setShowUpload] = useState(false)
   const [title, setTitle] = useState('')
   const [projectId, setProjectId] = useState('')
   const [docType, setDocType] = useState('drawing')
   const [previewDoc, setPreviewDoc] = useState<DocumentResponse | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // Search / filter state
+  const [searchQuery, setSearchQuery] = useState('')
+  const [filterType, setFilterType] = useState('')
+  const [filterStatus, setFilterStatus] = useState('')
+
+  const filteredDocuments = useMemo(() => {
+    return documents.filter((doc) => {
+      const matchesSearch =
+        searchQuery === '' ||
+        doc.title.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesType = filterType === '' || doc.document_type === filterType
+      const matchesStatus = filterStatus === '' || doc.status === filterStatus
+      return matchesSearch && matchesType && matchesStatus
+    })
+  }, [documents, searchQuery, filterType, filterStatus])
 
   const upload = useMutation({
     mutationFn: () => {
@@ -122,11 +154,55 @@ export function Documents() {
         </div>
       )}
 
+      {/* Search & Filter bar */}
+      <div className="flex flex-wrap gap-3 mb-4">
+        <input
+          type="search"
+          placeholder="タイトルで検索..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="border rounded-lg px-3 py-2 text-sm flex-1 min-w-[200px]"
+          aria-label="タイトルで検索"
+        />
+        <select
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+          className="border rounded-lg px-3 py-2 text-sm"
+          aria-label="種別フィルター"
+        >
+          <option value="">すべての種別</option>
+          {Object.entries(DOC_TYPE_LABELS).map(([val, lbl]) => (
+            <option key={val} value={val}>{lbl}</option>
+          ))}
+        </select>
+        <select
+          value={filterStatus}
+          onChange={(e) => setFilterStatus(e.target.value)}
+          className="border rounded-lg px-3 py-2 text-sm"
+          aria-label="ステータスフィルター"
+        >
+          <option value="">すべてのステータス</option>
+          {Object.entries(STATUS_LABELS).map(([val, { label }]) => (
+            <option key={val} value={val}>{label}</option>
+          ))}
+        </select>
+        {(searchQuery || filterType || filterStatus) && (
+          <button
+            onClick={() => { setSearchQuery(''); setFilterType(''); setFilterStatus('') }}
+            className="text-xs text-gray-500 underline px-2"
+          >
+            クリア
+          </button>
+        )}
+      </div>
+
       <div className="bg-white rounded-xl shadow">
         {isLoading ? (
           <p className="p-6 text-gray-400 text-sm">読み込み中...</p>
-        ) : documents.length === 0 ? (
-          <p className="p-6 text-gray-400 text-sm">ドキュメントがありません</p>
+        ) : filteredDocuments.length === 0 ? (
+          <p className="p-6 text-gray-400 text-sm">
+            {documents.length > 0 ? '条件に一致するドキュメントがありません' : 'ドキュメントがありません'}
+          </p>
         ) : (
           <table className="w-full text-sm">
             <thead className="border-b">
@@ -140,39 +216,44 @@ export function Documents() {
               </tr>
             </thead>
             <tbody>
-              {documents.map((doc) => (
-                <tr key={doc.id} className="border-b last:border-0 hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium">{doc.title}</td>
-                  <td className="px-4 py-3 text-gray-500">{doc.document_type}</td>
-                  <td className="px-4 py-3">
-                    <span className="px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-700">
-                      {doc.status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-gray-400">
-                    {(doc.file_size / 1024).toFixed(0)} KB
-                  </td>
-                  <td className="px-4 py-3 text-gray-400">
-                    {new Date(doc.created_at).toLocaleDateString('ja-JP')}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => setPreviewDoc(doc)}
-                        className="text-blue-600 hover:text-blue-800 text-xs"
-                      >
-                        プレビュー
-                      </button>
-                      <button
-                        onClick={() => remove.mutate(doc.id)}
-                        className="text-red-500 hover:text-red-700 text-xs"
-                      >
-                        削除
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filteredDocuments.map((doc) => {
+                const s = STATUS_LABELS[doc.status] ?? { label: doc.status, cls: 'bg-blue-100 text-blue-700' }
+                return (
+                  <tr key={doc.id} className="border-b last:border-0 hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium">{doc.title}</td>
+                    <td className="px-4 py-3 text-gray-500">
+                      {DOC_TYPE_LABELS[doc.document_type] ?? doc.document_type}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`px-2 py-0.5 rounded-full text-xs ${s.cls}`}>
+                        {s.label}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-gray-400">
+                      {(doc.file_size / 1024).toFixed(0)} KB
+                    </td>
+                    <td className="px-4 py-3 text-gray-400">
+                      {new Date(doc.created_at).toLocaleDateString('ja-JP')}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => setPreviewDoc(doc)}
+                          className="text-blue-600 hover:text-blue-800 text-xs"
+                        >
+                          プレビュー
+                        </button>
+                        <button
+                          onClick={() => remove.mutate(doc.id)}
+                          className="text-red-500 hover:text-red-700 text-xs"
+                        >
+                          削除
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                )
+              })}
             </tbody>
           </table>
         )}
