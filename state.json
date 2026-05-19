@@ -8,7 +8,7 @@
   "phase": {
     "current": "build",
     "week": 2,
-    "milestone": "Phase 6 フロントエンドテスト強化 完了（98件）"
+    "milestone": "Phase 6+Windows移行対応 main マージ完了（PR #20、287件）"
   },
   "kpi": {
     "ci_success_rate": 1.0,
@@ -38,8 +38,8 @@
     "stable": true,
     "deploy_ready": false,
     "last_pr": 20,
-    "last_pr_status": "open",
-    "last_merged_pr": 18,
+    "last_pr_status": "merged",
+    "last_merged_pr": 20,
     "last_closed_issue": 13,
     "frontend_lan_url": "http://192.168.0.185:5181/",
     "frontend_systemd_unit": "civilpdf-frontend.service (dev:lan @ 5181)",
