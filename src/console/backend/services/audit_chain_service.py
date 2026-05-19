@@ -82,7 +82,9 @@ def create_chained_audit_log(
     """Create a new AuditLog record with hash chain linkage."""
     last = get_last_record(db)
     prev_hash = last.record_hash if (last and last.record_hash) else GENESIS_HASH
-    next_seq = (last.sequence_number + 1) if (last and last.sequence_number is not None) else 1
+    next_seq = (
+        (last.sequence_number + 1) if (last and last.sequence_number is not None) else 1
+    )
 
     log = AuditLog(
         user_id=user_id,
@@ -96,7 +98,7 @@ def create_chained_audit_log(
         record_hash="pending",  # placeholder; replaced below after DB assigns created_at
     )
     db.add(log)
-    db.flush()   # DB assigns created_at via server_default
+    db.flush()  # DB assigns created_at via server_default
     db.refresh(log)  # reload to get the actual DB-stored created_at
 
     # Compute hash using the exact created_at value stored in DB
@@ -135,7 +137,12 @@ def verify_chain(db: Session, limit: int = 1000) -> dict:
     )
 
     if not records:
-        return {"chain_valid": True, "records_checked": 0, "first_broken_sequence": None, "error": None}
+        return {
+            "chain_valid": True,
+            "records_checked": 0,
+            "first_broken_sequence": None,
+            "error": None,
+        }
 
     prev_hash = GENESIS_HASH
     for record in records:

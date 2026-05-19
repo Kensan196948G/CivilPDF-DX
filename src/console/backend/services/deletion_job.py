@@ -53,9 +53,7 @@ def run_deletion_job(db: Session, grace_days: int = DEFAULT_GRACE_DAYS) -> dict:
             _physically_delete(db, doc)
             deleted_files += 1
         except Exception as exc:
-            logger.error(
-                "Failed to delete document %s: %s", doc.id, exc, exc_info=True
-            )
+            logger.error("Failed to delete document %s: %s", doc.id, exc, exc_info=True)
             errors += 1
 
     logger.info(

@@ -64,7 +64,9 @@ class Document(Base):
     timestamp_tsa_url = Column(String, nullable=True)  # TSA endpoint used
 
     # Retention policy (電子帳簿保存法・公共工事品確法)
-    retention_policy_id = Column(String, ForeignKey("retention_policies.id"), nullable=True)
+    retention_policy_id = Column(
+        String, ForeignKey("retention_policies.id"), nullable=True
+    )
     retention_expires_at = Column(DateTime(timezone=True), nullable=True)
     is_archived = Column(Boolean, default=False)
     archived_at = Column(DateTime(timezone=True), nullable=True)
@@ -99,7 +101,9 @@ class Document(Base):
     workflow = relationship(
         "ApprovalWorkflow", back_populates="document", uselist=False
     )
-    retention_policy = relationship("RetentionPolicy", foreign_keys=[retention_policy_id])
+    retention_policy = relationship(
+        "RetentionPolicy", foreign_keys=[retention_policy_id]
+    )
 
 
 class DocumentVersion(Base):

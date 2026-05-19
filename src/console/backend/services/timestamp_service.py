@@ -25,7 +25,9 @@ TSA_POLICY_OID = os.environ.get("TSA_POLICY_OID", "1.3.6.1.4.1.13762.3")
 TSA_TIMEOUT_SECONDS = int(os.environ.get("TSA_TIMEOUT_SECONDS", "10"))
 
 # Fallback HMAC key — must be set in production via environment
-_LOCAL_HMAC_KEY = os.environ.get("TIMESTAMP_HMAC_KEY", "change-me-in-production").encode()
+_LOCAL_HMAC_KEY = os.environ.get(
+    "TIMESTAMP_HMAC_KEY", "change-me-in-production"
+).encode()
 
 
 class TimestampError(Exception):
@@ -66,14 +68,16 @@ def _request_rfc3161_token(file_hash_bytes: bytes) -> Optional[bytes]:
         # TimeStampReq ::= SEQUENCE { version INTEGER, messageImprint MessageImprint, ... }
         # We build a minimal valid TSQ using raw DER bytes for SHA-256
         # OID for SHA-256: 2.16.840.1.101.3.4.2.1
-        sha256_oid_der = bytes.fromhex(
-            "3031300d060960864801650304020105000420"
-        ) + file_hash_bytes
+        sha256_oid_der = (
+            bytes.fromhex("3031300d060960864801650304020105000420") + file_hash_bytes
+        )
 
         # Minimal TSQ: version=1, messageImprint, certReq=TRUE
         tsq_inner = (
             b"\x02\x01\x01"  # INTEGER 1 (version)
-            + b"\x30" + bytes([len(sha256_oid_der)]) + sha256_oid_der
+            + b"\x30"
+            + bytes([len(sha256_oid_der)])
+            + sha256_oid_der
             + b"\x01\x01\xff"  # BOOLEAN TRUE (certReq)
         )
         tsq = b"\x30" + bytes([len(tsq_inner)]) + tsq_inner
@@ -114,12 +118,12 @@ def generate_timestamp(file_content: bytes, filename: str) -> dict:
         logger.info("RFC 3161 timestamp obtained from %s for %s", TSA_URL, filename)
     else:
         local_token = _create_local_timestamp(file_hash, filename)
-        token_b64 = base64.b64encode(
-            json.dumps(local_token).encode()
-        ).decode()
+        token_b64 = base64.b64encode(json.dumps(local_token).encode()).decode()
         token_type = "local_hmac"
         tsa_url_used = ""
-        logger.info("Local HMAC timestamp generated for %s (TSA not configured)", filename)
+        logger.info(
+            "Local HMAC timestamp generated for %s (TSA not configured)", filename
+        )
 
     return {
         "file_hash": file_hash,
@@ -149,11 +153,15 @@ def verify_local_timestamp(token_b64: str, file_hash: str) -> bool:
         return False
 
 
-def verify_file_against_timestamp(file_content: bytes, stored_hash: str, token_b64: str) -> bool:
+def verify_file_against_timestamp(
+    file_content: bytes, stored_hash: str, token_b64: str
+) -> bool:
     """Verify that file_content matches the stored hash and the token is valid."""
     current_hash = _sha256_hex(file_content)
     if current_hash != stored_hash:
-        logger.warning("File hash mismatch: stored=%s current=%s", stored_hash, current_hash)
+        logger.warning(
+            "File hash mismatch: stored=%s current=%s", stored_hash, current_hash
+        )
         return False
     # For local tokens, verify HMAC; RFC 3161 verification requires ASN.1 parsing
     try:

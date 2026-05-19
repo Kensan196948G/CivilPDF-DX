@@ -24,6 +24,7 @@ router = APIRouter(prefix="/privacy", tags=["Privacy & Compliance"])
 
 # ---------- GDPR/CCPA Data Deletion ----------
 
+
 class DeletionRequestResponse(BaseModel):
     user_id: str
     documents_marked: int
@@ -61,10 +62,14 @@ def request_data_deletion(
         )
 
     now = datetime.now(timezone.utc)
-    docs = db.query(Document).filter(
-        Document.owner_id == user_id,
-        Document.deletion_requested_at == None,  # noqa: E711
-    ).all()
+    docs = (
+        db.query(Document)
+        .filter(
+            Document.owner_id == user_id,
+            Document.deletion_requested_at == None,  # noqa: E711
+        )
+        .all()
+    )
 
     for doc in docs:
         doc.deletion_requested_at = now
@@ -78,18 +83,23 @@ def request_data_deletion(
         action="gdpr_deletion_request",
         resource_type="user",
         resource_id=user_id,
-        detail=json.dumps({
-            "target_user_id": user_id,
-            "target_email": target_user.email,
-            "documents_marked": len(docs),
-            "requester_id": current_user.id,
-        }, ensure_ascii=False),
+        detail=json.dumps(
+            {
+                "target_user_id": user_id,
+                "target_email": target_user.email,
+                "documents_marked": len(docs),
+                "requester_id": current_user.id,
+            },
+            ensure_ascii=False,
+        ),
         ip_address=None,
     )
 
     logger.info(
         "GDPR deletion request: user=%s target=%s docs=%d",
-        current_user.id, user_id, len(docs),
+        current_user.id,
+        user_id,
+        len(docs),
     )
     return DeletionRequestResponse(
         user_id=user_id,
@@ -100,6 +110,7 @@ def request_data_deletion(
 
 
 # ---------- GDPR/CCPA Data Portability ----------
+
 
 class DataExportResponse(BaseModel):
     user_id: str
@@ -157,20 +168,32 @@ def export_user_data(
         email=target_user.email,
         username=target_user.username,
         full_name=target_user.full_name,
-        role=target_user.role.value if hasattr(target_user.role, "value") else str(target_user.role),
-        status=target_user.status.value if hasattr(target_user.status, "value") else str(target_user.status),
-        created_at=target_user.created_at.isoformat() if target_user.created_at else None,
+        role=target_user.role.value
+        if hasattr(target_user.role, "value")
+        else str(target_user.role),
+        status=target_user.status.value
+        if hasattr(target_user.status, "value")
+        else str(target_user.status),
+        created_at=target_user.created_at.isoformat()
+        if target_user.created_at
+        else None,
         exported_at=datetime.now(timezone.utc).isoformat(),
         documents=[
             {
                 "id": d.id,
                 "title": d.title,
-                "document_type": d.document_type.value if hasattr(d.document_type, "value") else str(d.document_type),
-                "status": d.status.value if hasattr(d.status, "value") else str(d.status),
+                "document_type": d.document_type.value
+                if hasattr(d.document_type, "value")
+                else str(d.document_type),
+                "status": d.status.value
+                if hasattr(d.status, "value")
+                else str(d.status),
                 "filename": d.filename,
                 "file_size": d.file_size,
                 "created_at": d.created_at.isoformat() if d.created_at else None,
-                "retention_expires_at": d.retention_expires_at.isoformat() if d.retention_expires_at else None,
+                "retention_expires_at": d.retention_expires_at.isoformat()
+                if d.retention_expires_at
+                else None,
             }
             for d in docs
         ],
@@ -188,6 +211,7 @@ def export_user_data(
 
 
 # ---------- Consent Management (GDPR Art.7) ----------
+
 
 class ConsentRequest(BaseModel):
     consent_type: ConsentType
@@ -290,6 +314,7 @@ def get_consent_status(
 
 # ---------- Physical Deletion Job (Admin) ----------
 
+
 class DeletionJobResponse(BaseModel):
     processed: int
     deleted_files: int
@@ -318,5 +343,6 @@ def run_deletion_job_endpoint(
             detail="Admin role required",
         )
     from services.deletion_job import run_deletion_job
+
     result = run_deletion_job(db, grace_days=grace_days)
     return DeletionJobResponse(**result)

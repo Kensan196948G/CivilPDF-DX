@@ -24,7 +24,9 @@ _DEFAULT_RETENTION_MAP: dict[str, int] = {
 }
 
 
-def get_policy_for_document(db: Session, document_type: str) -> Optional[RetentionPolicy]:
+def get_policy_for_document(
+    db: Session, document_type: str
+) -> Optional[RetentionPolicy]:
     """Return the first RetentionPolicy matching the document type."""
     return (
         db.query(RetentionPolicy)
@@ -49,7 +51,12 @@ def calculate_expiry(
 
 def apply_retention_policy(db: Session, doc: Document) -> None:
     """Attach a retention policy to a document and compute its expiry date."""
-    policy = get_policy_for_document(db, doc.document_type.value if hasattr(doc.document_type, "value") else doc.document_type)
+    policy = get_policy_for_document(
+        db,
+        doc.document_type.value
+        if hasattr(doc.document_type, "value")
+        else doc.document_type,
+    )
 
     if policy:
         doc.retention_policy_id = policy.id
@@ -61,7 +68,9 @@ def apply_retention_policy(db: Session, doc: Document) -> None:
     else:
         # Fallback to default map
         years = _DEFAULT_RETENTION_MAP.get(
-            doc.document_type.value if hasattr(doc.document_type, "value") else str(doc.document_type),
+            doc.document_type.value
+            if hasattr(doc.document_type, "value")
+            else str(doc.document_type),
             7,
         )
         doc.retention_expires_at = calculate_expiry(

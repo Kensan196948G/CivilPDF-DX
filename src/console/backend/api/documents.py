@@ -123,8 +123,11 @@ async def upload_document(
 
     # Generate timestamp (電子帳簿保存法・e-文書法)
     try:
-        ts = timestamp_service.generate_timestamp(content, file.filename or "upload.pdf")
+        ts = timestamp_service.generate_timestamp(
+            content, file.filename or "upload.pdf"
+        )
         from datetime import datetime, timezone
+
         doc.timestamp_hash = ts["file_hash"]
         doc.timestamp_token = ts["token_b64"]
         doc.timestamp_tsa_url = ts["tsa_url"]
