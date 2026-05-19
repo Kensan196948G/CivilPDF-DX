@@ -12,6 +12,7 @@ export default defineConfig({
       },
     },
     setupFiles: ['./src/test/setup.ts'],
+    exclude: ['node_modules/**', '**/.claude/**', 'dist/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
