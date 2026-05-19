@@ -11,6 +11,7 @@ from models.user import User, UserRole, UserStatus
 from models.audit_log import AuditLog
 from auth.jwt import (
     verify_password,
+    get_password_hash,
     create_access_token,
     create_refresh_token,
     decode_token,
@@ -49,6 +50,15 @@ def _is_m365_allowed_ip(ip: str | None) -> bool:
 
 class M365LoginRequest(BaseModel):
     email: EmailStr
+
+
+class ProfileUpdateRequest(BaseModel):
+    full_name: str
+
+
+class PasswordChangeRequest(BaseModel):
+    current_password: str
+    new_password: str
 
 
 def _log_audit(
@@ -128,6 +138,49 @@ def refresh_token(body: TokenRefreshRequest, db: Session = Depends(get_db)):
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: User = Depends(get_current_user)):
     return current_user
+
+
+@router.patch("/me", response_model=UserResponse)
+def update_me(
+    body: ProfileUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    full_name = body.full_name.strip()
+    if not full_name:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="full_name must not be empty",
+        )
+    current_user.full_name = full_name
+    db.commit()
+    db.refresh(current_user)
+    return current_user
+
+
+@router.post("/me/password", status_code=status.HTTP_204_NO_CONTENT)
+def change_password(
+    body: PasswordChangeRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if not current_user.hashed_password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password login is not enabled for this account",
+        )
+    if not verify_password(body.current_password, current_user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Current password is incorrect",
+        )
+    if len(body.new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="New password must be at least 8 characters",
+        )
+    current_user.hashed_password = get_password_hash(body.new_password)
+    db.commit()
 
 
 @router.post("/m365/login", response_model=TokenResponse)
