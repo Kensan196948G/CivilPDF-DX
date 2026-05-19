@@ -13,7 +13,7 @@ vi.mock('../api/workflows', () => ({
   decideStep: vi.fn(),
 }))
 
-import { listWorkflows, getWorkflow, decideStep } from '../api/workflows'
+import { listWorkflows, getWorkflow } from '../api/workflows'
 
 const mockApprover = {
   id: 'approver-1',
