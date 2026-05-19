@@ -79,11 +79,27 @@ class DocumentResponse(BaseModel):
     file_size: int
     page_count: Optional[int]
     is_pdfa: bool
+    pdfa_version: Optional[str] = None
     tags: List[str] = []
     project_id: str
     owner_id: str
     created_at: datetime
     updated_at: Optional[datetime]
+    # Timestamp fields (電子帳簿保存法)
+    timestamp_verified_at: Optional[datetime] = None
+    timestamp_hash: Optional[str] = None
+    timestamp_tsa_url: Optional[str] = None
+    # Retention (電子帳簿保存法/公共工事品確法)
+    retention_expires_at: Optional[datetime] = None
+    is_archived: bool = False
+    archived_at: Optional[datetime] = None
+    deletion_requested_at: Optional[datetime] = None
+    # ISO 19650 metadata
+    iso19650_originator: Optional[str] = None
+    iso19650_functional_breakdown: Optional[str] = None
+    iso19650_form: Optional[str] = None
+    iso19650_discipline: Optional[str] = None
+    iso19650_number: Optional[str] = None
 
     model_config = {"from_attributes": True}
 
@@ -158,6 +174,9 @@ class AuditLogResponse(BaseModel):
     detail: Optional[str]
     ip_address: Optional[str]
     created_at: datetime
+    sequence_number: Optional[int] = None
+    record_hash: Optional[str] = None
+    prev_hash: Optional[str] = None
     user: Optional[UserResponse] = None
 
     model_config = {"from_attributes": True}

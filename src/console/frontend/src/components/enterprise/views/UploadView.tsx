@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { uploadDocument } from '../../../api/documents'
+import { uploadDocument, type Iso19650Metadata } from '../../../api/documents'
 import { listProjects, type ProjectResponse } from '../../../api/projects'
 
 interface ViewProps {
@@ -85,6 +85,29 @@ function guessDocumentType(filename: string): string {
   return 'other'
 }
 
+const ISO19650_FORM_OPTIONS = [
+  { value: '', label: '選択なし' },
+  { value: 'DR', label: 'DR - 図面' },
+  { value: 'SP', label: 'SP - 仕様書' },
+  { value: 'CA', label: 'CA - 計算書' },
+  { value: 'CO', label: 'CO - 通信文書' },
+  { value: 'MS', label: 'MS - 管理書類' },
+  { value: 'HS', label: 'HS - 安全衛生' },
+  { value: 'PH', label: 'PH - 写真' },
+]
+
+const ISO19650_DISCIPLINE_OPTIONS = [
+  { value: '', label: '選択なし' },
+  { value: 'CI', label: 'CI - 土木' },
+  { value: 'ST', label: 'ST - 構造' },
+  { value: 'EL', label: 'EL - 電気' },
+  { value: 'ME', label: 'ME - 機械設備' },
+  { value: 'GE', label: 'GE - 地質' },
+  { value: 'SU', label: 'SU - 測量' },
+  { value: 'LA', label: 'LA - 景観' },
+  { value: 'GN', label: 'GN - 全般' },
+]
+
 export function UploadView({ onNavigate, onShowToast }: ViewProps) {
   const [files, setFiles] = useState<UploadFile[]>(INITIAL_FILES)
   const [options, setOptions] = useState<ProcessingOption[]>(INITIAL_OPTIONS)
@@ -92,6 +115,7 @@ export function UploadView({ onNavigate, onShowToast }: ViewProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [projects, setProjects] = useState<ProjectResponse[]>([])
   const [selectedProjectId, setSelectedProjectId] = useState<string>('')
+  const [iso19650, setIso19650] = useState<Iso19650Metadata>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -131,7 +155,7 @@ export function UploadView({ onNavigate, onShowToast }: ViewProps) {
           setFiles((prev) =>
             prev.map((pf) => pf.id === entry.id ? { ...pf, progress: 30 } : pf)
           )
-          await uploadDocument(projectId, f.name.replace(/\.[^/.]+$/, ''), guessDocumentType(f.name), f)
+          await uploadDocument(projectId, f.name.replace(/\.[^/.]+$/, ''), guessDocumentType(f.name), f, iso19650)
           setFiles((prev) =>
             prev.map((pf) => pf.id === entry.id ? { ...pf, progress: 100, status: 'done' } : pf)
           )
@@ -144,7 +168,7 @@ export function UploadView({ onNavigate, onShowToast }: ViewProps) {
         }
       })
     )
-  }, [selectedProjectId, onShowToast])
+  }, [selectedProjectId, iso19650, onShowToast])
 
   const handleDropzoneClick = useCallback(() => {
     fileInputRef.current?.click()
@@ -395,6 +419,94 @@ export function UploadView({ onNavigate, onShowToast }: ViewProps) {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* ISO 19650 Metadata */}
+        <div className="ep-panel">
+          <div className="ep-panel-head">
+            <h3>ISO 19650 メタデータ</h3>
+            <span className="meta">電子納品 必須属性</span>
+          </div>
+          <div className="ep-panel-body" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div>
+              <label style={{ fontSize: '11px', color: 'var(--muted)', display: 'block', marginBottom: '3px' }}>
+                起源者コード (Originator)
+              </label>
+              <input
+                className="ep-input"
+                type="text"
+                placeholder="例: ABC"
+                maxLength={6}
+                value={iso19650.originator ?? ''}
+                onChange={(e) => setIso19650((prev) => ({ ...prev, originator: e.target.value }))}
+                aria-label="ISO 19650 起源者コード"
+                style={{ width: '100%', textTransform: 'uppercase' }}
+              />
+            </div>
+            <div>
+              <label style={{ fontSize: '11px', color: 'var(--muted)', display: 'block', marginBottom: '3px' }}>
+                機能分類 (Functional Breakdown)
+              </label>
+              <input
+                className="ep-input"
+                type="text"
+                placeholder="例: 01-02-03"
+                value={iso19650.functional_breakdown ?? ''}
+                onChange={(e) => setIso19650((prev) => ({ ...prev, functional_breakdown: e.target.value }))}
+                aria-label="ISO 19650 機能分類"
+                style={{ width: '100%' }}
+              />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--muted)', display: 'block', marginBottom: '3px' }}>
+                  図書形式 (Form)
+                </label>
+                <select
+                  className="ep-select"
+                  value={iso19650.form ?? ''}
+                  onChange={(e) => setIso19650((prev) => ({ ...prev, form: e.target.value }))}
+                  aria-label="ISO 19650 図書形式"
+                  style={{ width: '100%' }}
+                >
+                  {ISO19650_FORM_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: 'var(--muted)', display: 'block', marginBottom: '3px' }}>
+                  工種 (Discipline)
+                </label>
+                <select
+                  className="ep-select"
+                  value={iso19650.discipline ?? ''}
+                  onChange={(e) => setIso19650((prev) => ({ ...prev, discipline: e.target.value }))}
+                  aria-label="ISO 19650 工種"
+                  style={{ width: '100%' }}
+                >
+                  {ISO19650_DISCIPLINE_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>{o.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <div>
+              <label style={{ fontSize: '11px', color: 'var(--muted)', display: 'block', marginBottom: '3px' }}>
+                連番 (Number)
+              </label>
+              <input
+                className="ep-input"
+                type="text"
+                placeholder="例: 0001"
+                maxLength={10}
+                value={iso19650.number ?? ''}
+                onChange={(e) => setIso19650((prev) => ({ ...prev, number: e.target.value }))}
+                aria-label="ISO 19650 連番"
+                style={{ width: '100%' }}
+              />
+            </div>
           </div>
         </div>
 

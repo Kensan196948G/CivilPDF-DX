@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import Optional
 import math
@@ -8,6 +9,7 @@ from models.user import User, UserRole
 from models.audit_log import AuditLog
 from auth.dependencies import get_current_user
 from api.schemas import AuditLogResponse
+from services.audit_chain_service import verify_chain
 
 router = APIRouter(prefix="/audit-logs", tags=["Audit Logs"])
 
@@ -56,3 +58,29 @@ def list_audit_logs(
         "per_page": per_page,
         "pages": math.ceil(total / per_page) if total > 0 else 0,
     }
+
+
+class ChainVerifyResponse(BaseModel):
+    chain_valid: bool
+    records_checked: int
+    first_broken_sequence: Optional[int]
+    error: Optional[str]
+
+
+@router.get(
+    "/verify",
+    response_model=ChainVerifyResponse,
+    summary="監査ログ ハッシュチェーン検証 (NIS2/ISO 19650)",
+    description=(
+        "監査ログのハッシュチェーン整合性を検証します。"
+        "chain_valid=true の場合、ログが改ざんされていないことを確認できます。"
+    ),
+)
+def verify_audit_chain(
+    limit: int = Query(1000, ge=1, le=10000, description="検証するレコード数の上限"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    _require_admin(current_user)
+    result = verify_chain(db, limit=limit)
+    return ChainVerifyResponse(**result)

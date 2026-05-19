@@ -29,17 +29,31 @@ export async function listDocuments(params?: ListDocumentsParams): Promise<Docum
   return res.data
 }
 
+export interface Iso19650Metadata {
+  originator?: string
+  functional_breakdown?: string
+  form?: string
+  discipline?: string
+  number?: string
+}
+
 export async function uploadDocument(
   projectId: string,
   title: string,
   documentType: string,
-  file: File
+  file: File,
+  iso19650?: Iso19650Metadata
 ): Promise<DocumentResponse> {
   const form = new FormData()
   form.append('project_id', projectId)
   form.append('title', title)
   form.append('document_type', documentType)
   form.append('file', file)
+  if (iso19650?.originator) form.append('iso19650_originator', iso19650.originator)
+  if (iso19650?.functional_breakdown) form.append('iso19650_functional_breakdown', iso19650.functional_breakdown)
+  if (iso19650?.form) form.append('iso19650_form', iso19650.form)
+  if (iso19650?.discipline) form.append('iso19650_discipline', iso19650.discipline)
+  if (iso19650?.number) form.append('iso19650_number', iso19650.number)
   const res = await api.post<DocumentResponse>('/documents/', form, {
     headers: { 'Content-Type': 'multipart/form-data' },
   })

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
@@ -84,8 +84,10 @@ describe('Documents', () => {
 
     await waitFor(() => {
       expect(screen.getByText('橋梁設計図')).toBeInTheDocument()
-      expect(screen.getByText('drawing')).toBeInTheDocument()
-      expect(screen.getByText('approved')).toBeInTheDocument()
+      // "図面" appears in both filter options and table cell — check at least one table cell
+      expect(screen.getAllByText('図面').some((el) => el.tagName === 'TD')).toBe(true)
+      // "承認済" appears in both filter options and table cell span
+      expect(screen.getAllByText('承認済').length).toBeGreaterThanOrEqual(1)
       expect(screen.getByText('100 KB')).toBeInTheDocument()
     })
   })
@@ -143,11 +145,13 @@ describe('Documents', () => {
 
     await user.click(screen.getByRole('button', { name: '+ アップロード' }))
 
-    expect(screen.getByRole('option', { name: '図面' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: '仕様書' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: '報告書' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: '契約書' })).toBeInTheDocument()
-    expect(screen.getByRole('option', { name: 'その他' })).toBeInTheDocument()
+    // scope to the upload-form type select to avoid duplicates with the filter bar
+    const uploadTypeSelect = screen.getByLabelText('種別')
+    expect(within(uploadTypeSelect).getByRole('option', { name: '図面' })).toBeInTheDocument()
+    expect(within(uploadTypeSelect).getByRole('option', { name: '仕様書' })).toBeInTheDocument()
+    expect(within(uploadTypeSelect).getByRole('option', { name: '報告書' })).toBeInTheDocument()
+    expect(within(uploadTypeSelect).getByRole('option', { name: '契約書' })).toBeInTheDocument()
+    expect(within(uploadTypeSelect).getByRole('option', { name: 'その他' })).toBeInTheDocument()
   })
 
   it('upload button is enabled by default in upload form', async () => {
@@ -213,5 +217,84 @@ describe('Documents', () => {
       expect(screen.getByText('橋梁設計図')).toBeInTheDocument()
       expect(screen.getByText('トンネル断面図')).toBeInTheDocument()
     })
+  })
+
+  it('shows search input and filter selects', async () => {
+    vi.mocked(listDocuments).mockResolvedValueOnce([mockDoc])
+    vi.mocked(listProjects).mockResolvedValueOnce([])
+
+    render(<Documents />, { wrapper: makeWrapper() })
+
+    expect(screen.getByLabelText('タイトルで検索')).toBeInTheDocument()
+    expect(screen.getByLabelText('種別フィルター')).toBeInTheDocument()
+    expect(screen.getByLabelText('ステータスフィルター')).toBeInTheDocument()
+  })
+
+  it('filters documents by search query', async () => {
+    const docs = [
+      mockDoc,
+      { ...mockDoc, id: 'doc-2', title: 'トンネル断面図', status: 'draft', document_type: 'specification' },
+    ]
+    vi.mocked(listDocuments).mockResolvedValueOnce(docs)
+    vi.mocked(listProjects).mockResolvedValueOnce([])
+    const user = userEvent.setup()
+
+    render(<Documents />, { wrapper: makeWrapper() })
+
+    await waitFor(() => {
+      expect(screen.getByText('橋梁設計図')).toBeInTheDocument()
+      expect(screen.getByText('トンネル断面図')).toBeInTheDocument()
+    })
+
+    await user.type(screen.getByLabelText('タイトルで検索'), '橋梁')
+
+    expect(screen.getByText('橋梁設計図')).toBeInTheDocument()
+    expect(screen.queryByText('トンネル断面図')).not.toBeInTheDocument()
+  })
+
+  it('filters documents by document type', async () => {
+    const docs = [
+      mockDoc,
+      { ...mockDoc, id: 'doc-2', title: 'トンネル断面図', status: 'draft', document_type: 'specification' },
+    ]
+    vi.mocked(listDocuments).mockResolvedValueOnce(docs)
+    vi.mocked(listProjects).mockResolvedValueOnce([])
+    const user = userEvent.setup()
+
+    render(<Documents />, { wrapper: makeWrapper() })
+
+    await waitFor(() => {
+      expect(screen.getByText('橋梁設計図')).toBeInTheDocument()
+    })
+
+    await user.selectOptions(screen.getByLabelText('種別フィルター'), 'specification')
+
+    expect(screen.getByText('トンネル断面図')).toBeInTheDocument()
+    expect(screen.queryByText('橋梁設計図')).not.toBeInTheDocument()
+  })
+
+  it('shows no-match message when filter has no results', async () => {
+    vi.mocked(listDocuments).mockResolvedValueOnce([mockDoc])
+    vi.mocked(listProjects).mockResolvedValueOnce([])
+    const user = userEvent.setup()
+
+    render(<Documents />, { wrapper: makeWrapper() })
+
+    await waitFor(() => expect(screen.getByText('橋梁設計図')).toBeInTheDocument())
+    await user.type(screen.getByLabelText('タイトルで検索'), 'zzznomatch')
+
+    expect(screen.getByText('条件に一致するドキュメントがありません')).toBeInTheDocument()
+  })
+
+  it('shows clear button when filters are active', async () => {
+    vi.mocked(listDocuments).mockResolvedValueOnce([mockDoc])
+    vi.mocked(listProjects).mockResolvedValueOnce([])
+    const user = userEvent.setup()
+
+    render(<Documents />, { wrapper: makeWrapper() })
+
+    expect(screen.queryByText('クリア')).not.toBeInTheDocument()
+    await user.type(screen.getByLabelText('タイトルで検索'), 'test')
+    expect(screen.getByText('クリア')).toBeInTheDocument()
   })
 })

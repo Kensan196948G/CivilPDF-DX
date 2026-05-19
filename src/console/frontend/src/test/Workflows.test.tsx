@@ -1,13 +1,46 @@
 // @vitest-environment jsdom
 import { render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { Workflows } from '../pages/Workflows'
+import { useAuthStore } from '../store/auth'
 
-vi.mock('../api/workflows', () => ({ listWorkflows: vi.fn() }))
+vi.mock('../api/workflows', () => ({
+  listWorkflows: vi.fn(),
+  getWorkflow: vi.fn(),
+  decideStep: vi.fn(),
+}))
 
-import { listWorkflows } from '../api/workflows'
+import { listWorkflows, getWorkflow } from '../api/workflows'
+
+const mockApprover = {
+  id: 'approver-1',
+  email: 'approver@example.com',
+  username: 'approver',
+  full_name: '承認者 太郎',
+  role: 'manager',
+}
+
+const mockStep = {
+  id: 'step-1',
+  order: 1,
+  approver_id: 'approver-1',
+  status: 'pending',
+  comment: null,
+  decided_at: null,
+  approver: mockApprover,
+}
+
+const mockWorkflowDetail = {
+  id: 'wf-1',
+  document_id: 'doc-1',
+  status: 'in_progress',
+  created_at: '2026-05-01T00:00:00Z',
+  completed_at: null,
+  steps: [mockStep],
+}
 
 const mockWorkflow = {
   id: 'wf-1',
@@ -32,6 +65,10 @@ function makeWrapper() {
 describe('Workflows', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    useAuthStore.setState({
+      user: { id: 'user-99', email: 'u@e.com', username: 'u', full_name: 'U', role: 'admin', status: 'active', created_at: '', last_login: null },
+      isAuthenticated: true,
+    })
   })
 
   it('shows loading state initially', () => {
@@ -168,5 +205,97 @@ describe('Workflows', () => {
     render(<Workflows />, { wrapper: makeWrapper() })
 
     expect(screen.getByText('承認ワークフロー')).toBeInTheDocument()
+  })
+
+  it('shows 詳細 button in each row', async () => {
+    vi.mocked(listWorkflows).mockResolvedValueOnce([mockWorkflow])
+
+    render(<Workflows />, { wrapper: makeWrapper() })
+
+    await waitFor(() => {
+      expect(screen.getByText('詳細')).toBeInTheDocument()
+    })
+  })
+
+  it('opens detail modal when 詳細 button is clicked', async () => {
+    vi.mocked(listWorkflows).mockResolvedValueOnce([mockWorkflow])
+    vi.mocked(getWorkflow).mockResolvedValueOnce(mockWorkflowDetail)
+    const user = userEvent.setup()
+
+    render(<Workflows />, { wrapper: makeWrapper() })
+
+    await waitFor(() => expect(screen.getByText('詳細')).toBeInTheDocument())
+    await user.click(screen.getByText('詳細'))
+
+    await waitFor(() => {
+      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(screen.getByText('ワークフロー詳細')).toBeInTheDocument()
+    })
+  })
+
+  it('shows step information in detail modal', async () => {
+    vi.mocked(listWorkflows).mockResolvedValueOnce([mockWorkflow])
+    vi.mocked(getWorkflow).mockResolvedValueOnce(mockWorkflowDetail)
+    const user = userEvent.setup()
+
+    render(<Workflows />, { wrapper: makeWrapper() })
+
+    await waitFor(() => expect(screen.getByText('詳細')).toBeInTheDocument())
+    await user.click(screen.getByText('詳細'))
+
+    await waitFor(() => {
+      expect(screen.getByText(/承認者 太郎/)).toBeInTheDocument()
+      expect(screen.getByText('approver@example.com')).toBeInTheDocument()
+    })
+  })
+
+  it('closes modal when × button is clicked', async () => {
+    vi.mocked(listWorkflows).mockResolvedValueOnce([mockWorkflow])
+    vi.mocked(getWorkflow).mockResolvedValueOnce(mockWorkflowDetail)
+    const user = userEvent.setup()
+
+    render(<Workflows />, { wrapper: makeWrapper() })
+
+    await waitFor(() => expect(screen.getByText('詳細')).toBeInTheDocument())
+    await user.click(screen.getByText('詳細'))
+    await waitFor(() => expect(screen.getByRole('dialog')).toBeInTheDocument())
+
+    await user.click(screen.getByLabelText('閉じる'))
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  })
+
+  it('shows 操作する button for own pending step', async () => {
+    useAuthStore.setState({
+      user: { id: 'approver-1', email: 'approver@example.com', username: 'approver', full_name: '承認者 太郎', role: 'manager', status: 'active', created_at: '', last_login: null },
+      isAuthenticated: true,
+    })
+    vi.mocked(listWorkflows).mockResolvedValueOnce([mockWorkflow])
+    vi.mocked(getWorkflow).mockResolvedValueOnce(mockWorkflowDetail)
+    const user = userEvent.setup()
+
+    render(<Workflows />, { wrapper: makeWrapper() })
+
+    await waitFor(() => expect(screen.getByText('詳細')).toBeInTheDocument())
+    await user.click(screen.getByText('詳細'))
+
+    await waitFor(() => {
+      expect(screen.getByText('操作する')).toBeInTheDocument()
+    })
+  })
+
+  it('does not show 操作する button for other user pending step', async () => {
+    vi.mocked(listWorkflows).mockResolvedValueOnce([mockWorkflow])
+    vi.mocked(getWorkflow).mockResolvedValueOnce(mockWorkflowDetail)
+    const user = userEvent.setup()
+
+    render(<Workflows />, { wrapper: makeWrapper() })
+
+    await waitFor(() => expect(screen.getByText('詳細')).toBeInTheDocument())
+    await user.click(screen.getByText('詳細'))
+
+    await waitFor(() => {
+      expect(screen.getByText(/承認者 太郎/)).toBeInTheDocument()
+    })
+    expect(screen.queryByText('操作する')).not.toBeInTheDocument()
   })
 })

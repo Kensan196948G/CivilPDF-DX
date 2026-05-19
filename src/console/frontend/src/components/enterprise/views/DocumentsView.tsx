@@ -16,17 +16,18 @@ interface Document {
   signed: boolean
   size: string
   updated: string
+  retentionExpiresAt?: string  // ISO date; 電子帳簿保存法 7-year retention
 }
 
 const DOCUMENTS: Document[] = [
-  { id: 'doc-001', title: '県道○○号 詳細図', type: 'DWG', project: '2024-038', rev: 'Rev.04', status: '回覧中', signed: false, size: '218MB', updated: '2024-06-12' },
-  { id: 'doc-002', title: '特記仕様書 R6-04 rev2', type: 'SPC', project: '2024-038', rev: 'Rev.02', status: '差戻し', signed: false, size: '3.1MB', updated: '2024-06-11' },
-  { id: 'doc-003', title: '数量計算書 R6-04', type: 'QTY', project: '2024-038', rev: 'Rev.01', status: '承認済', signed: true, size: '22MB', updated: '2024-06-10' },
-  { id: 'doc-004', title: 'グリーンファイル', type: 'SAF', project: '2024-038', rev: '—', status: '提出済', signed: true, size: '8.4MB', updated: '2024-06-09' },
-  { id: 'doc-005', title: '△△橋 詳細設計図', type: 'DWG', project: '2024-041', rev: 'Rev.07', status: '承認済', signed: true, size: '412MB', updated: '2024-06-08' },
-  { id: 'doc-006', title: '工事写真台帳', type: 'PHT', project: '2024-038', rev: '—', status: '完了', signed: false, size: '128MB', updated: '2024-06-07' },
-  { id: 'doc-007', title: '××トンネル 換気仕様書', type: 'SPC', project: '2024-052', rev: 'Rev.03', status: 'レビュー中', signed: false, size: '14.8MB', updated: '2024-06-06' },
-  { id: 'doc-008', title: '下水道第3期数量計算書', type: 'QTY', project: '2024-061', rev: 'Rev.02', status: 'NGあり', signed: false, size: '324MB', updated: '2024-06-05' },
+  { id: 'doc-001', title: '県道○○号 詳細図', type: 'DWG', project: '2024-038', rev: 'Rev.04', status: '回覧中', signed: false, size: '218MB', updated: '2024-06-12', retentionExpiresAt: '2031-06-12' },
+  { id: 'doc-002', title: '特記仕様書 R6-04 rev2', type: 'SPC', project: '2024-038', rev: 'Rev.02', status: '差戻し', signed: false, size: '3.1MB', updated: '2024-06-11', retentionExpiresAt: '2026-06-01' },
+  { id: 'doc-003', title: '数量計算書 R6-04', type: 'QTY', project: '2024-038', rev: 'Rev.01', status: '承認済', signed: true, size: '22MB', updated: '2024-06-10', retentionExpiresAt: '2026-05-25' },
+  { id: 'doc-004', title: 'グリーンファイル', type: 'SAF', project: '2024-038', rev: '—', status: '提出済', signed: true, size: '8.4MB', updated: '2024-06-09', retentionExpiresAt: '2031-06-09' },
+  { id: 'doc-005', title: '△△橋 詳細設計図', type: 'DWG', project: '2024-041', rev: 'Rev.07', status: '承認済', signed: true, size: '412MB', updated: '2024-06-08', retentionExpiresAt: '2031-06-08' },
+  { id: 'doc-006', title: '工事写真台帳', type: 'PHT', project: '2024-038', rev: '—', status: '完了', signed: false, size: '128MB', updated: '2024-06-07', retentionExpiresAt: '2024-12-31' },
+  { id: 'doc-007', title: '××トンネル 換気仕様書', type: 'SPC', project: '2024-052', rev: 'Rev.03', status: 'レビュー中', signed: false, size: '14.8MB', updated: '2024-06-06', retentionExpiresAt: '2031-06-06' },
+  { id: 'doc-008', title: '下水道第3期数量計算書', type: 'QTY', project: '2024-061', rev: 'Rev.02', status: 'NGあり', signed: false, size: '324MB', updated: '2024-06-05', retentionExpiresAt: '2031-06-05' },
 ]
 
 const FILTERS = [
@@ -71,6 +72,44 @@ function typeIconClass(type: Document['type']): string {
     case 'PHT': return 'rep'
     default: return ''
   }
+}
+
+type RetentionStatus = 'expired' | 'warning' | 'ok' | null
+
+function retentionStatus(expiresAt: string | undefined): RetentionStatus {
+  if (!expiresAt) return null
+  const now = new Date()
+  const expiry = new Date(expiresAt)
+  const daysLeft = Math.floor((expiry.getTime() - now.getTime()) / 86_400_000)
+  if (daysLeft < 0) return 'expired'
+  if (daysLeft <= 30) return 'warning'
+  return 'ok'
+}
+
+function RetentionBadge({ expiresAt }: { expiresAt: string | undefined }) {
+  const status = retentionStatus(expiresAt)
+  if (!status || status === 'ok') return null
+  const isExpired = status === 'expired'
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: '2px',
+        fontSize: '10px',
+        fontWeight: 600,
+        padding: '1px 5px',
+        borderRadius: '3px',
+        background: isExpired ? 'var(--danger, #e53e3e)' : '#f6ad55',
+        color: '#fff',
+        marginLeft: '6px',
+        verticalAlign: 'middle',
+      }}
+      title={`保存期限: ${expiresAt}`}
+    >
+      ⚠️ {isExpired ? '期限切れ' : '期限間近'}
+    </span>
+  )
 }
 
 interface ContextMenu {
@@ -218,7 +257,10 @@ export function DocumentsView({ onNavigate, onShowModal }: ViewProps) {
                       {doc.type}
                     </div>
                     <div className="ep-doc-name ttl">
-                      <strong>{doc.title}</strong>
+                      <strong>
+                        {doc.title}
+                        <RetentionBadge expiresAt={doc.retentionExpiresAt} />
+                      </strong>
                       <small>{doc.id}</small>
                     </div>
                   </div>
