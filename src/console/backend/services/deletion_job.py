@@ -10,8 +10,8 @@ Usage:
 """
 
 import logging
-import os
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Optional
 
 from sqlalchemy.orm import Session
@@ -78,11 +78,13 @@ def _physically_delete(db: Session, doc: Document) -> None:
     file_path: Optional[str] = doc.file_path
 
     # Remove file from disk
-    if file_path and os.path.exists(file_path):
-        os.remove(file_path)
-        logger.info("Deleted file from disk: %s", file_path)
-    elif file_path:
-        logger.warning("File not found on disk (already removed?): %s", file_path)
+    if file_path:
+        p = Path(file_path)
+        if p.exists():
+            p.unlink()
+            logger.info("Deleted file from disk: %s", file_path)
+        else:
+            logger.warning("File not found on disk (already removed?): %s", file_path)
 
     # Null out personal data fields — retain record skeleton for audit linkage
     doc.file_path = None  # type: ignore[assignment]

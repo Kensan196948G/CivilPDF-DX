@@ -1,4 +1,3 @@
-import os
 import uuid
 from pathlib import Path
 from fastapi import (
@@ -192,7 +191,7 @@ def download_document(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
         )
-    if not os.path.exists(doc.file_path):
+    if not doc.file_path or not Path(doc.file_path).exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="File not found on disk"
         )
@@ -222,8 +221,8 @@ def delete_document(
             status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
         )
 
-    if os.path.exists(doc.file_path):
-        os.remove(doc.file_path)
+    if doc.file_path:
+        Path(doc.file_path).unlink(missing_ok=True)
 
     db.delete(doc)
     db.commit()
