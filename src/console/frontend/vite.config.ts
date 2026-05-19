@@ -13,6 +13,7 @@ export default defineConfig({
     },
   },
   build: {
+    chunkSizeWarningLimit: 400,
     rollupOptions: {
       output: {
         manualChunks(id) {
@@ -21,6 +22,8 @@ export default defineConfig({
             if (id.includes('react-router')) return 'router'
             if (id.includes('@tanstack')) return 'query'
             if (id.includes('zustand')) return 'state'
+            if (id.includes('axios')) return 'http'
+            if (id.includes('jose') || id.includes('jwt')) return 'auth'
           }
         },
       },
