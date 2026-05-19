@@ -13,10 +13,10 @@
   "kpi": {
     "ci_success_rate": 1.0,
     "test_pass_rate": 1.0,
-    "test_count": 251,
+    "test_count": 266,
     "backend_unit_test_count": 157,
     "backend_e2e_test_count": 20,
-    "frontend_test_count": 74,
+    "frontend_test_count": 89,
     "coverage_percent": 98,
     "review_blocker_count": 0,
     "security_issue_count": 0,
@@ -24,7 +24,7 @@
   },
   "execution": {
     "max_duration_minutes": 300,
-    "loop_count": 5,
+    "loop_count": 6,
     "max_loops": 10,
     "ci_retry_limit": 15,
     "same_error_limit": 3,
@@ -37,7 +37,7 @@
     "current_phase": "build",
     "stable": true,
     "deploy_ready": false,
-    "last_pr": 19,
+    "last_pr": 20,
     "last_pr_status": "open",
     "last_merged_pr": 18,
     "last_closed_issue": 13,
@@ -69,13 +69,16 @@
     "ドキュメント検索・フィルタリング（タイトル検索 + 種別/ステータスフィルター）",
     "Users ページテスト（RBAC 権限分岐 + 操作 UI）",
     "E2E 統合テスト（tests/integration/ 20件: 認証/文書/承認/GDPR/RBAC 5シナリオ）",
-    "CI: integration-test ジョブ追加"
+    "CI: integration-test ジョブ追加",
+    "Dashboard KPI stats API 統合（getStats エンドポイント利用）",
+    "Projects ページ RBAC+検索+削除テスト（13件）",
+    "vitest .claude/ 除外設定（exclude パターン追加）",
+    "全フロントエンドテスト 89件通過"
   ],
   "next_targets": [
     "PR #19 (E2E テスト) CI 確認・マージ",
     "PR #17 (systemd installer) レビュー・マージ",
     "PR #16 (M365 auth) レビュー・マージ",
-    "Projects ページのテスト追加",
     "Settings ページのテスト追加",
     "フロントエンドビルドチャンクサイズ最適化"
   ],
