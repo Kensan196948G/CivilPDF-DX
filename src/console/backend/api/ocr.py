@@ -59,7 +59,11 @@ def _extract_text_with_pypdf(file_path: str) -> list[dict]:
         for i, page in enumerate(reader.pages, start=1):
             text = page.extract_text() or ""
             pages.append({"page": i, "text": text.strip()})
-        return pages if pages else [{"page": 1, "text": "(no extractable text — may be image-only PDF)"}]
+        return (
+            pages
+            if pages
+            else [{"page": 1, "text": "(no extractable text — may be image-only PDF)"}]
+        )
     except Exception as exc:
         return [{"page": 1, "text": f"(text extraction failed: {exc})"}]
 
@@ -133,7 +137,8 @@ def get_ocr_result(
         )
     if job["status"] == "failed":
         raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT, detail=f"OCR job failed: {job.get('error')}"
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"OCR job failed: {job.get('error')}",
         )
 
     return OcrResultResponse(

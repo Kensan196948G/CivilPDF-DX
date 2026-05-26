@@ -149,7 +149,7 @@ def update_me(
     full_name = body.full_name.strip()
     if not full_name:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="full_name must not be empty",
         )
     current_user.full_name = full_name
@@ -176,7 +176,7 @@ def change_password(
         )
     if len(body.new_password) < 8:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="New password must be at least 8 characters",
         )
     current_user.hashed_password = get_password_hash(body.new_password)
