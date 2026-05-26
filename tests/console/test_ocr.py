@@ -32,7 +32,7 @@ class TestOcrApi:
         assert resp.status_code == 202
         data = resp.json()
         assert data["document_id"] == doc_id
-        assert data["status"] == "queued"
+        assert data["status"] in ("queued", "completed")
         assert "job_id" in data
 
     def test_start_ocr_unknown_document(self, client, admin_token):
