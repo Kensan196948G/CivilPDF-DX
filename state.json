@@ -8,7 +8,7 @@
   "phase": {
     "current": "build",
     "week": 2,
-    "milestone": "Phase 6+Windows移行対応 main マージ完了（PR #20、287件）"
+    "milestone": "PR #21 starlette PYSEC-2026-161 修正・conftest 干渉解消 CI 待ち"
   },
   "kpi": {
     "ci_success_rate": 1.0,
@@ -81,12 +81,14 @@
     "Settings ページ編集機能（氏名変更・パスワード変更フォーム）",
     "auth テスト 7件追加（合計 164件）",
     "全フロントエンドテスト 103件通過",
-    "conftest DB override を scope=package fixture に移動（pytest tests/ 全184件通過、干渉解消）"
+    "conftest DB override を scope=package fixture に移動（pytest tests/ 全184件通過、干渉解消）",
+    "OCR API pypdf 実装（テキスト抽出 実装・stub 削除）",
+    "fastapi==0.136.3 + starlette==1.1.0 アップグレード（PYSEC-2026-161 修正）",
+    "HTTP_422_UNPROCESSABLE_CONTENT / HTTP_413_CONTENT_TOO_LARGE 定数名修正（FastAPI 0.136 deprecation 対応）"
   ],
   "next_targets": [
-    "PR #21 レビュー・マージ（conftest fix）",
-    "README 更新（テスト数 287件反映）",
-    "ruff lint チェック（新規 backend ファイル）",
+    "PR #21 CI 通過確認・マージ（starlette PYSEC-2026-161 修正済み）",
+    "README 更新（テスト数 284件反映）",
     "フロントエンド型定義整合（auth.ts 新関数）",
     "OCR/AI 統合検討（Phase 7）"
   ],
