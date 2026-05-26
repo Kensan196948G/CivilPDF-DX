@@ -8,7 +8,7 @@
   "phase": {
     "current": "verify",
     "week": 2,
-    "milestone": "PR #23 (fix/security-and-conftest-final) open — GitHub Actions major_outage 解消待ち。ローカル 184 件全通過確認済み"
+    "milestone": "PR #23 (fix/security-and-conftest-final) open — CI ブロック中: GitHub Actions が 'Your account is suspended' 403 を返す（人間による support.github.com 対応が必要）。コードは完成済み、ローカル 287 件全通過確認済み"
   },
   "kpi": {
     "ci_success_rate": 1.0,
@@ -38,7 +38,7 @@
     "stable": true,
     "deploy_ready": false,
     "last_pr": 23,
-    "last_pr_status": "open — waiting for GitHub Actions recovery (major_outage)",
+    "last_pr_status": "open — BLOCKED: GitHub Actions CI failing with 'account suspended' 403 error. Human action required: visit https://support.github.com",
     "last_merged_pr": 20,
     "last_closed_issue": 13,
     "frontend_lan_url": "http://192.168.0.185:5181/",
@@ -87,10 +87,10 @@
     "HTTP_422_UNPROCESSABLE_CONTENT / HTTP_413_CONTENT_TOO_LARGE 定数名修正（FastAPI 0.136 deprecation 対応）"
   ],
   "next_targets": [
-    "GitHub Actions major_outage 解消後 PR #23 CI 通過確認・マージ（fix/security-and-conftest-final）",
-    "README 更新（テスト数 184件反映）",
-    "フロントエンド型定義整合（auth.ts 新関数）",
-    "OCR/AI 統合検討（Phase 7）"
+    "[P1 HUMAN] https://support.github.com でアカウント停止解除を申請（CI の 403 'account suspended' 解消のため）",
+    "[P1 AUTO] GitHub アカウント停止解除後: PR #23 CI を再トリガー（gh run rerun <run-id> --failed）して通過確認・マージ",
+    "[P2] PR #23 マージ後: state.json 更新・Issue #24 (Phase 7 AI 機能) ブランチ作成・実装開始",
+    "OCR/AI 統合（Phase 7）: AI 文書分類・セマンティック検索・構造化データ抽出（Anthropic SDK）"
   ],
   "learning": {
     "failure_patterns": [
@@ -102,7 +102,8 @@
       "テストファイルの未使用 import は ESLint no-unused-vars で CI 失敗 → test mock は使用分のみ import",
       "複数 conftest.py が同一 app オブジェクトを共有するとモジュールレベル副作用が干渉 → scope=package autouse fixture + teardown pop で解消（pytest tests/ 184件全通過）",
       "cron/SSH 環境では systemctl --user が動かない → 直接バックグラウンドで npm run dev:lan を起動",
-      "GitHub Actions zombie re-run が queued で固まると新規 check-suite が一切作成されない → 原因は GitHub Actions major_outage（githubstatus.com で確認）。インフラ回復を待つしかない"
+      "GitHub Actions zombie re-run が queued で固まると新規 check-suite が一切作成されない → 原因は GitHub Actions major_outage（githubstatus.com で確認）。インフラ回復を待つしかない",
+      "GitHub Actions CI が 'Your account is suspended' 403 を返す場合はコード問題ではなくアカウントレベルの問題 → git push は引き続き可能だが Actions ランナーからの clone が拒否される → https://support.github.com で解除申請が必要（人間が対応）"
     ],
     "success_patterns": [
       "frontend/backend スキーマを対応させることで API 404/型エラーを一括解消",
