@@ -12,11 +12,17 @@
       "Bash(pip install *)",
       "Bash(git status)",
       "Bash(git diff *)",
-      "Bash(git log *)"
+      "Bash(git log *)",
+      "Bash(git push *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(gh pr *)",
+      "Bash(gh run *)",
+      "Bash(gh api *)"
     ],
     "deny": [
       "Bash(rm -rf /)",
-      "Bash(git push *)",
+      "Bash(git push --force *)",
       "Bash(git merge *)"
     ]
   },
