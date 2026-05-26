@@ -264,7 +264,7 @@ CivilPDF-DX/
 │               └── pages/            # ページコンポーネント
 │
 ├── tests/
-│   ├── console/                      # pytest ユニットテスト（157 件）
+│   ├── console/                      # pytest ユニットテスト（164 件）
 │   └── integration/                  # E2E 統合テスト（20 件）
 │
 ├── deploy/
