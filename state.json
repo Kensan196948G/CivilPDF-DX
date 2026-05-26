@@ -29,16 +29,16 @@
     "ci_retry_limit": 15,
     "same_error_limit": 3,
     "session_start": "2026-05-11T00:00:00+09:00",
-    "current_session_start_at": "2026-05-19T19:00:01+09:00",
+    "current_session_start_at": "2026-05-26T19:00:01+09:00",
     "last_trigger": "cron",
-    "last_cron_session_id": "20260519-190001-CivilPDF-DX"
+    "last_cron_session_id": "20260526-190001-CivilPDF-DX"
   },
   "status": {
     "current_phase": "build",
     "stable": true,
     "deploy_ready": false,
-    "last_pr": 20,
-    "last_pr_status": "merged",
+    "last_pr": 21,
+    "last_pr_status": "open",
     "last_merged_pr": 20,
     "last_closed_issue": 13,
     "frontend_lan_url": "http://192.168.0.185:5181/",
@@ -80,10 +80,11 @@
     "POST /auth/me/password（パスワード変更 API）実装",
     "Settings ページ編集機能（氏名変更・パスワード変更フォーム）",
     "auth テスト 7件追加（合計 164件）",
-    "全フロントエンドテスト 103件通過"
+    "全フロントエンドテスト 103件通過",
+    "conftest DB override を scope=package fixture に移動（pytest tests/ 全184件通過、干渉解消）"
   ],
   "next_targets": [
-    "PR #20 CI 確認・マージ",
+    "PR #21 レビュー・マージ（conftest fix）",
     "README 更新（テスト数 287件反映）",
     "ruff lint チェック（新規 backend ファイル）",
     "フロントエンド型定義整合（auth.ts 新関数）",
@@ -97,7 +98,7 @@
       "ruff format と ruff check は別物。check 通過≠format 通過 → 新規ファイル追加時は両方実行",
       "vitest getByText は複数要素に同じテキストがある場合失敗 → getAllByText / within() で対処",
       "テストファイルの未使用 import は ESLint no-unused-vars で CI 失敗 → test mock は使用分のみ import",
-      "複数 conftest.py が同一 app オブジェクトを共有すると依存オーバーライドが干渉 → CI は別ジョブで分離",
+      "複数 conftest.py が同一 app オブジェクトを共有するとモジュールレベル副作用が干渉 → scope=package autouse fixture + teardown pop で解消（pytest tests/ 184件全通過）",
       "cron/SSH 環境では systemctl --user が動かない → 直接バックグラウンドで npm run dev:lan を起動"
     ],
     "success_patterns": [

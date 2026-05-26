@@ -183,8 +183,13 @@ open http://192.168.0.185:5181/
 # バックエンド（SQLite in-memory、DB 不要）
 export DATABASE_URL=sqlite:///./test_ci.db
 export PYTHONPATH=src/console/backend
-pytest tests/console/ -v --tb=short
-pytest tests/integration/ -v --tb=short
+
+# スイート別実行
+.venv/bin/python -m pytest tests/console/ -v --tb=short      # ユニットテスト 164 件
+.venv/bin/python -m pytest tests/integration/ -v --tb=short  # E2E テスト 20 件
+
+# 全スイート一括実行（interference なし）
+.venv/bin/python -m pytest tests/ -v --tb=short              # 計 184 件
 
 # フロントエンド
 cd src/console/frontend
@@ -198,7 +203,7 @@ npx vitest run
 | ジョブ | 内容 |
 |---|---|
 | `backend-lint` | ruff check + ruff format --check |
-| `backend-test` | pytest 157 件（SQLite in-memory、カバレッジ 98%） |
+| `backend-test` | pytest 164 件（SQLite in-memory、カバレッジ 98%） |
 | `backend-security` | pip-audit 依存脆弱性スキャン |
 | `frontend-lint-test` | ESLint 0 errors + TypeScript build (Vite) |
 | `integration-test` | E2E テスト 20 件（認証 / 文書 / 承認 / GDPR / RBAC） |
