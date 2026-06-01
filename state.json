@@ -6,9 +6,9 @@
     "release_deadline": "CTO判断（無期限可）"
   },
   "phase": {
-    "current": "verify",
-    "week": 2,
-    "milestone": "PR #23 (fix/security-and-conftest-final) open — CI ブロック中: GitHub Actions インシデント（authentication issues, critical, 調査中）による偽の 'account suspended' 403。インシデント解決後 CI 再実行でマージ可。コードは完成済み、ローカル 287 件全通過確認済み"
+    "current": "build",
+    "week": 4,
+    "milestone": "PR #23 マージ完了（2026-06-01）。Phase 7: AI/OCR 統合（Issue #24）実装開始フェーズ"
   },
   "kpi": {
     "ci_success_rate": 1.0,
@@ -29,17 +29,17 @@
     "ci_retry_limit": 15,
     "same_error_limit": 3,
     "session_start": "2026-05-11T00:00:00+09:00",
-    "current_session_start_at": "2026-05-26T19:00:01+09:00",
-    "last_trigger": "cron",
-    "last_cron_session_id": "20260526-190001-CivilPDF-DX"
+    "current_session_start_at": "2026-06-01T13:23:11.367Z",
+    "last_trigger": "manual",
+    "last_cron_session_id": "20260601-132311-CivilPDF-DX"
   },
   "status": {
     "current_phase": "build",
     "stable": true,
     "deploy_ready": false,
     "last_pr": 23,
-    "last_pr_status": "open — BLOCKED by GitHub Actions incident (authentication issues, critical, investigating). 'account suspended' 403 is a false positive from infra. Will auto-resolve when incident clears.",
-    "last_merged_pr": 20,
+    "last_pr_status": "merged (2026-06-01T13:32:33Z) — conftest DB isolation + pypdf OCR + starlette PYSEC-2026-161 security fix. All 7 CI checks passed.",
+    "last_merged_pr": 23,
     "last_closed_issue": 13,
     "frontend_lan_url": "http://192.168.0.185:5181/",
     "frontend_systemd_unit": "civilpdf-frontend.service (dev:lan @ 5181)",
@@ -87,9 +87,10 @@
     "HTTP_422_UNPROCESSABLE_CONTENT / HTTP_413_CONTENT_TOO_LARGE 定数名修正（FastAPI 0.136 deprecation 対応）"
   ],
   "next_targets": [
-    "[P1] GitHub Actions インシデント（gnftqj9htp0g）解決後: PR #23 CI を再トリガー（gh run rerun --failed）して全ジョブ通過確認・マージ",
-    "[P2] PR #23 マージ後: state.json 更新・Issue #24 (Phase 7 AI 機能) ブランチ作成・実装開始",
-    "OCR/AI 統合（Phase 7）: AI 文書分類・セマンティック検索・構造化データ抽出（Anthropic SDK）"
+    "[P1] Issue #24 (Phase 7: AI/OCR 統合): feature/phase7-ai-ocr ブランチで AI 文書分類・セマンティック検索・構造化データ抽出を実装",
+    "[P2] AI 文書分類: Anthropic Claude API を使用して PDF テキストから建設業文書カテゴリ自動判定",
+    "[P3] セマンティック検索: 文書ベクトル化 + 類似度検索 API エンドポイント追加",
+    "[P4] 構造化データ抽出: OCR テキストから工事名・金額・日付・担当者を構造化抽出"
   ],
   "learning": {
     "failure_patterns": [
