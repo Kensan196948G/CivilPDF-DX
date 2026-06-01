@@ -140,6 +140,39 @@ class TestClassifyDocument:
             )
         assert resp.status_code == 404
 
+    def test_classify_idor_blocked(
+        self, client: TestClient, db_session, sample_doc_id: str
+    ):
+        """Viewer user cannot classify a document owned by admin (IDOR prevention)."""
+        from auth.jwt import get_password_hash
+        from models.user import User, UserRole, UserStatus
+
+        # Create a separate viewer user who does NOT own the document
+        viewer = User(
+            email="viewer_idor@example.com",
+            username="viewer_idor",
+            full_name="IDOR Viewer",
+            hashed_password=get_password_hash("Viewer1234!"),
+            role=UserRole.VIEWER,
+            status=UserStatus.ACTIVE,
+        )
+        db_session.add(viewer)
+        db_session.commit()
+
+        resp = client.post(
+            "/api/v1/auth/token",
+            data={"username": "viewer_idor@example.com", "password": "Viewer1234!"},
+        )
+        assert resp.status_code == 200
+        viewer_token = resp.json()["access_token"]
+
+        with patch("api.ai._get_anthropic_client"):
+            resp = client.post(
+                f"/api/v1/ai/documents/{sample_doc_id}/classify",
+                headers={"Authorization": f"Bearer {viewer_token}"},
+            )
+        assert resp.status_code == 404
+
     def test_classify_no_api_key(
         self, client: TestClient, auth_headers: dict, sample_doc_id: str, monkeypatch
     ):

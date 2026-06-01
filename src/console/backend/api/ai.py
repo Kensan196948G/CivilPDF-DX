@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from auth.dependencies import get_current_user
 from database import get_db
 from models.document import Document
-from models.user import User
+from models.user import User, UserRole
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
@@ -48,6 +48,20 @@ class SummaryResponse(BaseModel):
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 _CLAUDE_MODEL = "claude-haiku-4-5-20251001"  # Cost-efficient for classification
+
+
+def _check_document_access(doc: Document, current_user: User) -> None:
+    """Raise 404 if the user is not allowed to access this document.
+
+    Admin/Manager can access any document. Others are limited to their own.
+    Using 404 (not 403) to avoid revealing document existence to unauthorized users.
+    """
+    if current_user.role in (UserRole.ADMIN, UserRole.MANAGER):
+        return
+    if doc.owner_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        )
 
 
 def _get_document_text(doc: Document) -> str:
@@ -129,6 +143,7 @@ def classify_document(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
         )
+    _check_document_access(doc, current_user)
 
     text = _get_document_text(doc)
     if not text:
@@ -231,6 +246,7 @@ def extract_document_data(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
         )
+    _check_document_access(doc, current_user)
 
     text = _get_document_text(doc)
     if not text:
@@ -295,6 +311,7 @@ def get_document_summary(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
         )
+    _check_document_access(doc, current_user)
 
     text = _get_document_text(doc)
     if not text:
