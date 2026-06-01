@@ -15,10 +15,10 @@
 ## 📌 概要
 
 CivilPDF-DX は、**建設・土木業における PDF 業務を一気通貫で管理するプラットフォーム**です。
-JWT 認証・M365 統合・多段階承認ワークフロー・PDF/A バリデーション・GDPR 対応プライバシー管理・ISO 19650 メタデータ管理・改ざん検知付き監査チェーンを LAN 上のブラウザから即座に利用できます。
+JWT 認証・M365 統合・多段階承認ワークフロー・PDF/A バリデーション・GDPR 対応プライバシー管理・ISO 19650 メタデータ管理・改ざん検知付き監査チェーン・**Claude AI による文書分類/セマンティック検索/構造データ抽出**を LAN 上のブラウザから即座に利用できます。
 
 対象規模は**中堅〜大手ゼネコン・サブコン（従業員 50〜5,000 名）**。  
-Phase 5.1 コンプライアンス基盤 + Phase 6 フロントエンドテスト強化 + プロフィール管理 API まで実装済み。バックエンドテスト 164 件・E2E テスト 20 件・フロントエンドテスト 103 件（計 287 件）、CI カバレッジ 98%。
+Phase 7 AI 統合（文書分類・セマンティック検索・構造データ抽出・AI 要約）まで実装済み。バックエンドテスト 164 件・E2E テスト 20 件・フロントエンドテスト 103 件・AI/Search API テスト 26 件（計 **313 件**）、CI カバレッジ 98%。
 
 ---
 
@@ -84,7 +84,11 @@ graph LR
 | 🔍 **監査** | 監査ログ | 全操作の証跡（閲覧・DL・署名・拒否）、フィルタ・検索対応 | ✅ |
 | 🔍 **監査** | 監査チェーン | SHA-256 ハッシュチェーン、改ざん検知エンドポイント | ✅ |
 | 📊 **統計** | ダッシュボード | 文書数・承認待ち・アクティブユーザー・月次承認数リアルタイム集計 | ✅ |
-| 🔍 **OCR** | テキスト抽出 | PDF テキスト抽出 API（基盤実装済み） | ✅ |
+| 🔍 **OCR** | テキスト抽出 | PDF テキスト抽出 API（pypdf 実装済み） | ✅ |
+| 🤖 **AI 文書分類** | 図面種別自動判定 | Claude Haiku で平面図/立面図/断面図/構造図/設備図 + プロジェクト種別（土木/建築/道路/橋梁等）自動分類 | ✅ |
+| 🤖 **AI データ抽出** | 構造化データ抽出 | 工事名・施工会社・金額・工期・担当者・チェックリストを JSON 抽出 | ✅ |
+| 🤖 **AI 要約** | 承認者向けサマリー | 長文 PDF を 3〜5 行で自動要約、承認前レビュー補助 | ✅ |
+| 🔎 **検索** | セマンティック検索 | SQLite FTS5 全文検索 + Claude AI クエリ展開（「橋梁」→「bridge, RC構造, 補修…」） | ✅ |
 
 ---
 
@@ -177,7 +181,9 @@ open http://192.168.0.185:5181/
 | Backend ユニットテスト | 164 件 | 98% | `pytest tests/console/ -v` |
 | Backend E2E 統合テスト | 20 件 | — | `pytest tests/integration/ -v` |
 | Frontend（Vitest） | 103 件 | — | `cd src/console/frontend && npx vitest run` |
-| **合計** | **287 件** | — | — |
+| AI API テスト | 13 件 | — | `pytest tests/console/test_ai.py -v` |
+| Search API テスト | 13 件 | — | `pytest tests/console/test_search.py -v` |
+| **合計** | **313 件** | — | — |
 
 ```bash
 # バックエンド（SQLite in-memory、DB 不要）
@@ -227,7 +233,9 @@ CivilPDF-DX/
 │       │   │   ├── stats.py          # 📊 統計集計
 │       │   │   ├── m365.py           # ⚙️ M365 テナント設定
 │       │   │   ├── privacy.py        # 🛡️ GDPR Art.17 プライバシー管理
-│       │   │   └── ocr.py            # 🔤 OCR テキスト抽出
+│       │   │   ├── ocr.py            # 🔤 OCR テキスト抽出（pypdf）
+│       │   │   ├── ai.py             # 🤖 AI 分類・抽出・要約（Claude API）
+│       │   │   └── search.py         # 🔎 FTS5 全文・セマンティック検索
 │       │   ├── models/               # SQLAlchemy ORM モデル
 │       │   │   ├── user.py           # User（RBAC roles）
 │       │   │   ├── document.py       # Document + ApprovalWorkflow
@@ -332,7 +340,14 @@ CivilPDF-DX/
 | **プライバシー** | `/privacy/gdpr/deletion-request` | POST | GDPR Art.17 削除リクエスト | admin |
 | **プライバシー** | `/privacy/gdpr/consents` | GET / POST | 同意記録管理 | 認証済み |
 | **プライバシー** | `/privacy/retention-policies` | GET / POST | 保持ポリシー管理 | admin |
-| **OCR** | `/ocr/extract` | POST | PDF テキスト抽出 | 認証済み |
+| **OCR** | `/ocr/process` | POST | PDF テキスト抽出ジョブ開始 | 認証済み |
+| **OCR** | `/ocr/jobs/{id}/result` | GET | OCR 結果テキスト取得 | 認証済み |
+| **AI** | `/ai/documents/{id}/classify` | POST | Claude AI 文書分類（図面種別・プロジェクト種別） | 認証済み |
+| **AI** | `/ai/documents/{id}/extract` | POST | 構造化データ抽出（工事名・金額・工期等） | 認証済み |
+| **AI** | `/ai/documents/{id}/summary` | GET | 承認者向け AI 要約（3〜5行） | 認証済み |
+| **検索** | `/search/documents?q=&mode=keyword\|semantic` | GET | FTS5 全文検索 / セマンティック検索 | 認証済み |
+| **検索** | `/search/documents/reindex` | POST | FTS5 インデックス再構築 | admin / manager |
+| **検索** | `/search/documents/suggest` | GET | AI クエリ拡張候補 | 認証済み |
 
 ---
 
@@ -354,6 +369,8 @@ CivilPDF-DX/
 | **認証** | JWT（python-jose + passlib bcrypt） | — |
 | **データベース** | SQLite（開発）/ PostgreSQL 15+（本番） | — |
 | **PDF 処理** | pypdf + veraPDF | — |
+| **AI / LLM** | Anthropic Claude API（Haiku / Sonnet） | 0.40+ |
+| **全文検索** | SQLite FTS5（unicode61 トークナイザー） | 組み込み |
 | **暗号化** | cryptography（Fernet） | 46.x |
 | **Lint / Format** | ruff | 0.8.6 |
 | **テスト（Backend）** | pytest + httpx | — |
@@ -375,8 +392,10 @@ CivilPDF-DX/
 | **Phase 5.1** | **コンプライアンス基盤（PDF/A / GDPR Art.17 / ISO 19650 / 監査チェーン）** | ✅ **完成** |
 | **Phase 6** | **フロントエンドテスト強化（Projects/Dashboard/Settings テスト、計 103 件）** | ✅ **完成** |
 | **Phase 6.1** | **プロフィール更新 API（PATCH /auth/me・POST /auth/me/password）** | ✅ **完成** |
-| Phase 7 | OCR・AI 統合（文書要約・自動分類・テキスト抽出） | 📋 未着手 |
-| Phase 7 | 電子納品（国交省電子納品要領準拠 PDF/A 変換） | 📋 未着手 |
+| **Phase 7** | **AI 統合（Claude AI 文書分類・セマンティック検索・構造データ抽出・AI 要約）** | ✅ **完成** |
+| Phase 8 | 電子署名・RFC 3161 タイムスタンプ（e-文書法準拠） | 📋 計画中 |
+| Phase 8 | マルチテナント対応（本社→支店→現場 階層管理） | 📋 計画中 |
+| Phase 9 | 電子納品（国交省電子納品要領準拠 PDF/A 変換） | 📋 計画中 |
 
 ---
 
