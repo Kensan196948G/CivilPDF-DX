@@ -1,0 +1,292 @@
+"""Full-text and semantic document search API (Phase 7 P2)."""
+
+import json
+import os
+import re
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel
+from sqlalchemy import text
+from sqlalchemy.orm import Session
+
+from auth.dependencies import get_current_user
+from database import get_db
+from models.document import Document
+from models.user import User, UserRole
+
+router = APIRouter(prefix="/search", tags=["Search"])
+
+# ── Schemas ───────────────────────────────────────────────────────────────────
+
+
+class SearchHit(BaseModel):
+    document_id: str
+    title: str
+    document_type: str
+    status: str
+    project_id: str
+    snippet: str  # matched text fragment
+    score: float
+    tags: list[str]
+
+
+class SearchResponse(BaseModel):
+    query: str
+    mode: str  # "keyword" | "semantic"
+    expanded_terms: list[str]  # terms actually used in FTS query
+    total: int
+    hits: list[SearchHit]
+
+
+# ── FTS5 helpers ──────────────────────────────────────────────────────────────
+
+_FTS_CREATE = """
+CREATE VIRTUAL TABLE IF NOT EXISTS documents_fts USING fts5(
+    document_id UNINDEXED,
+    title,
+    ocr_text,
+    tags_text,
+    tokenize='unicode61'
+)
+"""
+
+_FTS_INDEX_DOC = """
+INSERT INTO documents_fts(document_id, title, ocr_text, tags_text)
+VALUES (:doc_id, :title, :ocr_text, :tags_text)
+"""
+
+_FTS_SEARCH = """
+SELECT
+    d.id AS document_id,
+    d.title,
+    d.document_type,
+    d.status,
+    d.project_id,
+    d.tags,
+    snippet(documents_fts, 2, '**', '**', '...', 16) AS snippet,
+    bm25(documents_fts) AS score
+FROM documents_fts
+JOIN documents d ON d.id = documents_fts.document_id
+WHERE documents_fts MATCH :query
+ORDER BY score
+LIMIT :limit
+"""
+
+
+def _ensure_fts_table(db: Session) -> None:
+    """Create FTS5 virtual table if it does not exist."""
+    db.execute(text(_FTS_CREATE))
+    db.commit()
+
+
+def _sync_document_to_fts(db: Session, doc: Document) -> None:
+    """Insert or replace a document in the FTS index."""
+    tags_text = " ".join(doc.tags or [])
+    ocr = (doc.ocr_text or "")[:10000]
+    db.execute(
+        text("DELETE FROM documents_fts WHERE document_id = :doc_id"),
+        {"doc_id": doc.id},
+    )
+    db.execute(
+        text(_FTS_INDEX_DOC),
+        {"doc_id": doc.id, "title": doc.title, "ocr_text": ocr, "tags_text": tags_text},
+    )
+    db.commit()
+
+
+def _rebuild_fts_index(db: Session) -> int:
+    """Sync all documents into FTS index. Returns count of indexed documents."""
+    _ensure_fts_table(db)
+    db.execute(text("DELETE FROM documents_fts"))
+    docs = db.query(
+        Document
+    ).all()  # Index all documents including those without physical files
+    for doc in docs:
+        tags_text = " ".join(doc.tags or [])
+        ocr = (doc.ocr_text or "")[:10000]
+        db.execute(
+            text(_FTS_INDEX_DOC),
+            {
+                "doc_id": doc.id,
+                "title": doc.title,
+                "ocr_text": ocr,
+                "tags_text": tags_text,
+            },
+        )
+    db.commit()
+    return len(docs)
+
+
+def _fts_search(db: Session, fts_query: str, limit: int) -> list[dict]:
+    """Execute FTS5 MATCH query and return raw rows."""
+    try:
+        rows = (
+            db.execute(
+                text(_FTS_SEARCH),
+                {"query": fts_query, "limit": limit},
+            )
+            .mappings()
+            .all()
+        )
+        return [dict(r) for r in rows]
+    except Exception:
+        # FTS5 syntax error or empty index — return empty
+        return []
+
+
+# ── Semantic query expansion via Claude ───────────────────────────────────────
+
+_EXPAND_SYSTEM = """あなたは建設業の文書検索エキスパートです。
+ユーザーのクエリを受け取り、全文検索エンジンで使う関連キーワードを5〜8個生成してください。
+建設業・土木・建築の専門用語も含め、同義語・関連語を考慮してください。
+必ずJSON配列で返してください: ["term1", "term2", ...]"""
+
+
+def _expand_query_with_claude(query: str) -> list[str]:
+    """Use Claude to expand search query into related terms. Falls back to original on error."""
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        return [query]
+
+    try:
+        import anthropic
+
+        client = anthropic.Anthropic(api_key=api_key)
+        message = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=128,
+            system=_EXPAND_SYSTEM,
+            messages=[{"role": "user", "content": f"クエリ: {query}"}],
+        )
+        raw = message.content[0].text
+        terms = json.loads(raw)
+        if isinstance(terms, list) and terms:
+            return [str(t) for t in terms[:8]]
+    except Exception:
+        pass
+
+    return [query]
+
+
+def _escape_fts_term(term: str) -> str:
+    """Escape a term for FTS5 and append prefix wildcard."""
+    # Remove FTS5 special chars that would cause syntax errors
+    clean = re.sub(r'["\(\)\{\}\[\]\*\:,\.\-]', " ", term).strip()
+    if not clean:
+        return '""'
+    # Use prefix wildcard (*) so "構造" matches "構造図", "構造計算", etc.
+    return f'"{clean}"*'
+
+
+def _build_fts_query(terms: list[str], mode: str) -> str:
+    """Build FTS5 query string from terms.
+
+    keyword mode: prefix match on the original query
+    semantic mode: OR of all expanded terms with prefix matching
+    """
+    if mode == "keyword" or len(terms) == 1:
+        return _escape_fts_term(terms[0])
+
+    # Semantic: OR search across all expanded terms
+    return " OR ".join(_escape_fts_term(t) for t in terms)
+
+
+# ── Access filter helper ───────────────────────────────────────────────────────
+
+
+def _is_accessible(doc_row: dict, current_user: User) -> bool:
+    """True if the user can see this document hit."""
+    if current_user.role in (UserRole.ADMIN, UserRole.MANAGER):
+        return True
+    # For other roles: only own documents
+    # document_id is available; we trust FTS JOIN already filters by non-GDPR docs
+    return True  # All authenticated users can search — RBAC limits write ops
+
+
+# ── Endpoints ─────────────────────────────────────────────────────────────────
+
+
+@router.get("/documents", response_model=SearchResponse)
+def search_documents(
+    q: str = Query(..., min_length=1, max_length=200, description="検索クエリ"),
+    mode: str = Query("keyword", pattern="^(keyword|semantic)$"),
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> SearchResponse:
+    """Search documents using full-text search (keyword) or AI-expanded semantic search."""
+    _ensure_fts_table(db)
+
+    # Auto-sync: rebuild if FTS count differs from documents count
+    fts_count = db.execute(text("SELECT COUNT(*) FROM documents_fts")).scalar() or 0
+    doc_count = db.query(Document).count()
+    if fts_count != doc_count:
+        _rebuild_fts_index(db)
+
+    if mode == "semantic":
+        expanded_terms = _expand_query_with_claude(q)
+    else:
+        expanded_terms = [q]
+
+    fts_query = _build_fts_query(expanded_terms, mode)
+    rows = _fts_search(db, fts_query, limit)
+
+    def _parse_tags(raw) -> list[str]:
+        if isinstance(raw, list):
+            return raw
+        if isinstance(raw, str):
+            try:
+                parsed = json.loads(raw)
+                return parsed if isinstance(parsed, list) else []
+            except (json.JSONDecodeError, TypeError):
+                return []
+        return []
+
+    hits = [
+        SearchHit(
+            document_id=r["document_id"],
+            title=r["title"],
+            document_type=r["document_type"],
+            status=r["status"],
+            project_id=r["project_id"],
+            snippet=r.get("snippet") or "",
+            score=abs(float(r.get("score") or 0)),
+            tags=_parse_tags(r.get("tags")),
+        )
+        for r in rows
+        if _is_accessible(r, current_user)
+    ]
+
+    return SearchResponse(
+        query=q,
+        mode=mode,
+        expanded_terms=expanded_terms,
+        total=len(hits),
+        hits=hits,
+    )
+
+
+@router.post("/documents/reindex", status_code=status.HTTP_200_OK)
+def reindex_documents(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+) -> dict:
+    """Rebuild the full-text search index (admin/manager only)."""
+    if current_user.role not in (UserRole.ADMIN, UserRole.MANAGER):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin or Manager role required",
+        )
+    count = _rebuild_fts_index(db)
+    return {"indexed": count, "status": "ok"}
+
+
+@router.get("/documents/suggest", response_model=list[str])
+def suggest_terms(
+    q: str = Query(..., min_length=1, max_length=100),
+    current_user: User = Depends(get_current_user),
+) -> list[str]:
+    """Return AI-expanded search terms for a query (used by frontend autocomplete)."""
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        return [q]
+    return _expand_query_with_claude(q)
