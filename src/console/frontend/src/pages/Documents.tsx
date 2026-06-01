@@ -9,6 +9,7 @@ import {
 import { listProjects } from '../api/projects'
 import { DocumentPreviewModal } from '../components/DocumentPreviewModal'
 import { classifyDocument, type ClassifyResponse } from '../api/ai'
+import { searchDocuments, type SearchResponse } from '../api/search'
 
 const DOC_TYPE_LABELS: Record<string, string> = {
   drawing: '図面',
@@ -40,6 +41,9 @@ export function Documents() {
   const [docType, setDocType] = useState('drawing')
   const [previewDoc, setPreviewDoc] = useState<DocumentResponse | null>(null)
   const [aiResult, setAiResult] = useState<ClassifyResponse | null>(null)
+  const [searchMode, setSearchMode] = useState<'keyword' | 'semantic'>('keyword')
+  const [semanticQuery, setSemanticQuery] = useState('')
+  const [searchResult, setSearchResult] = useState<SearchResponse | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Search / filter state
@@ -82,6 +86,11 @@ export function Documents() {
       setAiResult(result)
       qc.invalidateQueries({ queryKey: ['documents'] })
     },
+  })
+
+  const semanticSearch = useMutation({
+    mutationFn: () => searchDocuments(semanticQuery, searchMode),
+    onSuccess: (result) => setSearchResult(result),
   })
 
   return (
@@ -163,6 +172,70 @@ export function Documents() {
           </div>
         </div>
       )}
+
+      {/* AI Search bar */}
+      <div className="bg-gradient-to-r from-purple-50 to-indigo-50 rounded-xl p-4 mb-4 border border-purple-100">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-sm font-semibold text-purple-700">✦ AI 文書検索</span>
+          <select
+            value={searchMode}
+            onChange={(e) => setSearchMode(e.target.value as 'keyword' | 'semantic')}
+            className="text-xs border rounded px-2 py-1 text-gray-600"
+          >
+            <option value="keyword">キーワード検索</option>
+            <option value="semantic">セマンティック検索 (Claude AI)</option>
+          </select>
+        </div>
+        <div className="flex gap-2">
+          <input
+            type="text"
+            placeholder="例: 橋梁補修 / 平面図 / 鉄筋コンクリート..."
+            value={semanticQuery}
+            onChange={(e) => setSemanticQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && semanticQuery && semanticSearch.mutate()}
+            className="flex-1 border rounded-lg px-3 py-2 text-sm"
+            aria-label="AI検索クエリ"
+          />
+          <button
+            onClick={() => semanticSearch.mutate()}
+            disabled={!semanticQuery || semanticSearch.isPending}
+            className="bg-purple-700 hover:bg-purple-800 text-white px-4 py-2 rounded-lg text-sm disabled:opacity-50"
+          >
+            {semanticSearch.isPending ? '検索中...' : '検索'}
+          </button>
+          {searchResult && (
+            <button onClick={() => { setSearchResult(null); setSemanticQuery('') }} className="text-xs text-gray-400 hover:text-gray-600 px-2">クリア</button>
+          )}
+        </div>
+        {searchResult && (
+          <div className="mt-3">
+            <p className="text-xs text-gray-500 mb-2">
+              {searchResult.total} 件ヒット
+              {searchResult.expanded_terms.length > 1 && (
+                <span className="ml-2 text-purple-600">
+                  展開: {searchResult.expanded_terms.slice(0, 5).join('、')}
+                </span>
+              )}
+            </p>
+            <div className="space-y-1 max-h-48 overflow-y-auto">
+              {searchResult.hits.map((hit) => (
+                <div key={hit.document_id} className="bg-white rounded p-2 text-xs border border-purple-100">
+                  <span className="font-medium text-gray-800">{hit.title}</span>
+                  {hit.snippet && (
+                    <p className="text-gray-500 mt-0.5 truncate">
+                      {hit.snippet.split(/\*\*(.*?)\*\*/).map((part, i) =>
+                        i % 2 === 1
+                          ? <mark key={i} className="bg-yellow-100 text-yellow-900 rounded px-0.5">{part}</mark>
+                          : <span key={i}>{part}</span>
+                      )}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* Search & Filter bar */}
       <div className="flex flex-wrap gap-3 mb-4">
