@@ -8,7 +8,7 @@
   "phase": {
     "current": "build",
     "week": 4,
-    "milestone": "PR #25 マージ完了（2026-06-01）。Phase 7 P1/P3/P4 完了。次: P2セマンティック検索"
+    "milestone": "PR #26 マージ完了（2026-06-01）。Phase 7 全完了（P1/P2/P3/P4）。Issue #24 クローズ"
   },
   "kpi": {
     "ci_success_rate": 1.0,
@@ -37,9 +37,9 @@
     "current_phase": "build",
     "stable": true,
     "deploy_ready": false,
-    "last_pr": 25,
-    "last_pr_status": "merged (2026-06-01T13:51:36Z) — Phase 7 AI: classify/extract/summary API + IDOR fix + frontend AI UI. All 8 checks passed.",
-    "last_merged_pr": 25,
+    "last_pr": 26,
+    "last_pr_status": "merged (2026-06-01T14:15:11Z) — Phase 7 P2: FTS5 semantic search + Claude query expansion + frontend search UI + XSS fix. All 8 checks passed.",
+    "last_merged_pr": 26,
     "last_closed_issue": 13,
     "frontend_lan_url": "http://192.168.0.185:5181/",
     "frontend_systemd_unit": "civilpdf-frontend.service (dev:lan @ 5181)",
@@ -85,13 +85,14 @@
     "OCR API pypdf 実装（テキスト抽出 実装・stub 削除）",
     "fastapi==0.136.3 + starlette==1.1.0 アップグレード（PYSEC-2026-161 修正）",
     "HTTP_422_UNPROCESSABLE_CONTENT / HTTP_413_CONTENT_TOO_LARGE 定数名修正（FastAPI 0.136 deprecation 対応）",
-    "Phase 7 P1/P3/P4: AI文書分類/構造データ抽出/AI要約 API + IDOR対策 + フロントエンドAI UI（13テスト追加、PR #25 マージ 2026-06-01）"
+    "Phase 7 P1/P3/P4: AI文書分類/構造データ抽出/AI要約 API + IDOR対策 + フロントエンドAI UI（13テスト追加、PR #25 マージ 2026-06-01）",
+    "Phase 7 P2: セマンティック検索 API（FTS5 + Claude Haiku クエリ展開）+ 検索バーUI + XSS修正（13テスト追加、PR #26 マージ 2026-06-01）"
   ],
   "next_targets": [
-    "[P1] Phase 7 P2: セマンティック検索 (GET /documents/search?q=&mode=semantic) — SQLite FTS5 + sentence-transformers 類似文書検索",
-    "[P2] フロントエンド AI 機能強化: 構造データ抽出結果表示・要約パネル・セマンティック検索バー追加",
-    "[P3] GitHub Actions: ANTHROPIC_API_KEY シークレット設定（CI で実 API テスト可能化）",
-    "[P4] 建設業ドメイン特化テスト強化: 実際の図面テキストで AI 分類精度 >= 80% 検証"
+    "[P1] GitHub Actions: ANTHROPIC_API_KEY シークレット設定（CI で実 API テスト可能化）",
+    "[P2] 建設業ドメイン特化テスト: 実際の図面テキストで AI 分類精度 >= 80% 検証",
+    "[P3] Phase 8: 電子署名・タイムスタンプ API（RFC 3161 TSA 統合）",
+    "[P4] Phase 8: マルチテナント対応・組織階層（本社→支店→現場）"
   ],
   "learning": {
     "failure_patterns": [
