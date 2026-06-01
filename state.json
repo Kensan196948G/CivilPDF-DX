@@ -8,7 +8,7 @@
   "phase": {
     "current": "build",
     "week": 4,
-    "milestone": "PR #23 マージ完了（2026-06-01）。Phase 7: AI/OCR 統合（Issue #24）実装開始フェーズ"
+    "milestone": "PR #25 マージ完了（2026-06-01）。Phase 7 P1/P3/P4 完了。次: P2セマンティック検索"
   },
   "kpi": {
     "ci_success_rate": 1.0,
@@ -37,9 +37,9 @@
     "current_phase": "build",
     "stable": true,
     "deploy_ready": false,
-    "last_pr": 23,
-    "last_pr_status": "merged (2026-06-01T13:32:33Z) — conftest DB isolation + pypdf OCR + starlette PYSEC-2026-161 security fix. All 7 CI checks passed.",
-    "last_merged_pr": 23,
+    "last_pr": 25,
+    "last_pr_status": "merged (2026-06-01T13:51:36Z) — Phase 7 AI: classify/extract/summary API + IDOR fix + frontend AI UI. All 8 checks passed.",
+    "last_merged_pr": 25,
     "last_closed_issue": 13,
     "frontend_lan_url": "http://192.168.0.185:5181/",
     "frontend_systemd_unit": "civilpdf-frontend.service (dev:lan @ 5181)",
@@ -84,13 +84,14 @@
     "conftest DB override を scope=package fixture に移動（pytest tests/ 全184件通過、干渉解消）",
     "OCR API pypdf 実装（テキスト抽出 実装・stub 削除）",
     "fastapi==0.136.3 + starlette==1.1.0 アップグレード（PYSEC-2026-161 修正）",
-    "HTTP_422_UNPROCESSABLE_CONTENT / HTTP_413_CONTENT_TOO_LARGE 定数名修正（FastAPI 0.136 deprecation 対応）"
+    "HTTP_422_UNPROCESSABLE_CONTENT / HTTP_413_CONTENT_TOO_LARGE 定数名修正（FastAPI 0.136 deprecation 対応）",
+    "Phase 7 P1/P3/P4: AI文書分類/構造データ抽出/AI要約 API + IDOR対策 + フロントエンドAI UI（13テスト追加、PR #25 マージ 2026-06-01）"
   ],
   "next_targets": [
-    "[P1] Issue #24 (Phase 7: AI/OCR 統合): feature/phase7-ai-ocr ブランチで AI 文書分類・セマンティック検索・構造化データ抽出を実装",
-    "[P2] AI 文書分類: Anthropic Claude API を使用して PDF テキストから建設業文書カテゴリ自動判定",
-    "[P3] セマンティック検索: 文書ベクトル化 + 類似度検索 API エンドポイント追加",
-    "[P4] 構造化データ抽出: OCR テキストから工事名・金額・日付・担当者を構造化抽出"
+    "[P1] Phase 7 P2: セマンティック検索 (GET /documents/search?q=&mode=semantic) — SQLite FTS5 + sentence-transformers 類似文書検索",
+    "[P2] フロントエンド AI 機能強化: 構造データ抽出結果表示・要約パネル・セマンティック検索バー追加",
+    "[P3] GitHub Actions: ANTHROPIC_API_KEY シークレット設定（CI で実 API テスト可能化）",
+    "[P4] 建設業ドメイン特化テスト強化: 実際の図面テキストで AI 分類精度 >= 80% 検証"
   ],
   "learning": {
     "failure_patterns": [
