@@ -8,6 +8,7 @@ from api.stats import router as stats_router
 from api.m365 import router as m365_router
 from api.ocr import router as ocr_router
 from api.privacy import router as privacy_router
+from api.ai import router as ai_router
 
 __all__ = [
     "auth_router",
@@ -20,4 +21,5 @@ __all__ = [
     "m365_router",
     "ocr_router",
     "privacy_router",
+    "ai_router",
 ]
