@@ -6,14 +6,14 @@
     "release_deadline": "CTO判断（無期限可）"
   },
   "phase": {
-    "current": "build",
+    "current": "release-ready",
     "week": 4,
-    "milestone": "PR #26 マージ完了（2026-06-01）。Phase 7 全完了（P1/P2/P3/P4）。Issue #24 クローズ"
+    "milestone": "v0.7.0 Release Ready MVP 宣言（2026-06-01）。PR #23/25/26/28 全マージ。Phase 8 計画中（Issue #27）"
   },
   "kpi": {
     "ci_success_rate": 1.0,
     "test_pass_rate": 1.0,
-    "test_count": 287,
+    "test_count": 313,
     "backend_unit_test_count": 164,
     "backend_e2e_test_count": 20,
     "frontend_test_count": 103,
@@ -37,9 +37,11 @@
     "current_phase": "build",
     "stable": true,
     "deploy_ready": false,
-    "last_pr": 26,
-    "last_pr_status": "merged (2026-06-01T14:15:11Z) — Phase 7 P2: FTS5 semantic search + Claude query expansion + frontend search UI + XSS fix. All 8 checks passed.",
-    "last_merged_pr": 26,
+    "last_pr": 28,
+    "last_pr_status": "merged (2026-06-01T14:25:39Z) — v0.7.0 Release Ready: README/CHANGELOG/CI ANTHROPIC_API_KEY. All 8 checks passed.",
+    "last_merged_pr": 28,
+    "deploy_ready": true,
+    "release_version": "v0.7.0-mvp",
     "last_closed_issue": 13,
     "frontend_lan_url": "http://192.168.0.185:5181/",
     "frontend_systemd_unit": "civilpdf-frontend.service (dev:lan @ 5181)",
@@ -89,10 +91,10 @@
     "Phase 7 P2: セマンティック検索 API（FTS5 + Claude Haiku クエリ展開）+ 検索バーUI + XSS修正（13テスト追加、PR #26 マージ 2026-06-01）"
   ],
   "next_targets": [
-    "[P1] GitHub Actions: ANTHROPIC_API_KEY シークレット設定（CI で実 API テスト可能化）",
-    "[P2] 建設業ドメイン特化テスト: 実際の図面テキストで AI 分類精度 >= 80% 検証",
-    "[P3] Phase 8: 電子署名・タイムスタンプ API（RFC 3161 TSA 統合）",
-    "[P4] Phase 8: マルチテナント対応・組織階層（本社→支店→現場）"
+    "[必須/人間作業] GitHub Secrets: ANTHROPIC_API_KEY を repo Settings > Secrets に手動設定",
+    "[P1] v0.7.0 タグ付け・GitHub Release 作成",
+    "[P2] Phase 8 (Issue #27): RFC 3161 電子タイムスタンプ API",
+    "[P3] Phase 8 (Issue #27): マルチテナント対応（本社→支店→現場 階層）"
   ],
   "learning": {
     "failure_patterns": [
