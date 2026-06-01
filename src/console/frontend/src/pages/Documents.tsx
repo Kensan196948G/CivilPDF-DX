@@ -8,6 +8,7 @@ import {
 } from '../api/documents'
 import { listProjects } from '../api/projects'
 import { DocumentPreviewModal } from '../components/DocumentPreviewModal'
+import { classifyDocument, type ClassifyResponse } from '../api/ai'
 
 const DOC_TYPE_LABELS: Record<string, string> = {
   drawing: '図面',
@@ -38,6 +39,7 @@ export function Documents() {
   const [projectId, setProjectId] = useState('')
   const [docType, setDocType] = useState('drawing')
   const [previewDoc, setPreviewDoc] = useState<DocumentResponse | null>(null)
+  const [aiResult, setAiResult] = useState<ClassifyResponse | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
   // Search / filter state
@@ -72,6 +74,14 @@ export function Documents() {
   const remove = useMutation({
     mutationFn: deleteDocument,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['documents'] }),
+  })
+
+  const classify = useMutation({
+    mutationFn: classifyDocument,
+    onSuccess: (result) => {
+      setAiResult(result)
+      qc.invalidateQueries({ queryKey: ['documents'] })
+    },
   })
 
   return (
@@ -210,6 +220,7 @@ export function Documents() {
                 <th className="px-4 py-3">タイトル</th>
                 <th className="px-4 py-3">種別</th>
                 <th className="px-4 py-3">ステータス</th>
+                <th className="px-4 py-3">AI タグ</th>
                 <th className="px-4 py-3">サイズ</th>
                 <th className="px-4 py-3">登録日</th>
                 <th className="px-4 py-3"></th>
@@ -229,6 +240,23 @@ export function Documents() {
                         {s.label}
                       </span>
                     </td>
+                    <td className="px-4 py-3">
+                      <div className="flex flex-wrap gap-1">
+                        {(doc.tags ?? []).filter(t => t.startsWith('図面:') || t.startsWith('種別:')).map((tag) => (
+                          <span
+                            key={tag}
+                            className="px-1.5 py-0.5 rounded text-xs bg-purple-100 text-purple-700"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                        {(doc.tags ?? []).includes('ai分類済') && (
+                          <span className="px-1.5 py-0.5 rounded text-xs bg-indigo-100 text-indigo-600">
+                            ✦AI
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="px-4 py-3 text-gray-400">
                       {(doc.file_size / 1024).toFixed(0)} KB
                     </td>
@@ -242,6 +270,14 @@ export function Documents() {
                           className="text-blue-600 hover:text-blue-800 text-xs"
                         >
                           プレビュー
+                        </button>
+                        <button
+                          onClick={() => classify.mutate(doc.id)}
+                          disabled={classify.isPending && classify.variables === doc.id}
+                          className="text-purple-600 hover:text-purple-800 text-xs disabled:opacity-50"
+                          title="Claude AIで文書を分類"
+                        >
+                          {classify.isPending && classify.variables === doc.id ? '分類中...' : 'AI分類'}
                         </button>
                         <button
                           onClick={() => remove.mutate(doc.id)}
@@ -265,6 +301,58 @@ export function Documents() {
         title={previewDoc?.title}
         onClose={() => setPreviewDoc(null)}
       />
+
+      {/* AI Classification Result Modal */}
+      {aiResult && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setAiResult(null)}
+        >
+          <div
+            className="bg-white rounded-xl shadow-xl p-6 max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-800">✦ AI 分類結果</h2>
+              <button onClick={() => setAiResult(null)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
+            </div>
+            <dl className="space-y-3 text-sm">
+              <div className="flex justify-between">
+                <dt className="text-gray-500">図面種別</dt>
+                <dd className="font-medium">{aiResult.drawing_type ?? '—'}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-gray-500">プロジェクト種別</dt>
+                <dd className="font-medium">{aiResult.project_type ?? '—'}</dd>
+              </div>
+              <div className="flex justify-between">
+                <dt className="text-gray-500">信頼度</dt>
+                <dd className="font-medium">{(aiResult.confidence * 100).toFixed(0)}%</dd>
+              </div>
+              <div>
+                <dt className="text-gray-500 mb-1">付与タグ</dt>
+                <dd className="flex flex-wrap gap-1">
+                  {aiResult.tags.map((tag) => (
+                    <span key={tag} className="px-2 py-0.5 rounded-full text-xs bg-purple-100 text-purple-700">
+                      {tag}
+                    </span>
+                  ))}
+                </dd>
+              </div>
+              <div className="flex justify-between text-xs text-gray-400">
+                <dt>モデル</dt>
+                <dd>{aiResult.model}</dd>
+              </div>
+            </dl>
+            <button
+              onClick={() => setAiResult(null)}
+              className="mt-4 w-full bg-blue-700 text-white py-2 rounded-lg text-sm"
+            >
+              閉じる
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
