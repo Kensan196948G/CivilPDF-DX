@@ -70,3 +70,30 @@ export async function fetchDocumentBlob(id: string): Promise<Blob> {
   })
   return res.data
 }
+
+export interface TimestampResponse {
+  document_id: string
+  file_hash: string
+  token_type: 'rfc3161' | 'local_hmac'
+  tsa_url: string
+  verified_at: string
+  token_present: boolean
+}
+
+export interface TimestampVerifyResponse {
+  document_id: string
+  valid: boolean
+  message: string
+  file_hash: string | null
+  verified_at: string | null
+}
+
+export async function applyTimestamp(id: string): Promise<TimestampResponse> {
+  const res = await api.post<TimestampResponse>(`/documents/${id}/timestamp`)
+  return res.data
+}
+
+export async function verifyTimestamp(id: string): Promise<TimestampVerifyResponse> {
+  const res = await api.get<TimestampVerifyResponse>(`/documents/${id}/timestamp/verify`)
+  return res.data
+}

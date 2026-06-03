@@ -147,7 +147,8 @@ npm run dev:lan     # http://0.0.0.0:5181（LAN 公開）
 npm run build
 ```
 
-> `vite.config.ts` の API プロキシはデフォルトで `http://localhost:8000` を向いています。
+> `vite.config.ts` の API プロキシはデフォルトで `http://localhost:8000` を向いており、`VITE_API_URL` で上書き可能です。  
+> `docker-compose.yml` では、Compose ネットワーク内解決のため `VITE_API_URL=http://backend:8000/api/v1` を指定しています。
 
 ---
 
