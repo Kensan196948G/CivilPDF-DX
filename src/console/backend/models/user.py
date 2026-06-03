@@ -40,6 +40,9 @@ class User(Base):
     role = Column(Enum(UserRole), default=UserRole.ENGINEER)
     status = Column(Enum(UserStatus), default=UserStatus.ACTIVE)
 
+    # Organization hierarchy (マルチテナント)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=True)
+
     # SSO
     entra_id = Column(String, nullable=True, unique=True)
 
@@ -54,6 +57,9 @@ class User(Base):
     )
     documents = relationship("Document", back_populates="owner")
     approvals = relationship("ApprovalStep", back_populates="approver")
+    organization = relationship(
+        "Organization", back_populates="users", foreign_keys=[organization_id]
+    )
 
 
 class Project(Base):
@@ -65,8 +71,14 @@ class Project(Base):
     description = Column(String, nullable=True)
     is_active = Column(Boolean, default=True)
 
+    # Organization hierarchy (マルチテナント)
+    organization_id = Column(String, ForeignKey("organizations.id"), nullable=True)
+
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     members = relationship("User", secondary=user_projects, back_populates="projects")
     documents = relationship("Document", back_populates="project")
+    organization = relationship(
+        "Organization", back_populates="projects", foreign_keys=[organization_id]
+    )

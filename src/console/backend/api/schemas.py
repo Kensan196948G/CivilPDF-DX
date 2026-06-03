@@ -1,8 +1,39 @@
 from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional, List
 from datetime import datetime
+from models.organization import OrgType
 from models.user import UserRole, UserStatus
 from models.document import DocumentStatus, DocumentType
+
+
+# ─── Organization ───
+class OrganizationCreate(BaseModel):
+    name: str
+    code: str
+    org_type: OrgType = OrgType.SITE_OFFICE
+    parent_id: Optional[str] = None
+
+
+class OrganizationResponse(BaseModel):
+    id: str
+    name: str
+    code: str
+    org_type: OrgType
+    parent_id: Optional[str] = None
+    path: str
+    is_active: bool
+    created_at: datetime
+    children: List["OrganizationResponse"] = []
+
+    model_config = {"from_attributes": True}
+
+
+OrganizationResponse.model_rebuild()
+
+
+class OrganizationUpdate(BaseModel):
+    name: Optional[str] = None
+    is_active: Optional[bool] = None
 
 
 # ─── Auth ───

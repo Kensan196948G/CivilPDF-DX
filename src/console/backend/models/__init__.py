@@ -1,3 +1,4 @@
+from models.organization import Organization, OrgType
 from models.user import User, Project, UserRole, UserStatus
 from models.document import (
     Document,
@@ -13,6 +14,8 @@ from models.retention_policy import RetentionPolicy, RetentionCategory, DEFAULT_
 from models.consent import ConsentRecord, ConsentType
 
 __all__ = [
+    "Organization",
+    "OrgType",
     "User",
     "Project",
     "UserRole",

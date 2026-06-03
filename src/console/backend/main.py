@@ -6,6 +6,7 @@ import logging
 from config import settings
 from database import engine, Base
 from api import (
+    organizations_router,
     auth_router,
     users_router,
     documents_router,
@@ -53,6 +54,7 @@ app.add_middleware(AuditMiddleware)
 
 # API routes
 API_PREFIX = "/api/v1"
+app.include_router(organizations_router, prefix=API_PREFIX)
 app.include_router(auth_router, prefix=API_PREFIX)
 app.include_router(users_router, prefix=API_PREFIX)
 app.include_router(documents_router, prefix=API_PREFIX)

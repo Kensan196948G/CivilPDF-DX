@@ -8,7 +8,7 @@
   "phase": {
     "current": "development",
     "week": 4,
-    "milestone": "Phase 8 P1 RFC 3161 電子タイムスタンプ実装完了・PR #29 マージ済み（2026-06-03）。v0.7.0 GitHub Release 更新済み。Phase 8 P2 マルチテナント対応 next。"
+    "milestone": "Phase 8 P2 組織階層 CRUD 実装完了・PR #31 作成済み（2026-06-03）。全テスト通過（exit code 0）。Phase 8 P3 電子納品 ZIP next。"
   },
   "kpi": {
     "ci_success_rate": 1.0,
@@ -37,8 +37,8 @@
     "current_phase": "build",
     "stable": true,
     "deploy_ready": false,
-    "last_pr": 29,
-    "last_pr_status": "merged (2026-06-03) — Phase 8 P1 RFC 3161 タイムスタンプ API. CI success.",
+    "last_pr": 31,
+    "last_pr_status": "open (2026-06-03) — Phase 8 P2 組織階層 CRUD. CI pending.",
     "last_merged_pr": 29,
     "deploy_ready": true,
     "release_version": "v0.7.0-mvp",
@@ -89,12 +89,14 @@
     "HTTP_422_UNPROCESSABLE_CONTENT / HTTP_413_CONTENT_TOO_LARGE 定数名修正（FastAPI 0.136 deprecation 対応）",
     "Phase 7 P1/P3/P4: AI文書分類/構造データ抽出/AI要約 API + IDOR対策 + フロントエンドAI UI（13テスト追加、PR #25 マージ 2026-06-01）",
     "Phase 7 P2: セマンティック検索 API（FTS5 + Claude Haiku クエリ展開）+ 検索バーUI + XSS修正（13テスト追加、PR #26 マージ 2026-06-01）",
-    "Phase 8 P1: RFC 3161 電子タイムスタンプ API + DocumentTimestampModal UI（7テスト追加、PR #29 作成 2026-06-03）"
+    "Phase 8 P1: RFC 3161 電子タイムスタンプ API + DocumentTimestampModal UI（7テスト追加、PR #29 作成 2026-06-03）",
+    "Phase 8 P2: 組織階層 CRUD API + Alembic migration（19テスト追加、PR #31 作成 2026-06-03）"
   ],
   "next_targets": [
     "[必須/人間作業] GitHub Secrets: ANTHROPIC_API_KEY を repo Settings > Secrets に手動設定",
-    "[P1] Phase 8 P2: マルチテナント対応（本社→支店→現場 階層）",
-    "[P2] Phase 8 P3: 電子納品 ZIP パッケージ生成（国交省電子納品要領準拠）"
+    "[P1] Phase 8 P2 PR #31 → review + merge",
+    "[P2] Phase 8 P3: 電子納品 ZIP パッケージ生成（国交省電子納品要領準拠）",
+    "[P3] list_documents / list_projects に organization_id フィルター追加"
   ],
   "learning": {
     "failure_patterns": [
