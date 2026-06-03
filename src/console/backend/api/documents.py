@@ -16,7 +16,7 @@ from typing import List, Optional
 import aiofiles
 
 from database import get_db
-from models.user import User
+from models.user import User, Project
 from models.document import Document, DocumentStatus, DocumentType
 from auth.dependencies import get_current_user
 from datetime import datetime, timezone
@@ -41,6 +41,7 @@ MAX_FILE_BYTES = settings.max_file_size_mb * 1024 * 1024
 @router.get("/", response_model=List[DocumentResponse])
 def list_documents(
     project_id: Optional[str] = Query(None),
+    organization_id: Optional[str] = Query(None),
     document_type: Optional[DocumentType] = Query(None),
     status_filter: Optional[DocumentStatus] = Query(None, alias="status"),
     page: int = Query(1, ge=1),
@@ -51,6 +52,10 @@ def list_documents(
     q = db.query(Document)
     if project_id:
         q = q.filter(Document.project_id == project_id)
+    if organization_id:
+        q = q.join(Project, Document.project_id == Project.id).filter(
+            Project.organization_id == organization_id
+        )
     if document_type:
         q = q.filter(Document.document_type == document_type)
     if status_filter:
