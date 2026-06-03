@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 
 from database import get_db
 from models.user import User, Project
@@ -12,12 +12,20 @@ router = APIRouter(prefix="/projects", tags=["Projects"])
 
 @router.get("/", response_model=List[ProjectResponse])
 def list_projects(
+    organization_id: Optional[str] = Query(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     if current_user.role.value == "admin":
-        return db.query(Project).all()
-    return current_user.projects
+        q = db.query(Project)
+        if organization_id:
+            q = q.filter(Project.organization_id == organization_id)
+        return q.all()
+
+    projects = current_user.projects
+    if organization_id:
+        projects = [p for p in projects if p.organization_id == organization_id]
+    return projects
 
 
 @router.post("/", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
