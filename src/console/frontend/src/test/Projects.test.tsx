@@ -13,6 +13,17 @@ vi.mock('../api/projects', () => ({
   deleteProject: vi.fn(),
 }))
 
+vi.mock('../api/electronicDelivery', () => ({
+  checkDeliveryReadiness: vi.fn().mockResolvedValue({
+    ready: true,
+    document_count: 2,
+    pdfa_compliant_count: 2,
+    non_pdfa_documents: [],
+    warnings: [],
+  }),
+  downloadDeliveryZip: vi.fn().mockResolvedValue(undefined),
+}))
+
 import { listProjects, deleteProject } from '../api/projects'
 
 const mockAdmin = {
@@ -229,5 +240,77 @@ describe('Projects', () => {
     render(<Projects />, { wrapper: makeWrapper() })
 
     expect(screen.getByLabelText('プロジェクト名で検索')).toBeInTheDocument()
+  })
+
+  it('admin sees "📦 電子納品" button for each project', async () => {
+    vi.mocked(listProjects).mockResolvedValueOnce([mockProjectA, mockProjectB])
+
+    render(<Projects />, { wrapper: makeWrapper() })
+
+    await waitFor(() => {
+      expect(screen.getByText('道路改良工事')).toBeInTheDocument()
+    })
+    const deliveryButtons = screen.getAllByRole('button', { name: /電子納品/ })
+    expect(deliveryButtons).toHaveLength(2)
+  })
+
+  it('viewer does not see "📦 電子納品" button', async () => {
+    useAuthStore.setState({ user: mockViewer, isAuthenticated: true })
+    vi.mocked(listProjects).mockResolvedValueOnce([mockProjectA])
+
+    render(<Projects />, { wrapper: makeWrapper() })
+
+    await waitFor(() => {
+      expect(screen.getByText('道路改良工事')).toBeInTheDocument()
+    })
+    expect(screen.queryByRole('button', { name: /電子納品/ })).not.toBeInTheDocument()
+  })
+
+  it('clicking "📦 電子納品" opens ElectronicDeliveryModal with project info', async () => {
+    vi.mocked(listProjects).mockResolvedValueOnce([mockProjectA])
+    const user = userEvent.setup()
+
+    render(<Projects />, { wrapper: makeWrapper() })
+
+    const deliveryBtn = await screen.findByRole('button', { name: /電子納品/ })
+    await user.click(deliveryBtn)
+
+    await waitFor(() => {
+      expect(screen.getByText('📦 電子納品パッケージ生成')).toBeInTheDocument()
+    })
+    // projectName appears both in table and modal — getAllByText is correct here
+    expect(screen.getAllByText('道路改良工事').length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('ElectronicDeliveryModal shows readiness info', async () => {
+    vi.mocked(listProjects).mockResolvedValueOnce([mockProjectA])
+    const user = userEvent.setup()
+
+    render(<Projects />, { wrapper: makeWrapper() })
+
+    const deliveryBtn = await screen.findByRole('button', { name: /電子納品/ })
+    await user.click(deliveryBtn)
+
+    await waitFor(() => {
+      expect(screen.getByText('納品可能', { exact: false })).toBeInTheDocument()
+    })
+  })
+
+  it('ElectronicDeliveryModal closes on "閉じる" click', async () => {
+    vi.mocked(listProjects).mockResolvedValueOnce([mockProjectA])
+    const user = userEvent.setup()
+
+    render(<Projects />, { wrapper: makeWrapper() })
+
+    const deliveryBtn = await screen.findByRole('button', { name: /電子納品/ })
+    await user.click(deliveryBtn)
+    await waitFor(() => {
+      expect(screen.getByText('📦 電子納品パッケージ生成')).toBeInTheDocument()
+    })
+
+    // modal has two "閉じる" buttons (× aria-label + text button) — click the text button
+    const closeButtons = screen.getAllByRole('button', { name: '閉じる' })
+    await user.click(closeButtons[closeButtons.length - 1])
+    expect(screen.queryByText('📦 電子納品パッケージ生成')).not.toBeInTheDocument()
   })
 })
