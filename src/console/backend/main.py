@@ -6,6 +6,7 @@ import logging
 from config import settings
 from database import engine, Base
 from api import (
+    electronic_delivery_router,
     organizations_router,
     auth_router,
     users_router,
@@ -54,6 +55,7 @@ app.add_middleware(AuditMiddleware)
 
 # API routes
 API_PREFIX = "/api/v1"
+app.include_router(electronic_delivery_router, prefix=API_PREFIX)
 app.include_router(organizations_router, prefix=API_PREFIX)
 app.include_router(auth_router, prefix=API_PREFIX)
 app.include_router(users_router, prefix=API_PREFIX)

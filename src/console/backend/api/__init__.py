@@ -1,3 +1,4 @@
+from api.electronic_delivery import router as electronic_delivery_router
 from api.organizations import router as organizations_router
 from api.auth import router as auth_router
 from api.users import router as users_router
@@ -13,6 +14,7 @@ from api.ai import router as ai_router
 from api.search import router as search_router
 
 __all__ = [
+    "electronic_delivery_router",
     "organizations_router",
     "auth_router",
     "users_router",

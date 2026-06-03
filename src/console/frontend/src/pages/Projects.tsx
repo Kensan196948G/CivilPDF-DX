@@ -2,11 +2,13 @@ import { useState, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { listProjects, createProject, deleteProject } from '../api/projects'
 import { useAuthStore } from '../store/auth'
+import { ElectronicDeliveryModal } from '../components/ElectronicDeliveryModal'
 
 export function Projects() {
   const qc = useQueryClient()
   const currentUser = useAuthStore((s) => s.user)
   const isAdmin = currentUser?.role === 'admin'
+  const canDownload = isAdmin || currentUser?.role === 'manager'
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ['projects'],
@@ -18,6 +20,11 @@ export function Projects() {
   const [code, setCode] = useState('')
   const [description, setDescription] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [deliveryProject, setDeliveryProject] = useState<{
+    id: string
+    name: string
+    code: string
+  } | null>(null)
 
   const filteredProjects = useMemo(() => {
     if (searchQuery === '') return projects
@@ -147,7 +154,7 @@ export function Projects() {
                 <th className="px-4 py-3">コード</th>
                 <th className="px-4 py-3">ステータス</th>
                 <th className="px-4 py-3">作成日</th>
-                {isAdmin && <th className="px-4 py-3"></th>}
+                <th className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
@@ -165,22 +172,43 @@ export function Projects() {
                   <td className="px-4 py-3 text-gray-400">
                     {new Date(p.created_at).toLocaleDateString('ja-JP')}
                   </td>
-                  {isAdmin && (
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => remove.mutate(p.id)}
-                        className="text-red-500 hover:text-red-700 text-xs"
-                      >
-                        削除
-                      </button>
-                    </td>
-                  )}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      {canDownload && (
+                        <button
+                          onClick={() => setDeliveryProject({ id: p.id, name: p.name, code: p.code })}
+                          className="text-emerald-600 hover:text-emerald-800 text-xs whitespace-nowrap"
+                          title="電子納品 ZIP 生成"
+                        >
+                          📦 電子納品
+                        </button>
+                      )}
+                      {isAdmin && (
+                        <button
+                          onClick={() => remove.mutate(p.id)}
+                          className="text-red-500 hover:text-red-700 text-xs"
+                        >
+                          削除
+                        </button>
+                      )}
+                    </div>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
       </div>
+
+      {deliveryProject && (
+        <ElectronicDeliveryModal
+          projectId={deliveryProject.id}
+          projectName={deliveryProject.name}
+          projectCode={deliveryProject.code}
+          onClose={() => setDeliveryProject(null)}
+        />
+      )}
     </div>
   )
 }
+
