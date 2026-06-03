@@ -8,15 +8,15 @@
   "phase": {
     "current": "development",
     "week": 4,
-    "milestone": "Phase 8 P3 電子納品 ZIP パッケージ生成 実装完了・PR #32 作成済み（2026-06-03）。全テスト355件通過。CI pending。"
+    "milestone": "Phase 8 P3+P4 電子納品 ZIP バックエンド+フロントエンド UI 実装完了・PR #32 更新済み（2026-06-03）。全テスト360件通過。CI pending。"
   },
   "kpi": {
     "ci_success_rate": 1.0,
     "test_pass_rate": 1.0,
-    "test_count": 355,
+    "test_count": 360,
     "backend_unit_test_count": 232,
     "backend_e2e_test_count": 20,
-    "frontend_test_count": 103,
+    "frontend_test_count": 108,
     "coverage_percent": 98,
     "review_blocker_count": 0,
     "security_issue_count": 0,
@@ -91,12 +91,13 @@
     "Phase 7 P2: セマンティック検索 API（FTS5 + Claude Haiku クエリ展開）+ 検索バーUI + XSS修正（13テスト追加、PR #26 マージ 2026-06-01）",
     "Phase 8 P1: RFC 3161 電子タイムスタンプ API + DocumentTimestampModal UI（7テスト追加、PR #29 作成 2026-06-03）",
     "Phase 8 P2: 組織階層 CRUD API + Alembic migration（19テスト追加、PR #31 作成 2026-06-03）",
-    "Phase 8 P3: 電子納品 ZIP パッケージ生成（国交省 CALS/EC 準拠・INDEX.XML・16テスト追加、PR #32 作成 2026-06-03）"
+    "Phase 8 P3: 電子納品 ZIP パッケージ生成（国交省 CALS/EC 準拠・INDEX.XML・16テスト追加、PR #32 作成 2026-06-03）",
+    "Phase 8 P4: 電子納品フロントエンド UI（ElectronicDeliveryModal・RBAC canDownload・📦ボタン・5テスト追加、PR #32 更新 2026-06-03）"
   ],
   "next_targets": [
     "[必須/人間作業] GitHub Secrets: ANTHROPIC_API_KEY を repo Settings > Secrets に手動設定",
     "[P1] Phase 8 P3 PR #32 → CI通過確認 + review + merge",
-    "[P2] Phase 8 P4: 電子納品 フロントエンド UI（電子納品ページ・readiness表示・ZIPダウンロードボタン）",
+    "[P2] Phase 8 P5: organization_id フィルター（list_documents / list_projects）",
     "[P3] list_documents / list_projects に organization_id フィルター追加",
     "[P3] 実ファイルが存在する場合の ZIP への同梱（file_path 実ファイル読み込み）"
   ],
