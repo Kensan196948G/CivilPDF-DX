@@ -19,7 +19,14 @@ from database import get_db
 from models.user import User
 from models.document import Document, DocumentStatus, DocumentType
 from auth.dependencies import get_current_user
-from api.schemas import DocumentResponse, DocumentUpdate
+from datetime import datetime, timezone
+
+from api.schemas import (
+    DocumentResponse,
+    DocumentUpdate,
+    TimestampResponse,
+    TimestampVerifyResponse,
+)
 from config import settings
 from services import timestamp_service
 from services.pdfa_validator import validate_pdfa
@@ -77,7 +84,7 @@ async def upload_document(
     content = await file.read()
     if len(content) > MAX_FILE_BYTES:
         raise HTTPException(
-            status_code=status.HTTP_413_CONTENT_TOO_LARGE,
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
             detail=f"File size exceeds {settings.max_file_size_mb}MB limit",
         )
 
@@ -125,8 +132,6 @@ async def upload_document(
         ts = timestamp_service.generate_timestamp(
             content, file.filename or "upload.pdf"
         )
-        from datetime import datetime, timezone
-
         doc.timestamp_hash = ts["file_hash"]
         doc.timestamp_token = ts["token_b64"]
         doc.timestamp_tsa_url = ts["tsa_url"]
@@ -199,6 +204,93 @@ def download_document(
         path=doc.file_path,
         filename=doc.filename,
         media_type="application/pdf",
+    )
+
+
+@router.post("/{doc_id}/timestamp", response_model=TimestampResponse)
+async def apply_timestamp(
+    doc_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Apply RFC 3161 timestamp to an existing document (電子帳簿保存法・e-文書法)."""
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        )
+    if doc.owner_id != current_user.id and current_user.role.value not in (
+        "admin",
+        "manager",
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
+        )
+    if not doc.file_path or not Path(doc.file_path).exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="File not found on disk"
+        )
+
+    file_content = Path(doc.file_path).read_bytes()
+    ts = timestamp_service.generate_timestamp(file_content, doc.filename)
+
+    doc.timestamp_hash = ts["file_hash"]
+    doc.timestamp_token = ts["token_b64"]
+    doc.timestamp_tsa_url = ts["tsa_url"]
+    doc.timestamp_verified_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(doc)
+
+    return TimestampResponse(
+        document_id=doc.id,
+        file_hash=ts["file_hash"],
+        token_type=ts["token_type"],
+        tsa_url=ts["tsa_url"],
+        verified_at=doc.timestamp_verified_at,
+        token_present=bool(doc.timestamp_token),
+    )
+
+
+@router.get("/{doc_id}/timestamp/verify", response_model=TimestampVerifyResponse)
+def verify_timestamp(
+    doc_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Verify that the stored timestamp matches the current file content."""
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    if not doc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
+        )
+
+    if not doc.timestamp_hash or not doc.timestamp_token:
+        return TimestampVerifyResponse(
+            document_id=doc.id,
+            valid=False,
+            message="No timestamp recorded for this document",
+        )
+
+    if not doc.file_path or not Path(doc.file_path).exists():
+        return TimestampVerifyResponse(
+            document_id=doc.id,
+            valid=False,
+            message="File not found on disk — cannot verify integrity",
+        )
+
+    file_content = Path(doc.file_path).read_bytes()
+    is_valid = timestamp_service.verify_file_against_timestamp(
+        file_content, doc.timestamp_hash, doc.timestamp_token
+    )
+
+    return TimestampVerifyResponse(
+        document_id=doc.id,
+        valid=is_valid,
+        message="Timestamp valid — file integrity confirmed"
+        if is_valid
+        else "Timestamp mismatch — file may have been modified",
+        file_hash=doc.timestamp_hash,
+        verified_at=doc.timestamp_verified_at,
     )
 
 

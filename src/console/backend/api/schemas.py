@@ -110,6 +110,26 @@ class DocumentUpdate(BaseModel):
     tags: Optional[List[str]] = None
 
 
+# ─── Timestamp ───
+class TimestampResponse(BaseModel):
+    document_id: str
+    file_hash: str
+    token_type: str  # "rfc3161" | "local_hmac"
+    tsa_url: str
+    verified_at: datetime
+    token_present: bool
+
+    model_config = {"from_attributes": True}
+
+
+class TimestampVerifyResponse(BaseModel):
+    document_id: str
+    valid: bool
+    message: str
+    file_hash: Optional[str] = None
+    verified_at: Optional[datetime] = None
+
+
 # ─── Workflow ───
 class WorkflowCreate(BaseModel):
     document_id: str

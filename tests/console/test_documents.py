@@ -186,3 +186,114 @@ class TestDocumentUpload:
             headers={"Authorization": f"Bearer {viewer_token}"},
         )
         assert resp.status_code == 403
+
+
+class TestTimestamp:
+    """RFC 3161 timestamp API tests (Phase 8 P1 — 電子帳簿保存法・e-文書法)."""
+
+    def _upload_doc(self, client, admin_token) -> tuple:
+        proj = client.post(
+            "/api/v1/projects/",
+            json={"name": "TS Project", "code": "TS-001"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        project_id = proj.json()["id"]
+        upload = client.post(
+            "/api/v1/documents/",
+            data={"project_id": project_id, "title": "TS Doc"},
+            files={"file": ("ts.pdf", io.BytesIO(_make_pdf_bytes()), "application/pdf")},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        return upload.json()["id"], project_id
+
+    def test_apply_timestamp_success(self, client, admin_token):
+        doc_id, _ = self._upload_doc(client, admin_token)
+        resp = client.post(
+            f"/api/v1/documents/{doc_id}/timestamp",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["document_id"] == doc_id
+        assert data["token_type"] in ("rfc3161", "local_hmac")
+        assert data["token_present"] is True
+        assert len(data["file_hash"]) == 64  # SHA-256 hex
+
+    def test_apply_timestamp_not_found(self, client, admin_token):
+        resp = client.post(
+            "/api/v1/documents/nonexistent-id/timestamp",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 404
+
+    def test_apply_timestamp_forbidden(self, client, admin_token, viewer_token):
+        doc_id, _ = self._upload_doc(client, admin_token)
+        resp = client.post(
+            f"/api/v1/documents/{doc_id}/timestamp",
+            headers={"Authorization": f"Bearer {viewer_token}"},
+        )
+        assert resp.status_code == 403
+
+    def test_verify_timestamp_valid(self, client, admin_token):
+        doc_id, _ = self._upload_doc(client, admin_token)
+        # Apply timestamp first
+        client.post(
+            f"/api/v1/documents/{doc_id}/timestamp",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        resp = client.get(
+            f"/api/v1/documents/{doc_id}/timestamp/verify",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["valid"] is True
+        assert data["document_id"] == doc_id
+        assert data["file_hash"] is not None
+
+    def test_verify_timestamp_no_timestamp(self, client, admin_token):
+        """Document with no timestamp should return valid=False."""
+        proj = client.post(
+            "/api/v1/projects/",
+            json={"name": "NoTS Project", "code": "NOTS-002"},
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        project_id = proj.json()["id"]
+        with patch("services.timestamp_service.generate_timestamp", side_effect=Exception("TSA unavailable")):
+            upload = client.post(
+                "/api/v1/documents/",
+                data={"project_id": project_id, "title": "No TS Doc"},
+                files={"file": ("no_ts.pdf", io.BytesIO(_make_pdf_bytes()), "application/pdf")},
+                headers={"Authorization": f"Bearer {admin_token}"},
+            )
+        doc_id = upload.json()["id"]
+        resp = client.get(
+            f"/api/v1/documents/{doc_id}/timestamp/verify",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["valid"] is False
+        assert "No timestamp" in data["message"]
+
+    def test_verify_timestamp_not_found(self, client, admin_token):
+        resp = client.get(
+            "/api/v1/documents/nonexistent-id/timestamp/verify",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 404
+
+    def test_timestamp_idempotent_re_stamp(self, client, admin_token):
+        """Applying timestamp twice should succeed and return same hash for same file."""
+        doc_id, _ = self._upload_doc(client, admin_token)
+        r1 = client.post(
+            f"/api/v1/documents/{doc_id}/timestamp",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        r2 = client.post(
+            f"/api/v1/documents/{doc_id}/timestamp",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert r1.status_code == 200
+        assert r2.status_code == 200
+        assert r1.json()["file_hash"] == r2.json()["file_hash"]

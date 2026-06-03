@@ -8,6 +8,7 @@ import {
 } from '../api/documents'
 import { listProjects } from '../api/projects'
 import { DocumentPreviewModal } from '../components/DocumentPreviewModal'
+import { DocumentTimestampModal } from '../components/DocumentTimestampModal'
 import { classifyDocument, type ClassifyResponse } from '../api/ai'
 import { searchDocuments, type SearchResponse } from '../api/search'
 
@@ -40,6 +41,7 @@ export function Documents() {
   const [projectId, setProjectId] = useState('')
   const [docType, setDocType] = useState('drawing')
   const [previewDoc, setPreviewDoc] = useState<DocumentResponse | null>(null)
+  const [timestampDoc, setTimestampDoc] = useState<DocumentResponse | null>(null)
   const [aiResult, setAiResult] = useState<ClassifyResponse | null>(null)
   const [searchMode, setSearchMode] = useState<'keyword' | 'semantic'>('keyword')
   const [semanticQuery, setSemanticQuery] = useState('')
@@ -353,6 +355,13 @@ export function Documents() {
                           {classify.isPending && classify.variables === doc.id ? '分類中...' : 'AI分類'}
                         </button>
                         <button
+                          onClick={() => setTimestampDoc(doc)}
+                          className="text-indigo-600 hover:text-indigo-800 text-xs"
+                          title="電子タイムスタンプ（電子帳簿保存法・e-文書法）"
+                        >
+                          🔏TS
+                        </button>
+                        <button
                           onClick={() => remove.mutate(doc.id)}
                           className="text-red-500 hover:text-red-700 text-xs"
                         >
@@ -374,6 +383,14 @@ export function Documents() {
         title={previewDoc?.title}
         onClose={() => setPreviewDoc(null)}
       />
+
+      {timestampDoc && (
+        <DocumentTimestampModal
+          documentId={timestampDoc.id}
+          documentTitle={timestampDoc.title}
+          onClose={() => setTimestampDoc(null)}
+        />
+      )}
 
       {/* AI Classification Result Modal */}
       {aiResult && (
