@@ -57,7 +57,9 @@ class User(Base):
     )
     documents = relationship("Document", back_populates="owner")
     approvals = relationship("ApprovalStep", back_populates="approver")
-    organization = relationship("Organization", back_populates="users", foreign_keys=[organization_id])
+    organization = relationship(
+        "Organization", back_populates="users", foreign_keys=[organization_id]
+    )
 
 
 class Project(Base):
@@ -77,4 +79,6 @@ class Project(Base):
 
     members = relationship("User", secondary=user_projects, back_populates="projects")
     documents = relationship("Document", back_populates="project")
-    organization = relationship("Organization", back_populates="projects", foreign_keys=[organization_id])
+    organization = relationship(
+        "Organization", back_populates="projects", foreign_keys=[organization_id]
+    )
