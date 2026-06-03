@@ -21,7 +21,12 @@ from models.document import Document, DocumentStatus, DocumentType
 from auth.dependencies import get_current_user
 from datetime import datetime, timezone
 
-from api.schemas import DocumentResponse, DocumentUpdate, TimestampResponse, TimestampVerifyResponse
+from api.schemas import (
+    DocumentResponse,
+    DocumentUpdate,
+    TimestampResponse,
+    TimestampVerifyResponse,
+)
 from config import settings
 from services import timestamp_service
 from services.pdfa_validator import validate_pdfa
@@ -281,7 +286,9 @@ def verify_timestamp(
     return TimestampVerifyResponse(
         document_id=doc.id,
         valid=is_valid,
-        message="Timestamp valid — file integrity confirmed" if is_valid else "Timestamp mismatch — file may have been modified",
+        message="Timestamp valid — file integrity confirmed"
+        if is_valid
+        else "Timestamp mismatch — file may have been modified",
         file_hash=doc.timestamp_hash,
         verified_at=doc.timestamp_verified_at,
     )
