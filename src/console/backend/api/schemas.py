@@ -233,6 +233,21 @@ class AuditLogResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ─── Electronic Delivery ───
+class NonPdfaDocumentInfo(BaseModel):
+    id: str
+    title: str
+    filename: str
+
+
+class ElectronicDeliveryCheckResponse(BaseModel):
+    ready: bool
+    document_count: int
+    pdfa_compliant_count: int
+    non_pdfa_documents: List[NonPdfaDocumentInfo]
+    warnings: List[str]
+
+
 # ─── Pagination ───
 class PaginatedResponse(BaseModel):
     items: List
