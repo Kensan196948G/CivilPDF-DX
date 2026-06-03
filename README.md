@@ -15,10 +15,10 @@
 ## 📌 概要
 
 CivilPDF-DX は、**建設・土木業における PDF 業務を一気通貫で管理するプラットフォーム**です。
-JWT 認証・M365 統合・多段階承認ワークフロー・PDF/A バリデーション・GDPR 対応プライバシー管理・ISO 19650 メタデータ管理・改ざん検知付き監査チェーン・**Claude AI による文書分類/セマンティック検索/構造データ抽出**を LAN 上のブラウザから即座に利用できます。
+JWT 認証・M365 統合・多段階承認ワークフロー・PDF/A バリデーション・GDPR 対応プライバシー管理・ISO 19650 メタデータ管理・改ざん検知付き監査チェーン・**Claude AI による文書分類/セマンティック検索/構造データ抽出**・RFC 3161 電子タイムスタンプ・組織階層管理・国交省 CALS/EC 準拠電子納品 ZIP を LAN 上のブラウザから即座に利用できます。
 
 対象規模は**中堅〜大手ゼネコン・サブコン（従業員 50〜5,000 名）**。  
-Phase 7 AI 統合（文書分類・セマンティック検索・構造データ抽出・AI 要約）まで実装済み。バックエンドテスト 164 件・E2E テスト 20 件・フロントエンドテスト 103 件・AI/Search API テスト 26 件（計 **313 件**）、CI カバレッジ 98%。
+Phase 8 全機能（RFC3161 タイムスタンプ・組織階層・電子納品・組織フィルター）実装済み。バックエンドテスト 232 件・E2E テスト 20 件・フロントエンドテスト 108 件・AI/Search/Phase8 API テスト 8 件（計 **368 件**）、CI カバレッジ 98%。
 
 ---
 
@@ -89,6 +89,10 @@ graph LR
 | 🤖 **AI データ抽出** | 構造化データ抽出 | 工事名・施工会社・金額・工期・担当者・チェックリストを JSON 抽出 | ✅ |
 | 🤖 **AI 要約** | 承認者向けサマリー | 長文 PDF を 3〜5 行で自動要約、承認前レビュー補助 | ✅ |
 | 🔎 **検索** | セマンティック検索 | SQLite FTS5 全文検索 + Claude AI クエリ展開（「橋梁」→「bridge, RC構造, 補修…」） | ✅ |
+| ⏱️ **電子署名** | RFC 3161 タイムスタンプ | e-文書法準拠 TSA トークン生成・ファイル整合性検証（SHA-256） | ✅ |
+| 🏢 **組織管理** | 組織階層 CRUD | 本社→支店→現場事務所→モバイルの階層構造、Alembic マイグレーション済み | ✅ |
+| 📦 **電子納品** | CALS/EC 準拠 ZIP | 国交省電子納品要領準拠 ZIP 生成（INDEX.XML・フォルダ構成・文書セット）、ワンクリックダウンロード | ✅ |
+| 🔍 **マルチテナント** | 組織 ID フィルター | GET /projects/ および GET /documents/ に organization_id クエリフィルター、admin は DB クエリ最適化 | ✅ |
 
 ---
 
@@ -179,12 +183,11 @@ open http://192.168.0.185:5181/
 
 | スイート | テスト数 | カバレッジ | 実行コマンド |
 |---|---|---|---|
-| Backend ユニットテスト | 164 件 | 98% | `pytest tests/console/ -v` |
+| Backend ユニットテスト | 232 件 | 98% | `pytest tests/console/ -v` |
 | Backend E2E 統合テスト | 20 件 | — | `pytest tests/integration/ -v` |
-| Frontend（Vitest） | 103 件 | — | `cd src/console/frontend && npx vitest run` |
-| AI API テスト | 13 件 | — | `pytest tests/console/test_ai.py -v` |
-| Search API テスト | 13 件 | — | `pytest tests/console/test_search.py -v` |
-| **合計** | **313 件** | — | — |
+| Frontend（Vitest） | 108 件 | — | `cd src/console/frontend && npx vitest run` |
+| AI / Search / Phase8 API テスト | 8 件（org_filter） | — | `pytest tests/console/test_org_filter.py -v` |
+| **合計** | **368 件** | — | — |
 
 ```bash
 # バックエンド（SQLite in-memory、DB 不要）
@@ -236,7 +239,9 @@ CivilPDF-DX/
 │       │   │   ├── privacy.py        # 🛡️ GDPR Art.17 プライバシー管理
 │       │   │   ├── ocr.py            # 🔤 OCR テキスト抽出（pypdf）
 │       │   │   ├── ai.py             # 🤖 AI 分類・抽出・要約（Claude API）
-│       │   │   └── search.py         # 🔎 FTS5 全文・セマンティック検索
+│       │   │   ├── search.py         # 🔎 FTS5 全文・セマンティック検索
+│       │   │   ├── organizations.py  # 🏢 組織階層 CRUD（本社→支店→現場）
+│       │   │   └── electronic_delivery.py  # 📦 CALS/EC 電子納品 ZIP 生成
 │       │   ├── models/               # SQLAlchemy ORM モデル
 │       │   │   ├── user.py           # User（RBAC roles）
 │       │   │   ├── document.py       # Document + ApprovalWorkflow
@@ -249,6 +254,8 @@ CivilPDF-DX/
 │       │   │   ├── audit_chain_service.py # SHA-256 チェーン生成
 │       │   │   ├── deletion_job.py    # GDPR 物理削除バッチ
 │       │   │   ├── retention_service.py  # 保持ポリシー判定
+│       │   │   ├── timestamp_service.py  # ⏱ RFC 3161 TSA タイムスタンプ
+│       │   │   ├── electronic_delivery_service.py  # 📦 CALS/EC ZIP 生成
 │       │   │   └── m365.py           # Azure AD 統合
 │       │   ├── middleware/
 │       │   │   └── audit.py          # 🔒 全書き込み操作の自動監査
@@ -273,7 +280,7 @@ CivilPDF-DX/
 │               └── pages/            # ページコンポーネント
 │
 ├── tests/
-│   ├── console/                      # pytest ユニットテスト（164 件）
+│   ├── console/                      # pytest ユニットテスト（232 件）
 │   └── integration/                  # E2E 統合テスト（20 件）
 │
 ├── deploy/
@@ -349,6 +356,12 @@ CivilPDF-DX/
 | **検索** | `/search/documents?q=&mode=keyword\|semantic` | GET | FTS5 全文検索 / セマンティック検索 | 認証済み |
 | **検索** | `/search/documents/reindex` | POST | FTS5 インデックス再構築 | admin / manager |
 | **検索** | `/search/documents/suggest` | GET | AI クエリ拡張候補 | 認証済み |
+| **タイムスタンプ** | `/documents/{id}/timestamp` | POST | RFC 3161 TSA タイムスタンプ付与 | 認証済み |
+| **タイムスタンプ** | `/documents/{id}/timestamp/verify` | GET | タイムスタンプ整合性検証 | 認証済み |
+| **組織管理** | `/organizations/` | GET / POST | 組織階層 一覧・作成 | admin |
+| **組織管理** | `/organizations/{id}` | GET / PUT / DELETE | 組織 取得・更新・削除 | admin |
+| **電子納品** | `/electronic-delivery/packages` | POST | 電子納品 ZIP 生成（CALS/EC 準拠） | manager 以上 |
+| **電子納品** | `/electronic-delivery/packages/{id}/download` | GET | ZIP ダウンロード | manager 以上 |
 
 ---
 
@@ -394,9 +407,11 @@ CivilPDF-DX/
 | **Phase 6** | **フロントエンドテスト強化（Projects/Dashboard/Settings テスト、計 103 件）** | ✅ **完成** |
 | **Phase 6.1** | **プロフィール更新 API（PATCH /auth/me・POST /auth/me/password）** | ✅ **完成** |
 | **Phase 7** | **AI 統合（Claude AI 文書分類・セマンティック検索・構造データ抽出・AI 要約）** | ✅ **完成** |
-| Phase 8 | 電子署名・RFC 3161 タイムスタンプ（e-文書法準拠） | 📋 計画中 |
-| Phase 8 | マルチテナント対応（本社→支店→現場 階層管理） | 📋 計画中 |
-| Phase 9 | 電子納品（国交省電子納品要領準拠 PDF/A 変換） | 📋 計画中 |
+| **Phase 8 P1** | **RFC 3161 電子タイムスタンプ API + DocumentTimestampModal UI（e-文書法準拠）** | ✅ **完成** |
+| **Phase 8 P2** | **組織階層 CRUD API（本社→支店→現場 Alembic マイグレーション済み）** | ✅ **完成** |
+| **Phase 8 P3+P4** | **電子納品 ZIP 生成（国交省 CALS/EC 準拠・INDEX.XML・ワンクリックダウンロード）** | ✅ **完成** |
+| **Phase 8 P5** | **organization_id フィルター（GET /projects/ / GET /documents/ マルチテナントフィルタリング）** | ✅ **完成** |
+| Phase 9 | デスクトップアプリ（Electron / Tauri）・オフライン同期・電子印鑑 | 📋 計画中 |
 
 ---
 
