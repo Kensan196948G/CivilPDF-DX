@@ -9,15 +9,15 @@
   "phase": {
     "current": "release-ready",
     "week": 4,
-    "milestone": "Phase 8 全完了（P1〜P5）・CTO Production Ready 宣言済み（2026-06-03）。PR #36・#37 マージ済み（2026-06-06）。全テスト368件通過。CI 全ジョブ pass。"
+    "milestone": "Phase 8 全完了（P1〜P5）・CTO Production Ready 宣言済み（2026-06-03）。Phase 9 P1 完了（Issue #38: 電子納品 ZIP 実ファイル同梱テスト）。Phase 9 P2 完了（Issue #39: DocumentTimestampModal・ElectronicDeliveryModal フロントエンドコンポーネントテスト 15件追加）。全テスト385件通過。"
   },
   "kpi": {
-    "ci_success_rate": 1.0,
-    "test_pass_rate": 1.0,
-    "test_count": 368,
-    "backend_unit_test_count": 232,
+    "ci_success_rate": 1,
+    "test_pass_rate": 1,
+    "test_count": 385,
+    "backend_unit_test_count": 234,
     "backend_e2e_test_count": 20,
-    "frontend_test_count": 108,
+    "frontend_test_count": 123,
     "coverage_percent": 98,
     "review_blocker_count": 0,
     "security_issue_count": 0,
@@ -30,9 +30,9 @@
     "ci_retry_limit": 15,
     "same_error_limit": 3,
     "session_start": "2026-05-11T00:00:00+09:00",
-    "current_session_start_at": "2026-06-06T08:44:00.000Z",
-    "last_trigger": "manual",
-    "last_cron_session_id": "20260606-pr-merge-CivilPDF-DX"
+    "current_session_start_at": "2026-06-06T16:57:06.611Z",
+    "last_trigger": "cron",
+    "last_cron_session_id": "20260607-013533-CivilPDF-DX"
   },
   "status": {
     "current_phase": "release-ready",
@@ -99,15 +99,16 @@
     "README.md Phase 8 全機能更新（テスト数368・Phase 8 API エンドポイント追加・ロードマップ全完了・PR #34 マージ 2026-06-06）",
     "CTO Production Ready 宣言（2026-06-03）— deploy_ready=true, phase_mode=release-ready, 全テスト368件通過",
     "本番 Docker デプロイ一式作成・マージ（2026-06-06）— docker-compose.prod.yml / Dockerfile.prod / nginx.conf / .env.prod.example / docker-production-deployment.md / scripts/create_admin.py（PR #36 マージ済み）",
-    "Windows 11 展開前事前確認情報シート作成・マージ（2026-06-06）— docs/deployment/windows11-precheck-network-m365.md（CMDB・cert 精査・Entra ID 識別子・M365 非対話式認証設定手順・セキュリティ対応 PR #37 マージ済み）"
+    "Windows 11 展開前事前確認情報シート作成・マージ（2026-06-06）— docs/deployment/windows11-precheck-network-m365.md（CMDB・cert 精査・Entra ID 識別子・M365 非対話式認証設定手順・セキュリティ対応 PR #37 マージ済み）",
+    "Phase 9 P1: 電子納品 ZIP 実ファイル同梱テスト追加（test_generate_zip_with_real_file / test_generate_zip_missing_file_fallback・2テスト追加、テスト計370件、Issue #38 対応）",
+    "Phase 9 P2: フロントエンドコンポーネントテスト追加（DocumentTimestampModal 7件・ElectronicDeliveryModal 8件・合計15件追加、フロントエンドテスト計123件、全テスト計385件、Issue #39 対応）"
   ],
   "next_targets": [
     "[必須/人間作業] GitHub Secrets: ANTHROPIC_API_KEY を repo Settings > Secrets に手動設定",
     "[必須/人間作業] Linux サーバーで docker compose -f docker-compose.prod.yml up -d --build を実行（PR #36 マージ済み 2026-06-06）",
     "[必須/人間作業] 初回管理者ユーザー作成・デフォルトパスワード変更（docs/deployment/docker-production-deployment.md §5 参照）",
     "[必須/人間作業] Windows 11 展開当日は docs/deployment/windows11-precheck-network-m365.md を参照して作業",
-    "[P3] 電子納品 ZIP: 実ファイルが存在する場合の ZIP への同梱（file_path 実ファイル読み込み）",
-    "[P3] フロントエンド Playwright E2E テスト追加（Phase 8 新機能: timestamp / electronic-delivery / org-filter）"
+    "[P2] フロントエンド Playwright E2E テスト追加（Phase 8 新機能: timestamp / electronic-delivery / org-filter）"
   ],
   "learning": {
     "failure_patterns": [
@@ -135,5 +136,8 @@
       "waitFor の外に非同期値の検証を置くと、ラベルテキストが先に表示されて waitFor がすぐ解決してしまい値が 0 のまま失敗する",
       "squash merge コンフリクト解消は cherry-pick + force-with-lease が最もクリーン — 重複コミット履歴を残さず PR 差分も最小になる"
     ]
+  },
+  "compact": {
+    "last_pre_compact_at": "2026-06-06T16:55:23.589Z"
   }
 }
