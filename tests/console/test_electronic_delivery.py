@@ -1,15 +1,18 @@
-"""Tests for electronic delivery ZIP generation (Phase 8 P3).
+"""Tests for electronic delivery ZIP generation (Phase 8 P3 / Phase 9 P1).
 
 Covers:
 - Readiness check API (GET .../check)
 - ZIP generation API (POST .../electronic-delivery)
 - ZIP content validation (folder structure, INDEX.XML)
 - Auth / permission guards
+- Real file inclusion (Phase 9 P1: file_path set → actual bytes in ZIP)
+- Missing file fallback (Phase 9 P1: file_path missing → empty placeholder)
 """
 
 import io
 import sys
 import os
+import tempfile
 import zipfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src/console/backend"))
@@ -100,7 +103,9 @@ def test_check_delivery_non_pdfa_warning(
     client: TestClient, admin_token: str, admin_user: User, db_session
 ):
     proj = _create_project(db_session)
-    _create_document(db_session, proj.id, admin_user.id, is_pdfa=False, filename="bad.pdf")
+    _create_document(
+        db_session, proj.id, admin_user.id, is_pdfa=False, filename="bad.pdf"
+    )
 
     resp = client.get(
         f"/api/v1/projects/{proj.id}/electronic-delivery/check",
@@ -131,9 +136,7 @@ def test_check_delivery_requires_auth(client: TestClient, db_session):
 # ─── ZIP generation endpoint ──────────────────────────────────────────────────
 
 
-def test_generate_zip_empty_project(
-    client: TestClient, admin_token: str, db_session
-):
+def test_generate_zip_empty_project(client: TestClient, admin_token: str, db_session):
     proj = _create_project(db_session)
     resp = client.post(
         f"/api/v1/projects/{proj.id}/electronic-delivery",
@@ -172,7 +175,11 @@ def test_generate_zip_folder_structure(
         db_session, proj.id, admin_user.id, title="写真1", doc_type=DocumentType.PHOTO
     )
     _create_document(
-        db_session, proj.id, admin_user.id, title="検査1", doc_type=DocumentType.INSPECTION
+        db_session,
+        proj.id,
+        admin_user.id,
+        title="検査1",
+        doc_type=DocumentType.INSPECTION,
     )
 
     resp = client.post(
@@ -249,7 +256,7 @@ def test_generate_zip_multiple_docs_same_type(
             db_session,
             proj.id,
             admin_user.id,
-            title=f"図面{i+1}",
+            title=f"図面{i + 1}",
             doc_type=DocumentType.DRAWING,
         )
 
@@ -303,3 +310,86 @@ def test_generate_zip_response_headers(
     assert "content-disposition" in resp.headers
     disposition = resp.headers["content-disposition"]
     assert disposition.startswith("attachment")
+
+
+# ─── Phase 9 P1: Real file inclusion tests ───────────────────────────────────
+
+
+def test_generate_zip_with_real_file(
+    client: TestClient, admin_token: str, admin_user: User, db_session
+):
+    """ZIP must contain actual file bytes when doc.file_path points to a real file."""
+    proj = _create_project(db_session, code="REAL001", name="実ファイルテスト工事")
+
+    # Write known content to a temp file
+    pdf_content = b"%PDF-1.4 fake pdf content for testing real file inclusion"
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as tmp:
+        tmp.write(pdf_content)
+        tmp_path = tmp.name
+
+    try:
+        doc = Document(
+            title="実ファイル図面",
+            document_type=DocumentType.DRAWING,
+            status=DocumentStatus.APPROVED,
+            filename="real.pdf",
+            file_path=tmp_path,
+            file_size=len(pdf_content),
+            is_pdfa=True,
+            project_id=proj.id,
+            owner_id=admin_user.id,
+        )
+        db_session.add(doc)
+        db_session.commit()
+
+        resp = client.post(
+            f"/api/v1/projects/{proj.id}/electronic-delivery",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 200
+
+        zf = zipfile.ZipFile(io.BytesIO(resp.content))
+        drawing_entries = [n for n in zf.namelist() if "DRAWINGS/DRAW_" in n]
+        assert len(drawing_entries) == 1
+
+        # Actual PDF bytes must be present inside the ZIP entry
+        stored_bytes = zf.read(drawing_entries[0])
+        assert stored_bytes == pdf_content
+    finally:
+        os.unlink(tmp_path)
+
+
+def test_generate_zip_missing_file_fallback(
+    client: TestClient, admin_token: str, admin_user: User, db_session
+):
+    """ZIP generation must succeed with empty placeholder when file_path is missing."""
+    proj = _create_project(db_session, code="MISS001", name="欠損ファイルテスト工事")
+
+    doc = Document(
+        title="欠損ファイル図面",
+        document_type=DocumentType.DRAWING,
+        status=DocumentStatus.APPROVED,
+        filename="missing.pdf",
+        file_path="/nonexistent/path/that/does/not/exist.pdf",
+        file_size=2048,
+        is_pdfa=True,
+        project_id=proj.id,
+        owner_id=admin_user.id,
+    )
+    db_session.add(doc)
+    db_session.commit()
+
+    resp = client.post(
+        f"/api/v1/projects/{proj.id}/electronic-delivery",
+        headers={"Authorization": f"Bearer {admin_token}"},
+    )
+    # Must still succeed — missing file falls back to empty bytes
+    assert resp.status_code == 200
+
+    zf = zipfile.ZipFile(io.BytesIO(resp.content))
+    drawing_entries = [n for n in zf.namelist() if "DRAWINGS/DRAW_" in n]
+    assert len(drawing_entries) == 1
+
+    # Fallback returns empty bytes
+    stored_bytes = zf.read(drawing_entries[0])
+    assert stored_bytes == b""
