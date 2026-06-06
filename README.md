@@ -156,6 +156,39 @@ npm run build
 
 ---
 
+### 🐳 本番 Docker デプロイ（推奨）
+
+> **完全な手順書**: [docs/deployment/docker-production-deployment.md](docs/deployment/docker-production-deployment.md)
+
+```bash
+# 1. 環境変数テンプレートをコピーして必須項目を埋める
+cp .env.prod.example .env
+
+# 2. 必須シークレットを生成して .env に設定
+openssl rand -hex 32   # → SECRET_KEY
+openssl rand -hex 24   # → POSTGRES_PASSWORD
+openssl rand -hex 32   # → TIMESTAMP_HMAC_KEY
+
+# 3. ビルド & 起動（3 サービス: db / backend / frontend）
+docker compose -f docker-compose.prod.yml up -d --build
+
+# 4. 初回管理者ユーザー作成
+docker compose -f docker-compose.prod.yml cp scripts/create_admin.py backend:/app/create_admin.py
+docker compose -f docker-compose.prod.yml exec -w /app backend python create_admin.py
+# 既定: admin@example.com / AdminPass123! → 初回ログイン後すぐにパスワードを変更
+
+# 5. 動作確認
+curl http://localhost:8080/health
+```
+
+| サービス | 公開 | 役割 |
+|---|---|---|
+| `db` (PostgreSQL 16) | ❌ 内部のみ | 永続データ |
+| `backend` (FastAPI uvicorn) | ❌ 内部のみ | API サーバー |
+| `frontend` (nginx + SPA) | ✅ `${FRONTEND_PORT:-8080}` | SPA 配信 + `/api/` プロキシ |
+
+---
+
 ### 🖥️ systemd 登録（LAN アクセス用）
 
 ```bash
@@ -451,6 +484,7 @@ CivilPDF-DX/
 | 要件定義書 | [docs/requirements.md](docs/requirements.md) | 機能要件・非機能要件・受入れ基準 |
 | DB 設計書 | [docs/database-design.md](docs/database-design.md) | ER 図・テーブル定義・インデックス |
 | システム構成図 | [docs/architecture/system-architecture.md](docs/architecture/system-architecture.md) | 全体構成・認証フロー・デプロイ構成 |
+| 本番デプロイ手順 | [docs/deployment/docker-production-deployment.md](docs/deployment/docker-production-deployment.md) | Docker Compose 本番デプロイ完全手順 |
 | API リファレンス | [docs/api/README.md](docs/api/README.md) | REST エンドポイント詳細仕様 |
 | WebUI 画面一覧 | [docs/webui-screens.md](docs/webui-screens.md) | 管理コンソール 12 画面仕様 |
 | フォント一覧 | [docs/civilpdf-font-docs/fonts-README.md](docs/civilpdf-font-docs/fonts-README.md) | 3 層 16 書体・ダウンロード手順 |

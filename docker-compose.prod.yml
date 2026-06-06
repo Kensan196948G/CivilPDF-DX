@@ -1,0 +1,90 @@
+# =============================================================================
+# CivilPDF-DX — Production Docker Compose
+# =============================================================================
+# 本番用構成。開発用の docker-compose.yml とは分離している（後方互換）。
+#
+# Usage:
+#   cp .env.prod.example .env        # secrets を記入（.env は gitignore 済み）
+#   docker compose -f docker-compose.prod.yml up -d --build
+#   docker compose -f docker-compose.prod.yml logs -f
+#
+# Security posture:
+#   - db / backend のポートはホストに公開しない（内部ネットワークのみ）。
+#   - API はフロントエンド nginx の /api/ リバースプロキシ経由で到達する。
+#   - 公開ポートは frontend (既定 8080) のみ。HTTPS は前段の TLS リバースプロキシで終端する。
+# =============================================================================
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-civilpdf}
+      POSTGRES_USER: ${POSTGRES_USER:-civilpdf}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required (see .env.prod.example)}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-civilpdf} -d ${POSTGRES_DB:-civilpdf}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - civilpdf
+
+  backend:
+    build:
+      context: src/console/backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    # .env から SECRET_KEY / CORS_ORIGINS / ANTHROPIC_API_KEY / TIMESTAMP_HMAC_KEY 等を注入
+    env_file:
+      - .env
+    environment:
+      # DATABASE_URL は compose 側で組み立て、db サービスを必ず指す（.env の値より優先）
+      DATABASE_URL: postgresql://${POSTGRES_USER:-civilpdf}:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}@db:5432/${POSTGRES_DB:-civilpdf}
+      UPLOAD_DIR: /app/uploads
+      PYTHONUNBUFFERED: "1"
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - uploaded_files:/app/uploads
+    # 起動時に Alembic マイグレーションを適用してから uvicorn を複数ワーカーで起動
+    command: >
+      sh -c "alembic upgrade head &&
+             uvicorn main:app --host 0.0.0.0 --port 8000 --workers ${UVICORN_WORKERS:-4}"
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/health')\""]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
+    networks:
+      - civilpdf
+
+  frontend:
+    build:
+      context: src/console/frontend
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost/ >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - civilpdf
+
+volumes:
+  postgres_data:
+  uploaded_files:
+
+networks:
+  civilpdf:
+    driver: bridge
