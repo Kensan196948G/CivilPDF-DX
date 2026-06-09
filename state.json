@@ -41,16 +41,17 @@
     "current_phase": "release-ready",
     "stable": true,
     "deploy_ready": true,
-    "last_pr": 37,
-    "last_pr_status": "merged (2026-06-06) — Windows 11 展開前事前確認情報シート: docs/deployment/windows11-precheck-network-m365.md",
-    "last_merged_pr": 37,
+    "last_pr": 41,
+    "last_pr_status": "merged (2026-06-09) — 機能ページを Enterprise シェルへ統合 + 認証再水和修正 + Playwright E2E + CI 強化（Issue #39 完遂・CI 全8ジョブ pass・squash 9ce8ea7）",
+    "last_merged_pr": 41,
     "release_version": "v0.8.0-phase8-complete",
-    "last_closed_issue": 13,
+    "last_closed_issue": 39,
     "frontend_lan_url": "http://192.168.0.185:5181/",
     "frontend_systemd_unit": "civilpdf-frontend.service (dev:lan @ 5181)",
     "frontend_pid": 922295,
+    "frontend_app_architecture": "App.tsx → EnterpriseLayout(shell) → documents/projects/workflow/audit/users/settings は API 接続済み pages/ をレンダリング。lp/upload/viewer/apps/security/m365/privacy/dashboard は現状 mockup views/（実 API 接続は follow-up）。",
     "cto_production_ready_at": "2026-06-03T12:31:55Z",
-    "cto_declaration": "Phase 8 全完了。テスト368件・CI全pass・セキュリティ問題0・blocker 0。本番デプロイ準備完了。"
+    "cto_declaration": "Phase 8 全完了。Phase 9 で Phase 8 機能のシェル統合・到達性を E2E 検証。全テスト397件・CI 全8ジョブ pass・本番依存脆弱性0・blocker 0。Production Ready 維持。"
   },
   "completed": [
     "FastAPI バックエンド基盤",
