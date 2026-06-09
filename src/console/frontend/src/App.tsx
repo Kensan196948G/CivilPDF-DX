@@ -1,14 +1,34 @@
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ProtectedRoute } from './components/ProtectedRoute'
 import { Login } from './pages/Login'
 import { EnterpriseLayout } from './components/enterprise/EnterpriseLayout'
+import { useAuthStore } from './store/auth'
+import { getMe } from './api/auth'
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 1, staleTime: 30_000 } },
 })
 
 export default function App() {
+  const setUser = useAuthStore((s) => s.setUser)
+
+  // Rehydrate the authenticated user on reload. A token persists in
+  // localStorage across reloads while the in-memory user resets to null.
+  // Without this, RBAC-gated UI (electronic delivery, admin actions) would
+  // silently disappear after a page refresh even for admins/managers.
+  useEffect(() => {
+    if (useAuthStore.getState().user) return
+    if (!localStorage.getItem('access_token')) return
+    getMe()
+      .then(setUser)
+      .catch(() => {
+        // 401 is handled by the axios interceptor (redirect to /login);
+        // ignore other transient errors and keep the current auth state.
+      })
+  }, [setUser])
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
