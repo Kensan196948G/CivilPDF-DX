@@ -12,7 +12,9 @@ export default defineConfig({
       },
     },
     setupFiles: ['./src/test/setup.ts'],
-    exclude: ['node_modules/**', '**/.claude/**', 'dist/**'],
+    // e2e/** holds Playwright specs (*.spec.ts) — excluded so vitest does not
+    // try to run them with its own runner.
+    exclude: ['node_modules/**', '**/.claude/**', 'dist/**', 'e2e/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],

@@ -18,7 +18,7 @@ CivilPDF-DX は、**建設・土木業における PDF 業務を一気通貫で�
 JWT 認証・M365 統合・多段階承認ワークフロー・PDF/A バリデーション・GDPR 対応プライバシー管理・ISO 19650 メタデータ管理・改ざん検知付き監査チェーン・**Claude AI による文書分類/セマンティック検索/構造データ抽出**・RFC 3161 電子タイムスタンプ・組織階層管理・国交省 CALS/EC 準拠電子納品 ZIP を LAN 上のブラウザから即座に利用できます。
 
 対象規模は**中堅〜大手ゼネコン・サブコン（従業員 50〜5,000 名）**。  
-Phase 8 全機能（RFC3161 タイムスタンプ・組織階層・電子納品・組織フィルター）実装済み。バックエンドテスト 232 件・E2E テスト 20 件・フロントエンドテスト 108 件・AI/Search/Phase8 API テスト 8 件（計 **368 件**）、CI カバレッジ 98%。
+Phase 8 全機能（RFC3161 タイムスタンプ・組織階層・電子納品・組織フィルター）実装済み。これらの機能は Enterprise シェル（`EnterpriseLayout`）から API 接続済みの機能ページとして到達可能で、Playwright E2E で実ブラウザ検証済み。バックエンドテスト 234 件・E2E テスト 20 件・フロントエンド Vitest 132 件・Playwright E2E 3 件・AI/Search/Phase8 API テスト 8 件（計 **397 件**）、CI カバレッジ 98%。
 
 ---
 
@@ -216,11 +216,14 @@ open http://192.168.0.185:5181/
 
 | スイート | テスト数 | カバレッジ | 実行コマンド |
 |---|---|---|---|
-| Backend ユニットテスト | 232 件 | 98% | `pytest tests/console/ -v` |
+| Backend ユニットテスト | 234 件 | 98% | `pytest tests/console/ -v` |
 | Backend E2E 統合テスト | 20 件 | — | `pytest tests/integration/ -v` |
-| Frontend（Vitest） | 108 件 | — | `cd src/console/frontend && npx vitest run` |
+| Frontend（Vitest） | 132 件 | — | `cd src/console/frontend && npm run test` |
+| Frontend E2E（Playwright） | 3 件 | — | `cd src/console/frontend && npm run test:e2e` |
 | AI / Search / Phase8 API テスト | 8 件（org_filter） | — | `pytest tests/console/test_org_filter.py -v` |
-| **合計** | **368 件** | — | — |
+| **合計** | **397 件** | — | — |
+
+> **Frontend E2E（Playwright）** は本番ビルド（`vite preview`）に対し実ブラウザで動作し、バックエンド API は `page.route` でモックするため DB / バックエンド起動は不要です。Phase 8 機能（電子タイムスタンプ・電子納品・組織フィルター）が Enterprise シェル経由で到達可能であることを検証します。
 
 ```bash
 # バックエンド（SQLite in-memory、DB 不要）
@@ -238,7 +241,8 @@ export PYTHONPATH=src/console/backend
 cd src/console/frontend
 npm run lint
 npm run build
-npx vitest run
+npm run test         # Vitest 132 件（コンポーネント + シェル統合）
+npm run test:e2e     # Playwright E2E 3 件（実ブラウザ・API モック）
 ```
 
 ### CI ゲート（GitHub Actions）
@@ -248,7 +252,8 @@ npx vitest run
 | `backend-lint` | ruff check + ruff format --check |
 | `backend-test` | pytest 164 件（SQLite in-memory、カバレッジ 98%） |
 | `backend-security` | pip-audit 依存脆弱性スキャン |
-| `frontend-lint-test` | ESLint 0 errors + TypeScript build (Vite) |
+| `frontend-lint-test` | ESLint 0 errors + Vitest 132 件 + TypeScript build (Vite) |
+| `frontend-e2e` | Playwright E2E 3 件（chromium・本番ビルド + API モック） |
 | `integration-test` | E2E テスト 20 件（認証 / 文書 / 承認 / GDPR / RBAC） |
 
 ---

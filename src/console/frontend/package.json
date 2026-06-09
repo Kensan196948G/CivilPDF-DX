@@ -11,7 +11,8 @@
     "preview": "vite preview",
     "test": "node --disable-wasm-trap-handler node_modules/.bin/vitest run --config vitest.config.ts",
     "test:watch": "node --disable-wasm-trap-handler node_modules/.bin/vitest --config vitest.config.ts",
-    "test:coverage": "node --disable-wasm-trap-handler node_modules/.bin/vitest run --config vitest.config.ts --coverage"
+    "test:coverage": "node --disable-wasm-trap-handler node_modules/.bin/vitest run --config vitest.config.ts --coverage",
+    "test:e2e": "playwright test"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.100.9",
@@ -26,6 +27,7 @@
     "@emnapi/core": "^1.10.0",
     "@emnapi/runtime": "^1.10.0",
     "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.60.0",
     "@tailwindcss/vite": "^4.3.0",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",

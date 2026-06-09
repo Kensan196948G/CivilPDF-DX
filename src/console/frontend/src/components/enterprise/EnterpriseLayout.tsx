@@ -2,20 +2,25 @@ import { type FC, useState, useEffect, useRef, useCallback } from 'react'
 import '../../styles/enterprise.css'
 import { LandingView } from './views/LandingView'
 import { DashboardView } from './views/DashboardView'
-import { DocumentsView } from './views/DocumentsView'
 import { UploadView } from './views/UploadView'
 import { ViewerView } from './views/ViewerView'
-import { WorkflowView } from './views/WorkflowView'
 import { AppsView } from './views/AppsView'
 import { SecurityView } from './views/SecurityView'
-import { AuditView } from './views/AuditView'
 import { M365View } from './views/M365View'
-import { SettingsView } from './views/SettingsView'
 import { PrivacyView } from './views/PrivacyView'
+// ── Functional, API-connected pages integrated into the enterprise shell ──
+// These replace the former static-mockup views so Phase 5–8 features
+// (timestamp / electronic delivery / RBAC / workflow / audit) are reachable.
+import { Documents } from '../../pages/Documents'
+import { Projects } from '../../pages/Projects'
+import { Workflows } from '../../pages/Workflows'
+import { AuditLogs } from '../../pages/AuditLogs'
+import { Settings as SettingsPage } from '../../pages/Settings'
+import { Users } from '../../pages/Users'
 import { useAuthStore } from '../../store/auth'
 import type { UserResponse } from '../../api/auth'
 
-type ViewId = 'lp' | 'dashboard' | 'documents' | 'upload' | 'viewer' | 'workflow' | 'apps' | 'security' | 'audit' | 'm365' | 'settings' | 'privacy'
+type ViewId = 'lp' | 'dashboard' | 'documents' | 'projects' | 'upload' | 'viewer' | 'workflow' | 'apps' | 'security' | 'audit' | 'm365' | 'settings' | 'privacy' | 'users'
 type DashSubView = 'overview' | 'stats' | 'dist' | 'users'
 type Role = 'op' | 'rev' | 'adm'
 type ToastType = 'ok' | 'warn' | 'error'
@@ -51,6 +56,7 @@ const NAV_GROUPS = [
     label: 'Docs',
     items: [
       { id: 'documents', label: '図書管理' },
+      { id: 'projects', label: 'プロジェクト' },
       { id: 'upload', label: '取込/解析' },
       { id: 'viewer', label: 'ビューア' },
       { id: 'workflow', label: 'ワークフロー' },
@@ -64,6 +70,7 @@ const NAV_GROUPS = [
       { id: 'audit', label: '監査' },
       { id: 'm365', label: 'Microsoft365' },
       { id: 'privacy', label: 'プライバシー' },
+      { id: 'users', label: 'ユーザー管理' },
       { id: 'settings', label: 'システム設定' },
     ],
   },
@@ -111,7 +118,8 @@ const PUSH_POOL: { text: string; view: ViewId }[] = [
 const SEARCH_INDEX = [
   { label: '概要ページ', desc: 'ランディング / ビューへ移動', view: 'lp', icon: '🏠' },
   { label: 'ダッシュボード', desc: 'KPI・ジョブ概要', view: 'dashboard', icon: '📊' },
-  { label: '図書管理', desc: '文書一覧・フィルタ・詳細', view: 'documents', icon: '📁' },
+  { label: '図書管理', desc: '文書一覧・フィルタ・電子タイムスタンプ', view: 'documents', icon: '📁' },
+  { label: 'プロジェクト', desc: 'プロジェクト管理・電子納品パッケージ生成', view: 'projects', icon: '🏗️' },
   { label: '取込/解析', desc: 'PDFアップロード・OCR解析', view: 'upload', icon: '⬆️' },
   { label: 'ビューア', desc: 'PDFプレビュー・チェック', view: 'viewer', icon: '👁' },
   { label: 'ワークフロー', desc: '承認フロー・電子印鑑', view: 'workflow', icon: '✅' },
@@ -120,6 +128,7 @@ const SEARCH_INDEX = [
   { label: '監査ログ', desc: '操作履歴・証跡管理', view: 'audit', icon: '📋' },
   { label: 'Microsoft365', desc: 'SharePoint・Teams連携', view: 'm365', icon: '☁️' },
   { label: 'プライバシー管理', desc: '同意管理・データエクスポート・削除権 (GDPR/CCPA)', view: 'privacy', icon: '🔐' },
+  { label: 'ユーザー管理', desc: 'ユーザー一覧・RBAC・権限管理', view: 'users', icon: '👥' },
   { label: 'システム設定', desc: '一般・ユーザー・セキュリティ設定', view: 'settings', icon: '⚙️' },
 ]
 
@@ -418,25 +427,29 @@ export const EnterpriseLayout: FC = () => {
           </div>
         )
       case 'documents':
-        return <DocumentsView {...viewProps} />
+        return <Documents />
+      case 'projects':
+        return <Projects />
       case 'upload':
         return <UploadView {...viewProps} />
       case 'viewer':
         return <ViewerView {...viewProps} />
       case 'workflow':
-        return <WorkflowView {...viewProps} />
+        return <Workflows />
       case 'apps':
         return <AppsView {...viewProps} />
       case 'security':
         return <SecurityView {...viewProps} />
       case 'audit':
-        return <AuditView {...viewProps} />
+        return <AuditLogs />
       case 'm365':
         return <M365View {...viewProps} />
       case 'privacy':
         return <PrivacyView {...viewProps} />
+      case 'users':
+        return <Users />
       case 'settings':
-        return <SettingsView {...viewProps} />
+        return <SettingsPage />
       default:
         return null
     }
