@@ -154,6 +154,17 @@ npm run build
 > `vite.config.ts` の API プロキシはデフォルトで `http://localhost:8000` を向いており、`VITE_API_URL` で上書き可能です。  
 > `docker-compose.yml` では、Compose ネットワーク内解決のため `VITE_API_URL=http://backend:8000/api/v1` を指定しています。
 
+#### 🎭 モックモード（バックエンド不要）
+
+```bash
+npm run dev:mock      # http://localhost:5173（モック環境）
+npm run dev:lan:mock  # http://0.0.0.0:5181（LAN 公開 + モック）
+```
+
+`--mode mock`（`.env.mock` の `VITE_MOCK=1`）で起動すると、全 API リクエストをブラウザ内のモックアダプター（`src/mock/`）が応答し、**バックエンド無しで全ページが動作**します。デモ・UI 確認用に建設業ドメインのダミーデータ（文書 150 件・プロジェクト 24 件・ユーザー 32 名・ワークフロー 60 件・監査ログ 400 件）を投入済みで、ログインは任意のメール / パスワードで通ります。作成・削除・承認などの操作はメモリ上のストアに反映されます（リロードで初期化）。
+
+> ⚠️ モックは認証をバイパスするため **dev 専用** です。`client.ts` が `import.meta.env.DEV` を必須条件にしているため、本番ビルド（`vite build`）ではモードに関わらずモックは有効化されず、バンドルにも含まれません。
+
 ---
 
 ### 🐳 本番 Docker デプロイ（推奨）

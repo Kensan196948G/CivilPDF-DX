@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:mock": "vite --mode mock",
     "dev:lan": "vite --config vite.lan.config.ts",
+    "dev:lan:mock": "vite --config vite.lan.config.ts --mode mock",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
