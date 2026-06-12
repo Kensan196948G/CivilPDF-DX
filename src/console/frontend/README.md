@@ -1,4 +1,23 @@
-# React + TypeScript + Vite
+# CivilPDF-DX Frontend (React + TypeScript + Vite)
+
+## 🎭 モックモード（VITE_MOCK / dev 専用）
+
+`npm run dev:mock`（`vite --mode mock` → `.env.mock` の `VITE_MOCK=1`）で起動すると、
+`src/mock/` の axios adapter が全 `/api/v1/*` をブラウザ内で応答し、バックエンド無しで全ページが動作します。
+
+- ログインは任意のメール / パスワードで通ります（モック admin としてログイン）
+- ダミーデータ: 文書150・プロジェクト24・ユーザー32・ワークフロー60・監査ログ400
+- ミューテーションはメモリ上のストアに反映（リロードで初期化）
+
+### ⚠️ 本番禁止事項
+
+モックは認証をバイパスするため **dev 専用** です。`client.ts` は `import.meta.env.DEV` を必須条件に
+しているため、`vite build`（本番ビルド）ではモードに関わらずモックは有効化されず、コードも
+バンドルに含まれません。本番デプロイ物にモックを含めないでください。
+
+---
+
+## React + TypeScript + Vite (template notes)
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
 

@@ -102,6 +102,18 @@ describe('mockAdapter', () => {
     expect(search.data.hits.length).toBeLessThanOrEqual(5)
   })
 
+  it('rejects invalid enum payloads with 422', async () => {
+    const wf = mockWorkflows.find((w) => w.steps.some((s) => s.status === 'pending'))!
+    const step = wf.steps.find((s) => s.status === 'pending')!
+    await expect(
+      mockAdapter(req('post', `/workflows/${wf.id}/steps/${step.id}/decide`, { data: JSON.stringify({ decision: 'maybe' }) })),
+    ).rejects.toMatchObject({ response: { status: 422 } })
+
+    await expect(
+      mockAdapter(req('patch', `/users/${mockUsers[1].id}`, { data: JSON.stringify({ role: 'superuser' }) })),
+    ).rejects.toMatchObject({ response: { status: 422 } })
+  })
+
   it('rejects unknown routes with a 404-shaped error', async () => {
     await expect(mockAdapter(req('get', '/no-such-endpoint'))).rejects.toMatchObject({
       response: { status: 404 },

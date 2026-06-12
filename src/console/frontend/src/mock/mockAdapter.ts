@@ -32,15 +32,22 @@ function respond(
   } as AxiosResponse
 }
 
-function notFound(config: InternalAxiosRequestConfig, path: string): never {
-  const error = new Error(`Mock route not found: ${config.method?.toUpperCase()} ${path}`) as Error & {
+function httpError(config: InternalAxiosRequestConfig, status: number, detail: string): never {
+  const error = new Error(`Mock ${status}: ${config.method?.toUpperCase()} ${detail}`) as Error & {
     response: { status: number; data: unknown }
     config: InternalAxiosRequestConfig
   }
-  error.response = { status: 404, data: { detail: 'Not found (mock)' } }
+  error.response = { status, data: { detail } }
   error.config = config
   throw error
 }
+
+function notFound(config: InternalAxiosRequestConfig, path: string): never {
+  httpError(config, 404, `Not found (mock): ${path}`)
+}
+
+const USER_ROLES: readonly UserRole[] = ['admin', 'manager', 'engineer', 'viewer']
+const USER_STATUSES: readonly UserStatus[] = ['active', 'inactive', 'suspended']
 
 /** Parse path (without /api/v1 prefix) and merged query params. */
 function parseRequest(config: InternalAxiosRequestConfig): { path: string; query: URLSearchParams } {
@@ -264,6 +271,9 @@ function handle(config: InternalAxiosRequestConfig): unknown {
     if (!wf) notFound(config, path)
     const step = wf!.steps.find((s) => s.id === m![2])
     if (!step) notFound(config, path)
+    if (body.decision !== 'approve' && body.decision !== 'reject') {
+      httpError(config, 422, `Invalid decision: ${String(body.decision)} (expected approve|reject)`)
+    }
     step!.status = body.decision === 'approve' ? 'approved' : 'rejected'
     step!.comment = (body.comment as string | undefined) ?? null
     step!.decided_at = nowIso()
@@ -280,6 +290,9 @@ function handle(config: InternalAxiosRequestConfig): unknown {
   /* ----- users ----- */
   if (path === '/users' && method === 'get') return [...mockUsers]
   if (path === '/users' && method === 'post') {
+    if (body.role !== undefined && !USER_ROLES.includes(body.role as UserRole)) {
+      httpError(config, 422, `Invalid role: ${String(body.role)}`)
+    }
     const user = {
       id: nextId('u'),
       email: String(body.email ?? 'new@civilpdf.example.jp'),
@@ -298,8 +311,14 @@ function handle(config: InternalAxiosRequestConfig): unknown {
     const user = mockUsers.find((u) => u.id === m![1])
     if (!user) notFound(config, path)
     if (typeof body.full_name === 'string') user!.full_name = body.full_name
-    if (typeof body.role === 'string') user!.role = body.role as UserRole
-    if (typeof body.status === 'string') user!.status = body.status as UserStatus
+    if (body.role !== undefined) {
+      if (!USER_ROLES.includes(body.role as UserRole)) httpError(config, 422, `Invalid role: ${String(body.role)}`)
+      user!.role = body.role as UserRole
+    }
+    if (body.status !== undefined) {
+      if (!USER_STATUSES.includes(body.status as UserStatus)) httpError(config, 422, `Invalid status: ${String(body.status)}`)
+      user!.status = body.status as UserStatus
+    }
     return user
   }
   if (m && method === 'delete') {

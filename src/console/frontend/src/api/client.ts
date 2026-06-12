@@ -8,7 +8,9 @@ export const api = axios.create({
 // VITE_MOCK=1 (npm run dev:mock): answer every request from the in-memory
 // mock store instead of the network. Lazy import keeps mock data out of
 // non-mock bundles (the env check is statically eliminated at build time).
-if (import.meta.env.VITE_MOCK === '1') {
+// DEV-only: production builds can never activate the mock (the /auth/token
+// mock accepts any credentials, so shipping it would amount to auth bypass).
+if (import.meta.env.DEV && import.meta.env.VITE_MOCK === '1') {
   api.defaults.adapter = async (config) => {
     const { mockAdapter } = await import('../mock/mockAdapter')
     return mockAdapter(config)
