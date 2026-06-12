@@ -5,8 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:mock": "vite --mode mock",
     "dev:lan": "vite --config vite.lan.config.ts",
+    "dev:lan:mock": "vite --config vite.lan.config.ts --mode mock",
     "build": "tsc -b && vite build",
+    "build:mock": "tsc -b && vite build --mode mock",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "node --disable-wasm-trap-handler node_modules/.bin/vitest run --config vitest.config.ts",
