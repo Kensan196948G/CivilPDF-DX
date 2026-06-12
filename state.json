@@ -36,7 +36,7 @@
     "current_session_start_at": "2026-06-12T09:09:18.976Z",
     "last_trigger": "manual",
     "last_cron_session_id": "20260612-174051-CivilPDF-DX",
-    "last_stop_at": "2026-06-09T10:56:57.993Z"
+    "last_stop_at": "2026-06-12T09:43:49.621Z"
   },
   "status": {
     "current_phase": "release-ready",
@@ -450,6 +450,40 @@
       "kind": "goal_rotation_forced_advance",
       "message": "フェーズ development が Completion Criteria 未達のままリトライ上限 (2) を超過。次フェーズへ強制前進しました。未達項目は次周回で回収してください。",
       "phase": "development"
+    },
+    {
+      "at": "2026-06-12T09:40:45.651Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 9 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/frontend/e2e/helpers.ts",
+        "src/console/frontend/eslint.config.js",
+        "src/console/frontend/playwright.config.ts",
+        "src/console/frontend/src/App.tsx",
+        "src/console/frontend/src/api/client.ts",
+        "src/console/frontend/src/components/enterprise/EnterpriseLayout.tsx",
+        "src/console/frontend/src/mock/mockData.ts",
+        "src/console/frontend/vitest.config.ts",
+        "tests/console/test_electronic_delivery.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-12T09:43:49.678Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 9 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/frontend/e2e/helpers.ts",
+        "src/console/frontend/eslint.config.js",
+        "src/console/frontend/playwright.config.ts",
+        "src/console/frontend/src/App.tsx",
+        "src/console/frontend/src/api/client.ts",
+        "src/console/frontend/src/components/enterprise/EnterpriseLayout.tsx",
+        "src/console/frontend/src/mock/mockData.ts",
+        "src/console/frontend/vitest.config.ts",
+        "tests/console/test_electronic_delivery.py"
+      ],
+      "truncated": false
     }
   ],
   "goal_rotation": {
