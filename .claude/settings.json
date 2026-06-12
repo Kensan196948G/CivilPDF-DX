@@ -37,7 +37,11 @@
   },
   "respectGitignore": true,
   "includeCoAuthoredBy": true,
-  "outputStyle": "Explanatory",
+  "outputStyle": "Explanatory-Icons",
+  "statusLine": {
+    "type": "command",
+    "command": "python .claude/statusline.py"
+  },
   "language": "日本語",
   "spinnerTipsEnabled": true,
   "alwaysThinkingEnabled": true,
