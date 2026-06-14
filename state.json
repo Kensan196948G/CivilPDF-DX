@@ -33,17 +33,17 @@
     "ci_retry_limit": 15,
     "same_error_limit": 3,
     "session_start": "2026-05-11T00:00:00+09:00",
-    "current_session_start_at": "2026-06-14T05:15:10.473Z",
+    "current_session_start_at": "2026-06-14T09:59:41.687Z",
     "last_trigger": "cron",
     "last_cron_session_id": "20260614-062412-CMDB-DocKit",
-    "last_stop_at": "2026-06-14T05:15:39.328Z"
+    "last_stop_at": "2026-06-14T05:16:40.160Z"
   },
   "status": {
     "current_phase": "release-ready",
     "stable": true,
     "deploy_ready": true,
-    "last_pr": 45,
-    "last_pr_status": "merged (2026-06-14T05:09:05Z / a2427de) — README 非エンジニア向け全面改訂 + docs/for-it-staff.md + docs/tech-stack.md 新規作成 + pypdf CVE-2026-48156/48155 修正（Phase 10 ドキュメント再編）",
+    "last_pr": 46,
+    "last_pr_status": "open — feat/viewer-api-integration: ViewerView を静的モックから実API連携（listDocuments/extractDocumentData/classifyDocument）に切替。PR #46 作成済み (2026-06-14)",
     "last_merged_pr": 45,
     "release_version": "v0.8.0-phase8-complete",
     "last_closed_issue": 42,
@@ -174,7 +174,7 @@
     }
   },
   "compact": {
-    "last_pre_compact_at": "2026-06-14T05:13:29.241Z"
+    "last_pre_compact_at": "2026-06-14T09:58:18.636Z"
   },
   "dreaming": {
     "patterns": [],
@@ -717,7 +717,12 @@
   "goal_rotation": {
     "mode": "phase",
     "current": "verify",
-    "sequence": ["monitor", "development", "verify", "improvement"],
+    "sequence": [
+      "monitor",
+      "development",
+      "verify",
+      "improvement"
+    ],
     "phase_done": true,
     "phase_done_at": "2026-06-12T09:40:00.000Z",
     "retry_count": 0,
