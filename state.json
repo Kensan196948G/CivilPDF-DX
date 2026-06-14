@@ -33,17 +33,17 @@
     "ci_retry_limit": 15,
     "same_error_limit": 3,
     "session_start": "2026-05-11T00:00:00+09:00",
-    "current_session_start_at": "2026-06-12T09:09:18.976Z",
-    "last_trigger": "manual",
-    "last_cron_session_id": "20260612-174051-CivilPDF-DX",
+    "current_session_start_at": "2026-06-14T04:56:07.609Z",
+    "last_trigger": "cron",
+    "last_cron_session_id": "20260614-062412-CMDB-DocKit",
     "last_stop_at": "2026-06-12T09:43:49.621Z"
   },
   "status": {
     "current_phase": "release-ready",
     "stable": true,
     "deploy_ready": true,
-    "last_pr": 43,
-    "last_pr_status": "merged (2026-06-12) — WebUI モックモード VITE_MOCK 追加（Issue #42・CI 全8ジョブ pass x2・Codex Review High 修正済み・squash f0ad1b7）",
+    "last_pr": 45,
+    "last_pr_status": "open (2026-06-14) — README 非エンジニア向け全面改訂 + docs/for-it-staff.md + docs/tech-stack.md 新規作成（Phase 10 ドキュメント再編・c69d80f）",
     "last_merged_pr": 43,
     "release_version": "v0.8.0-phase8-complete",
     "last_closed_issue": 42,
@@ -174,7 +174,7 @@
     }
   },
   "compact": {
-    "last_pre_compact_at": "2026-06-06T16:55:23.589Z"
+    "last_pre_compact_at": "2026-06-14T04:54:31.369Z"
   },
   "dreaming": {
     "patterns": [],
@@ -489,12 +489,7 @@
   "goal_rotation": {
     "mode": "phase",
     "current": "verify",
-    "sequence": [
-      "monitor",
-      "development",
-      "verify",
-      "improvement"
-    ],
+    "sequence": ["monitor", "development", "verify", "improvement"],
     "phase_done": true,
     "phase_done_at": "2026-06-12T09:40:00.000Z",
     "retry_count": 0,
