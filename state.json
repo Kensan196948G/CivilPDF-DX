@@ -33,18 +33,18 @@
     "ci_retry_limit": 15,
     "same_error_limit": 3,
     "session_start": "2026-05-11T00:00:00+09:00",
-    "current_session_start_at": "2026-06-14T04:56:07.609Z",
+    "current_session_start_at": "2026-06-14T05:01:46.992Z",
     "last_trigger": "cron",
     "last_cron_session_id": "20260614-062412-CMDB-DocKit",
-    "last_stop_at": "2026-06-12T09:43:49.621Z"
+    "last_stop_at": "2026-06-14T05:07:35.362Z"
   },
   "status": {
     "current_phase": "release-ready",
     "stable": true,
     "deploy_ready": true,
     "last_pr": 45,
-    "last_pr_status": "open (2026-06-14) — README 非エンジニア向け全面改訂 + docs/for-it-staff.md + docs/tech-stack.md 新規作成（Phase 10 ドキュメント再編・c69d80f）",
-    "last_merged_pr": 43,
+    "last_pr_status": "merged (2026-06-14T05:09:05Z / a2427de) — README 非エンジニア向け全面改訂 + docs/for-it-staff.md + docs/tech-stack.md 新規作成 + pypdf CVE-2026-48156/48155 修正（Phase 10 ドキュメント再編）",
+    "last_merged_pr": 45,
     "release_version": "v0.8.0-phase8-complete",
     "last_closed_issue": 42,
     "frontend_lan_url": "http://192.168.0.185:5181/",
@@ -174,7 +174,7 @@
     }
   },
   "compact": {
-    "last_pre_compact_at": "2026-06-14T04:54:31.369Z"
+    "last_pre_compact_at": "2026-06-14T05:00:10.950Z"
   },
   "dreaming": {
     "patterns": [],
@@ -484,6 +484,82 @@
         "tests/console/test_electronic_delivery.py"
       ],
       "truncated": false
+    },
+    {
+      "at": "2026-06-14T04:58:05.239Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 40 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        ".claude/claudeos/scripts/hooks/agent-teams-tracker.js",
+        ".claude/claudeos/scripts/hooks/agent-transcript.js",
+        ".claude/claudeos/scripts/hooks/auto-format.js",
+        ".claude/claudeos/scripts/hooks/dreaming-runner.js",
+        ".claude/claudeos/scripts/hooks/evaluate-session.js",
+        ".claude/claudeos/scripts/hooks/goal-rotation.js",
+        ".claude/claudeos/scripts/hooks/notify-stable.js",
+        ".claude/claudeos/scripts/hooks/pre-commit-gate.js",
+        ".claude/claudeos/scripts/hooks/pre-compact.js",
+        ".claude/claudeos/scripts/hooks/quality-gate-check.js",
+        ".claude/claudeos/scripts/hooks/reasoning-bank.js",
+        ".claude/claudeos/scripts/hooks/session-end.js",
+        ".claude/claudeos/scripts/hooks/session-start.js",
+        ".claude/claudeos/scripts/hooks/stop-continue-gate.js",
+        ".claude/claudeos/scripts/hooks/suggest-compact.js",
+        ".claude/claudeos/scripts/hooks/task-completed-gate.js",
+        ".claude/claudeos/scripts/hooks/task-created-gate.js",
+        ".claude/claudeos/scripts/hooks/tdd-coverage-scan.js",
+        ".claude/claudeos/scripts/hooks/teammate-idle-gate.js",
+        ".claude/claudeos/scripts/hooks/usage-tracker.js",
+        ".claude/claudeos/scripts/hooks/verify-goal-set.js",
+        ".claude/claudeos/scripts/hooks/webhook-notifier.js",
+        ".claude/claudeos/scripts/lib/package-manager.js",
+        ".claude/claudeos/scripts/lib/utils.js",
+        ".claude/claudeos/scripts/setup-package-manager.js",
+        ".claude/claudeos/scripts/tools/run-ultrareview.js",
+        ".claude/claudeos/tests/run-all.js",
+        ".claude/statusline.py",
+        ".claude/workflows/bug-investigation.js",
+        ".claude/workflows/classify-and-act.js"
+      ],
+      "truncated": true
+    },
+    {
+      "at": "2026-06-14T05:07:35.990Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 38 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        ".claude/claudeos/scripts/hooks/agent-teams-tracker.js",
+        ".claude/claudeos/scripts/hooks/agent-transcript.js",
+        ".claude/claudeos/scripts/hooks/auto-format.js",
+        ".claude/claudeos/scripts/hooks/dreaming-runner.js",
+        ".claude/claudeos/scripts/hooks/evaluate-session.js",
+        ".claude/claudeos/scripts/hooks/goal-rotation.js",
+        ".claude/claudeos/scripts/hooks/notify-stable.js",
+        ".claude/claudeos/scripts/hooks/pre-commit-gate.js",
+        ".claude/claudeos/scripts/hooks/pre-compact.js",
+        ".claude/claudeos/scripts/hooks/quality-gate-check.js",
+        ".claude/claudeos/scripts/hooks/reasoning-bank.js",
+        ".claude/claudeos/scripts/hooks/session-end.js",
+        ".claude/claudeos/scripts/hooks/session-start.js",
+        ".claude/claudeos/scripts/hooks/stop-continue-gate.js",
+        ".claude/claudeos/scripts/hooks/suggest-compact.js",
+        ".claude/claudeos/scripts/hooks/task-completed-gate.js",
+        ".claude/claudeos/scripts/hooks/task-created-gate.js",
+        ".claude/claudeos/scripts/hooks/tdd-coverage-scan.js",
+        ".claude/claudeos/scripts/hooks/teammate-idle-gate.js",
+        ".claude/claudeos/scripts/hooks/usage-tracker.js",
+        ".claude/claudeos/scripts/hooks/verify-goal-set.js",
+        ".claude/claudeos/scripts/hooks/webhook-notifier.js",
+        ".claude/claudeos/scripts/lib/package-manager.js",
+        ".claude/claudeos/scripts/lib/utils.js",
+        ".claude/claudeos/scripts/setup-package-manager.js",
+        ".claude/claudeos/scripts/tools/run-ultrareview.js",
+        ".claude/claudeos/tests/run-all.js",
+        ".claude/statusline.py",
+        ".claude/workflows/bug-investigation.js",
+        ".claude/workflows/classify-and-act.js"
+      ],
+      "truncated": true
     }
   ],
   "goal_rotation": {
