@@ -721,8 +721,9 @@ export function ViewerView({
                       type="button"
                       onClick={handleExtract}
                       disabled={isExtracting}
+                      data-testid="extract-btn"
                     >
-                      {isExtracting ? "抽出中…" : "🤖 AI抽出を実行"}
+                      {isExtracting ? "抽出中…" : "AI抽出を実行"}
                     </button>
                   )}
                   {!selectedDocId && (
