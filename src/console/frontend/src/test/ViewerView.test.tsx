@@ -12,7 +12,7 @@ vi.mock("../api/ai", () => ({
 }));
 
 import { listDocuments } from "../api/documents";
-import { extractDocumentData, classifyDocument } from "../api/ai";
+import { extractDocumentData } from "../api/ai";
 
 const mockDoc = {
   id: "doc-1",

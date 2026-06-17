@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { listDocuments, type DocumentResponse } from "../../../api/documents";
 import {
   extractDocumentData,
@@ -104,7 +104,7 @@ export function ViewerView({
 
   const [documents, setDocuments] = useState<DocumentResponse[]>([]);
   const [selectedDocId, setSelectedDocId] = useState<string | null>(null);
-  const [isLoadingDocs, setIsLoadingDocs] = useState(false);
+  const [isLoadingDocs, setIsLoadingDocs] = useState(true);
   const [extractResult, setExtractResult] = useState<ExtractResponse | null>(
     null,
   );
@@ -115,12 +115,11 @@ export function ViewerView({
   const [isClassifying, setIsClassifying] = useState(false);
 
   useEffect(() => {
-    setIsLoadingDocs(true);
     listDocuments({ per_page: 50 })
       .then((docs) => {
         setDocuments(docs);
-        if (docs.length > 0 && !selectedDocId) {
-          setSelectedDocId(docs[0].id);
+        if (docs.length > 0) {
+          setSelectedDocId((cur) => cur ?? docs[0].id);
         }
       })
       .catch(() => {
@@ -129,7 +128,10 @@ export function ViewerView({
       .finally(() => setIsLoadingDocs(false));
   }, []);
 
-  const selectedDoc = documents.find((d) => d.id === selectedDocId) ?? null;
+  const selectedDoc = useMemo(
+    () => documents.find((d) => d.id === selectedDocId) ?? null,
+    [documents, selectedDocId],
+  );
 
   const pageCount = selectedDoc?.page_count ?? 8;
 
