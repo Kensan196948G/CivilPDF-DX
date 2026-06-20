@@ -9,9 +9,10 @@ interface AuthState {
 }
 
 function getInitialAuthState(): boolean {
-  // DEV builds bypass login so the console is usable before the login UI ships.
+  // DEV builds skip the login screen so the console is usable without
+  // credentials during development (the real flow lives in pages/Login.tsx).
   // Production builds MUST NOT auto-authenticate (Issue #59): gate on a real
-  // access token so the bypass never leaks into a deployed bundle.
+  // access token so the dev bypass never leaks into a deployed bundle.
   if (import.meta.env.DEV) {
     return true;
   }
