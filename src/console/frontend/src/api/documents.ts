@@ -9,11 +9,20 @@ export interface DocumentResponse {
   file_size: number;
   page_count: number | null;
   is_pdfa: boolean;
+  pdfa_version?: string | null;
   tags: string[];
   project_id: string;
   owner_id: string;
   created_at: string;
   updated_at: string | null;
+  timestamp_verified_at?: string | null;
+  retention_expires_at?: string | null;
+  is_archived?: boolean;
+  iso19650_originator?: string | null;
+  iso19650_functional_breakdown?: string | null;
+  iso19650_form?: string | null;
+  iso19650_discipline?: string | null;
+  iso19650_number?: string | null;
 }
 
 export interface ListDocumentsParams {
