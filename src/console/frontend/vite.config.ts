@@ -19,6 +19,12 @@ export default defineConfig({
   preview: {
     port: 4173,
     host: true,
+    proxy: {
+      "/api": {
+        target: apiTarget,
+        changeOrigin: true,
+      },
+    },
   },
   build: {
     chunkSizeWarningLimit: 400,
