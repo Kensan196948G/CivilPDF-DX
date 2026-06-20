@@ -8,9 +8,22 @@
 
 ## [Unreleased]
 
+### 追加 (アプリ配信ページ本番化 — PDF Editor Client 配布窓口)
+
+- **リリースノート API** `GET /api/v1/apps/release-notes`（`?channel=stable|beta|insider`）
+  - 配信ページのリリースノートをフロント直書きから backend の単一の真実へ移管
+- **ビルド情報 API** `GET /api/v1/apps/build-info`
+  - 製品/安定版/ビルド番号/コミット/ビルド日/対応OS/最低サポート版を返却
+  - `APPS_BUILD_*` 環境変数をリクエスト時読み取り（秘密情報は非掲載）
+- **配布物チェックサム**: `APPS_SHA256_<PKG_ID>` から SHA-256 を解決し `releases`/`download` に反映
+- **macOS `.pkg` パッケージ**を追加（`.dmg` 維持・MDM/Jamf 一括展開向け）
+- 配信ページ UI: リリースノート/ビルド情報ボタンを実 API 化、`dev:mock` で配信ページが動作、展開対象/KPI は「デモ」明示
+- 運用手順: `docs/deployment/app-distribution.md` を追加
+
 ### 計画中
-- Phase 8: 電子署名・RFC 3161 タイムスタンプ（e-文書法準拠）
-- Phase 8: マルチテナント対応（本社→支店→現場 階層管理）
+
+- アプリ配信: 展開対象/KPI の実 MDM（Intune / Jamf）連携
+- PDF Editor デスクトップ本体 + ビルドパイプライン新規構築（Issue #62 / Scope B）
 
 ---
 
@@ -36,12 +49,14 @@
 - `anthropic>=0.40.0` を requirements.txt に追加
 
 ### 修正
+
 - **IDOR 脆弱性 [HIGH]** — AI API 全エンドポイントに `_check_document_access()` 追加
   - 非所有者・非管理者への 404 隠蔽（403 ではなく 404 で文書存在を秘匿）
 - **XSS 修正** — 検索スニペット表示で `dangerouslySetInnerHTML` → React `split+map` 安全描画
 - **SQLite JSON カラム変換** — FTS JOIN 時の tags フィールドを `json.loads()` で安全変換
 
 ### テスト追加
+
 - `tests/console/test_ai.py`: AI API 13 件（IDOR 防御テスト含む）
 - `tests/console/test_search.py`: Search API 13 件（keyword/semantic/reindex/RBAC）
 
@@ -58,6 +73,7 @@
 - フロントエンドテスト 103 件通過
 
 ### 修正
+
 - FastAPI 0.136.3 + starlette 1.1.0 アップグレード（**PYSEC-2026-161** セキュリティ修正）
 - `HTTP_422_UNPROCESSABLE_CONTENT` / `HTTP_413_CONTENT_TOO_LARGE` 定数名修正
 - conftest DB override を `scope=package` fixture に移動（pytest 干渉解消）

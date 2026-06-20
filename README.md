@@ -84,6 +84,15 @@
 - **構造化データ抽出** — 工事名・施工会社・金額・工期を自動抽出
 - **承認者向け要約** — 長大な仕様書も AI が要点を整理
 
+### 📥 アプリ配信（PDF Editor Client）
+
+- デスクトップ版 **PDF Editor Client**（電子印鑑・OCR・大判図面）の配布窓口
+- Windows: インストーラー (.exe) / ポータブル (.zip) / Intune (.intunewin)
+- macOS: ディスクイメージ (.dmg) / インストーラー (.pkg / MDM 向け)
+- リリースノート・ビルド情報・SHA-256 チェックサムを配信ページで提供
+- Stable / Beta / Insider のチャンネル運用
+- 運用手順: [docs/deployment/app-distribution.md](docs/deployment/app-distribution.md)
+
 ---
 
 ## 🛡️ 法令・規格への対応状況
@@ -148,6 +157,7 @@ http://[サーバーIPアドレス]:5181/
 | 📋 **要件定義書**          | PM・管理職                   | [docs/requirements.md](docs/requirements.md)                                                       |
 | 🏗️ **システム構成図**      | アーキテクト・IT担当         | [docs/architecture/system-architecture.md](docs/architecture/system-architecture.md)               |
 | 🚀 **本番デプロイ手順**    | IT担当・インフラ             | [docs/deployment/docker-production-deployment.md](docs/deployment/docker-production-deployment.md) |
+| 📦 **アプリ配信運用**      | IT担当・配布管理             | [docs/deployment/app-distribution.md](docs/deployment/app-distribution.md)                         |
 | 📋 **WebUI 画面一覧**      | PM・現場担当                 | [docs/webui-screens.md](docs/webui-screens.md)                                                     |
 | 🪟 **Windows 11 展開手順** | IT部門                       | [docs/windows-deployment.md](docs/windows-deployment.md)                                           |
 | 📋 **コンプライアンス**    | 法務・監査                   | [docs/compliance.md](docs/compliance.md)                                                           |
