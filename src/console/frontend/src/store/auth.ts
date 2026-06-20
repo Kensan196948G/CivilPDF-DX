@@ -9,10 +9,17 @@ interface AuthState {
 }
 
 function getInitialAuthState(): boolean {
-  // Auth backend is not yet implemented; treat every visitor as authenticated.
-  // When email/password auth is wired up, replace this with:
-  //   try { return !!localStorage.getItem('access_token') } catch { return false }
-  return true;
+  // DEV builds bypass login so the console is usable before the login UI ships.
+  // Production builds MUST NOT auto-authenticate (Issue #59): gate on a real
+  // access token so the bypass never leaks into a deployed bundle.
+  if (import.meta.env.DEV) {
+    return true;
+  }
+  try {
+    return !!localStorage.getItem("access_token");
+  } catch {
+    return false;
+  }
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
