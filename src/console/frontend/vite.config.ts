@@ -16,6 +16,10 @@ export default defineConfig({
       },
     },
   },
+  preview: {
+    port: 8080,
+    host: true,
+  },
   build: {
     chunkSizeWarningLimit: 400,
     rollupOptions: {

@@ -1,4 +1,6 @@
 import { type FC, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { getAppsReleases, getDownloadUrl, type ReleasePackage } from '../../../api/apps'
 
 interface ViewProps {
   onNavigate: (view: string) => void
@@ -7,23 +9,6 @@ interface ViewProps {
 }
 
 type RnFilter = 'All' | 'Stable' | 'Beta' | 'Insider'
-
-interface DownloadCard {
-  os: string
-  fmt: string
-  size: string
-  modalBody: string
-}
-
-interface Channel {
-  id: string
-  label: string
-  ver: string
-  desc: string
-  users: string
-  pillClass: string
-  modalBody: string
-}
 
 interface ToggleItem {
   id: string
@@ -50,69 +35,38 @@ interface ReleaseNote {
   modalBody: string
 }
 
-const DL_CARDS: DownloadCard[] = [
-  {
-    os: 'Windows',
-    fmt: 'インストーラー (.exe)',
-    size: '87.4 MB',
-    modalBody:
-      'PDF Editor Client — Windows インストーラー\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-Setup-2.4.1.exe\nサイズ: 87.4 MB\nSHA-256: 3a4b5c6d...\n\n対応OS: Windows 10 / 11 (64bit)\n必要要件: .NET 8.0 Runtime\n\nインストール手順:\n1. exeをダウンロード\n2. 管理者権限で実行\n3. Entra IDでサインイン',
-  },
-  {
-    os: 'Windows',
-    fmt: 'ポータブル (.zip)',
-    size: '94.1 MB',
-    modalBody:
-      'PDF Editor Client — ポータブル版\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-Portable-2.4.1.zip\nサイズ: 94.1 MB\n\nインストール不要で使用可能。\nUSBメモリや持ち出し端末向け。\n\n注意: 透かし・DLPポリシーは適用されます。',
-  },
-  {
-    os: 'macOS',
-    fmt: 'ディスクイメージ (.dmg)',
-    size: '82.6 MB',
-    modalBody:
-      'PDF Editor Client — macOS 版\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-2.4.1.dmg\nサイズ: 82.6 MB\n\n対応OS: macOS 13 Ventura 以降\nApple Silicon / Intel 両対応 (Universal Binary)',
-  },
-  {
-    os: 'Enterprise',
-    fmt: 'Intune パッケージ',
-    size: '91.2 MB',
-    modalBody:
-      'PDF Editor Client — Intune 展開パッケージ\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-2.4.1.intunewin\nサイズ: 91.2 MB\n\nMicrosoft Endpoint Manager (Intune) 経由で\n一括展開が可能です。\n\n検出ルール・要件・依存関係は\nIntuneDeployGuide.pdf を参照してください。',
-  },
-]
+const CHANNELS_MODAL: Record<string, string> = {
+  stable:
+    'Stable チャンネル\n\nバージョン: v2.4.1\nリリース日: 2026-04-28\n\n対象: 全ユーザー（デフォルト）\n更新頻度: 月1回程度\n検証期間: Beta → 4週間テスト後リリース',
+  beta:
+    'Beta チャンネル\n\nバージョン: v2.5.0-beta.3\nリリース日: 2026-05-07\n\n対象: 技術担当者・検証チーム\n更新頻度: 2週間に1回程度\n\nBugReport 先: GitHub Issues',
+  insider:
+    'Insider チャンネル\n\nバージョン: v2.5.0-alpha.9\nリリース日: 2026-05-10\n\n対象: 開発者・社内QAチームのみ\n更新頻度: 随時（CI通過時）\n\n警告: 本番業務には使用しないこと。',
+}
 
-const CHANNELS: Channel[] = [
-  {
-    id: 'stable',
-    label: 'Stable',
-    ver: 'v2.4.1',
-    desc: '本番推奨。十分な検証済みリリース。',
-    users: '211 ユーザー',
-    pillClass: 'ep-pill ep-pill-stable',
-    modalBody:
-      'Stable チャンネル\n\nバージョン: v2.4.1\nリリース日: 2026-04-28\n\n対象: 全ユーザー（デフォルト）\n更新頻度: 月1回程度\n検証期間: Beta → 4週間テスト後リリース\n\n現在の参加ユーザー数: 211',
-  },
-  {
-    id: 'beta',
-    label: 'Beta',
-    ver: 'v2.5.0-beta.3',
-    desc: '機能検証版。次期安定版の先行確認。',
-    users: '28 ユーザー',
-    pillClass: 'ep-pill ep-pill-beta',
-    modalBody:
-      'Beta チャンネル\n\nバージョン: v2.5.0-beta.3\nリリース日: 2026-05-07\n\n対象: 技術担当者・検証チーム\n更新頻度: 2週間に1回程度\n\nBugReport 先: GitHub Issues\n現在の参加ユーザー数: 28',
-  },
-  {
-    id: 'insider',
-    label: 'Insider',
-    ver: 'v2.5.0-alpha.9',
-    desc: '開発最前線。破壊的変更が含まれる可能性あり。',
-    users: '9 ユーザー',
-    pillClass: 'ep-pill ep-pill-insider',
-    modalBody:
-      'Insider チャンネル\n\nバージョン: v2.5.0-alpha.9\nリリース日: 2026-05-10\n\n対象: 開発者・社内QAチームのみ\n更新頻度: 随時（CI通過時）\n\n警告: 本番業務には使用しないこと。\n現在の参加ユーザー数: 9',
-  },
-]
+const CHANNEL_PILL: Record<string, string> = {
+  stable: 'ep-pill ep-pill-stable',
+  beta: 'ep-pill ep-pill-beta',
+  insider: 'ep-pill ep-pill-insider',
+}
+
+const DL_MODAL: Record<string, string> = {
+  'win-exe':
+    'PDF Editor Client — Windows インストーラー\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-Setup-2.4.1.exe\nサイズ: 87.4 MB\n\n対応OS: Windows 10 / 11 (64bit)\n必要要件: .NET 8.0 Runtime\n\nインストール手順:\n1. exeをダウンロード\n2. 管理者権限で実行\n3. Entra IDでサインイン',
+  'win-zip':
+    'PDF Editor Client — ポータブル版\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-Portable-2.4.1.zip\nサイズ: 94.1 MB\n\nインストール不要で使用可能。\nUSBメモリや持ち出し端末向け。\n\n注意: 透かし・DLPポリシーは適用されます。',
+  'mac-dmg':
+    'PDF Editor Client — macOS 版\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-2.4.1.dmg\nサイズ: 82.6 MB\n\n対応OS: macOS 13 Ventura 以降\nApple Silicon / Intel 両対応 (Universal Binary)',
+  'ent-intune':
+    'PDF Editor Client — Intune 展開パッケージ\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-2.4.1.intunewin\nサイズ: 91.2 MB\n\nMicrosoft Endpoint Manager (Intune) 経由で\n一括展開が可能です。\n\n検出ルール・要件・依存関係は\nIntuneDeployGuide.pdf を参照してください。',
+}
+
+const DL_OS: Record<string, string> = {
+  'win-exe': 'Windows',
+  'win-zip': 'Windows',
+  'mac-dmg': 'macOS',
+  'ent-intune': 'Enterprise',
+}
 
 const TOGGLES: ToggleItem[] = [
   { id: 'autoUpdate', label: '自動アップデート', sub: 'バックグラウンドで最新版を自動適用' },
@@ -232,6 +186,41 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
     telemetry: false,
   })
   const [rnFilter, setRnFilter] = useState<RnFilter>('All')
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+
+  const { data: releases, isLoading: releasesLoading } = useQuery({
+    queryKey: ['apps', 'releases'],
+    queryFn: getAppsReleases,
+  })
+
+  const handleDownload = async (pkg: ReleasePackage) => {
+    if (!pkg.available) {
+      onShowModal({
+        title: `${DL_OS[pkg.id] ?? pkg.platform} — ${pkg.label}`,
+        body: DL_MODAL[pkg.id] ?? `${pkg.label}\n\nダウンロードリンクは近日公開予定です。`,
+      })
+      return
+    }
+    setDownloadingId(pkg.id)
+    try {
+      const res = await getDownloadUrl(pkg.id)
+      if (!res.url) {
+        onShowToast(res.message ?? 'ダウンロードリンクは近日公開予定です', 'warn')
+        return
+      }
+      const a = document.createElement('a')
+      a.href = res.url
+      a.download = pkg.filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      onShowToast(`${pkg.label} のダウンロードを開始しました`, 'ok')
+    } catch {
+      onShowToast('ダウンロードに失敗しました', 'error')
+    } finally {
+      setDownloadingId(null)
+    }
+  }
 
   const toggleSwitch = (id: string) => {
     const next = !toggles[id]
@@ -266,7 +255,7 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
               </h3>
               <p>建設・土木業向け高機能PDFエディター。電子印鑑・OCR・大判図面対応。</p>
               <div className="ep-app-meta">
-                <span>バージョン v2.4.1</span>
+                <span>バージョン {releases?.stable_version ?? 'v2.4.1'}</span>
                 <span>Windows / macOS</span>
                 <span>248 ライセンス</span>
               </div>
@@ -282,25 +271,36 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
               borderTop: '1px solid var(--border)',
             }}
           >
-            {DL_CARDS.map((dl, i) => (
-              <div
-                key={i}
-                className="ep-dl-card"
-                onClick={() =>
-                  onShowModal({ title: `${dl.os} — ${dl.fmt}`, body: dl.modalBody })
-                }
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ')
-                    onShowModal({ title: `${dl.os} — ${dl.fmt}`, body: dl.modalBody })
-                }}
-              >
-                <div className="os">{dl.os}</div>
-                <div className="fmt">{dl.fmt}</div>
-                <div className="size">{dl.size}</div>
-              </div>
-            ))}
+            {releasesLoading
+              ? [0, 1, 2, 3].map((i) => (
+                  <div key={i} className="ep-dl-card" style={{ opacity: 0.4 }}>
+                    <div className="os">—</div>
+                    <div className="fmt">読み込み中...</div>
+                    <div className="size">—</div>
+                  </div>
+                ))
+              : (releases?.packages ?? []).map((pkg) => {
+                  const isLoading = downloadingId === pkg.id
+                  return (
+                    <div
+                      key={pkg.id}
+                      className="ep-dl-card"
+                      onClick={() => handleDownload(pkg)}
+                      role="button"
+                      tabIndex={0}
+                      style={{ opacity: isLoading ? 0.6 : 1 }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') handleDownload(pkg)
+                      }}
+                    >
+                      <div className="os">{DL_OS[pkg.id] ?? pkg.platform}</div>
+                      <div className="fmt">{pkg.label}</div>
+                      <div className="size">
+                        {isLoading ? '取得中...' : pkg.available ? pkg.size_label : '準備中'}
+                      </div>
+                    </div>
+                  )
+                })}
           </div>
           <div className="ep-app-card-actions">
             <button
@@ -321,30 +321,36 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
         {/* Channel grid + toggles */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <div className="ep-channel-grid">
-            {CHANNELS.map((ch) => (
+            {(releases?.channels ?? []).map((ch) => (
               <div
                 key={ch.id}
                 className={`ep-channel${ch.id === 'stable' ? ' active' : ''}`}
                 onClick={() =>
-                  onShowModal({ title: `${ch.label} チャンネル`, body: ch.modalBody })
+                  onShowModal({
+                    title: `${ch.label} チャンネル`,
+                    body: CHANNELS_MODAL[ch.id] ?? `${ch.label} チャンネル\n\nバージョン: ${ch.version}\nリリース日: ${ch.release_date}\n\n${ch.description}\n\n参加ユーザー数: ${ch.user_count}`,
+                  })
                 }
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ')
-                    onShowModal({ title: `${ch.label} チャンネル`, body: ch.modalBody })
+                    onShowModal({
+                      title: `${ch.label} チャンネル`,
+                      body: CHANNELS_MODAL[ch.id] ?? `${ch.label} チャンネル\n\nバージョン: ${ch.version}\nリリース日: ${ch.release_date}\n\n${ch.description}\n\n参加ユーザー数: ${ch.user_count}`,
+                    })
                 }}
               >
                 <div className="ep-channel-head">
                   <h4>{ch.label}</h4>
-                  <span className={ch.pillClass}>
+                  <span className={CHANNEL_PILL[ch.id] ?? 'ep-pill ep-pill-muted'}>
                     <span className="dot" />
                     {ch.label}
                   </span>
                 </div>
-                <div className="ver">{ch.ver}</div>
-                <p>{ch.desc}</p>
-                <div className="users">{ch.users}</div>
+                <div className="ver">{ch.version}</div>
+                <p>{ch.description}</p>
+                <div className="users">{ch.user_count} ユーザー</div>
               </div>
             ))}
           </div>
