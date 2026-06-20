@@ -33,6 +33,22 @@ async def lifespan(app: FastAPI):
     # Create tables on startup (use Alembic in production)
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables created/verified")
+
+    if settings.debug:
+        # Ensure the dev-bypass admin exists so unauthenticated requests work.
+        from database import SessionLocal
+        from auth.dependencies import _get_or_create_dev_user
+
+        db = SessionLocal()
+        try:
+            _get_or_create_dev_user(db)
+            logger.warning(
+                "⚠️  DEV AUTH BYPASS ACTIVE — all unauthenticated requests run as dev-admin. "
+                "Set DEBUG=false in production."
+            )
+        finally:
+            db.close()
+
     yield
     logger.info("Shutting down")
 

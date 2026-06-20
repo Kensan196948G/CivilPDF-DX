@@ -14,13 +14,13 @@ const queryClient = new QueryClient({
 export default function App() {
   const setUser = useAuthStore((s) => s.setUser)
 
-  // Rehydrate the authenticated user on reload. A token persists in
-  // localStorage across reloads while the in-memory user resets to null.
-  // Without this, RBAC-gated UI (electronic delivery, admin actions) would
-  // silently disappear after a page refresh even for admins/managers.
+  // Rehydrate the authenticated user on reload. When a real access_token
+  // exists in localStorage the interceptor sends it as Bearer. In dev-bypass
+  // mode (DEBUG=true, no token) the backend's get_current_user returns the
+  // dev admin user unconditionally, so the call still succeeds.
   useEffect(() => {
-    if (useAuthStore.getState().user) return
-    if (!localStorage.getItem('access_token')) return
+    const { user, isAuthenticated } = useAuthStore.getState()
+    if (user || !isAuthenticated) return
     getMe()
       .then(setUser)
       .catch(() => {
