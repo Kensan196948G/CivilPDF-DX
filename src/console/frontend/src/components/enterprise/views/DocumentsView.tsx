@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
-import { listDocuments, DocumentResponse } from "../../../api/documents";
+import { listDocuments, type DocumentResponse } from "../../../api/documents";
 
 interface ViewProps {
   onNavigate: (view: string) => void;
