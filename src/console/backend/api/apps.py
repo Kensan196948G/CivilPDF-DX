@@ -1,4 +1,5 @@
 """App distribution API — release channel management and installer download endpoints."""
+
 import os
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -50,7 +51,9 @@ class DownloadUrlResponse(BaseModel):
     message: str | None = None
 
 
-def _pkg(pkg_id: str, platform: str, fmt: str, label: str, filename: str, size: str) -> ReleasePackage:
+def _pkg(
+    pkg_id: str, platform: str, fmt: str, label: str, filename: str, size: str
+) -> ReleasePackage:
     return ReleasePackage(
         id=pkg_id,
         platform=platform,
@@ -66,24 +69,64 @@ def _pkg(pkg_id: str, platform: str, fmt: str, label: str, filename: str, size: 
 
 
 _PACKAGES: list[ReleasePackage] = [
-    _pkg("win-exe", "windows", "exe", "インストーラー (.exe)", f"CivilPDF-Editor-Setup-{_STABLE}.exe", "87.4 MB"),
-    _pkg("win-zip", "windows", "zip", "ポータブル (.zip)", f"CivilPDF-Editor-Portable-{_STABLE}.zip", "94.1 MB"),
-    _pkg("mac-dmg", "macos", "dmg", "ディスクイメージ (.dmg)", f"CivilPDF-Editor-{_STABLE}.dmg", "82.6 MB"),
-    _pkg("ent-intune", "enterprise", "intunewin", "Intune パッケージ", f"CivilPDF-Editor-{_STABLE}.intunewin", "91.2 MB"),
+    _pkg(
+        "win-exe",
+        "windows",
+        "exe",
+        "インストーラー (.exe)",
+        f"CivilPDF-Editor-Setup-{_STABLE}.exe",
+        "87.4 MB",
+    ),
+    _pkg(
+        "win-zip",
+        "windows",
+        "zip",
+        "ポータブル (.zip)",
+        f"CivilPDF-Editor-Portable-{_STABLE}.zip",
+        "94.1 MB",
+    ),
+    _pkg(
+        "mac-dmg",
+        "macos",
+        "dmg",
+        "ディスクイメージ (.dmg)",
+        f"CivilPDF-Editor-{_STABLE}.dmg",
+        "82.6 MB",
+    ),
+    _pkg(
+        "ent-intune",
+        "enterprise",
+        "intunewin",
+        "Intune パッケージ",
+        f"CivilPDF-Editor-{_STABLE}.intunewin",
+        "91.2 MB",
+    ),
 ]
 
 _CHANNELS: list[ChannelInfo] = [
     ChannelInfo(
-        id="stable", label="Stable", version=f"v{_STABLE}", release_date="2026-04-28",
-        description="本番推奨。十分な検証済みリリース。", user_count=211,
+        id="stable",
+        label="Stable",
+        version=f"v{_STABLE}",
+        release_date="2026-04-28",
+        description="本番推奨。十分な検証済みリリース。",
+        user_count=211,
     ),
     ChannelInfo(
-        id="beta", label="Beta", version=f"v{_BETA}", release_date="2026-05-07",
-        description="機能検証版。次期安定版の先行確認。", user_count=28,
+        id="beta",
+        label="Beta",
+        version=f"v{_BETA}",
+        release_date="2026-05-07",
+        description="機能検証版。次期安定版の先行確認。",
+        user_count=28,
     ),
     ChannelInfo(
-        id="insider", label="Insider", version=f"v{_INSIDER}", release_date="2026-05-10",
-        description="開発最前線。破壊的変更が含まれる可能性あり。", user_count=9,
+        id="insider",
+        label="Insider",
+        version=f"v{_INSIDER}",
+        release_date="2026-05-10",
+        description="開発最前線。破壊的変更が含まれる可能性あり。",
+        user_count=9,
     ),
 ]
 
@@ -99,7 +142,9 @@ def get_releases(_: User = Depends(get_current_user)) -> AppsReleasesResponse:
 
 
 @router.get("/download/{package_id}", response_model=DownloadUrlResponse)
-def get_download_url(package_id: str, _: User = Depends(get_current_user)) -> DownloadUrlResponse:
+def get_download_url(
+    package_id: str, _: User = Depends(get_current_user)
+) -> DownloadUrlResponse:
     """Return the download URL for a specific installer package.
 
     Returns url=null with a message when APPS_RELEASE_BASE_URL is not configured,
@@ -107,7 +152,11 @@ def get_download_url(package_id: str, _: User = Depends(get_current_user)) -> Do
     """
     pkg = next((p for p in _PACKAGES if p.id == package_id), None)
     if pkg is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Package not found")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Package not found"
+        )
     if not _BASE:
-        return DownloadUrlResponse(url=None, message="ダウンロードリンクは近日公開予定です")
+        return DownloadUrlResponse(
+            url=None, message="ダウンロードリンクは近日公開予定です"
+        )
     return DownloadUrlResponse(url=f"{_BASE}/{pkg.filename}")
