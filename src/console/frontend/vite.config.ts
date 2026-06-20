@@ -1,23 +1,23 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
-const apiTarget = (process.env.VITE_API_URL || 'http://localhost:8000')
-  .replace(/\/+$/, '')
-  .replace(/\/api\/v1$/, '')
+const apiTarget = (process.env.VITE_API_URL || "http://localhost:8000")
+  .replace(/\/+$/, "")
+  .replace(/\/api\/v1$/, "");
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
-      '/api': {
+      "/api": {
         target: apiTarget,
         changeOrigin: true,
       },
     },
   },
   preview: {
-    port: 8080,
+    port: 4173,
     host: true,
   },
   build: {
@@ -25,16 +25,17 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('react-dom') || id.includes('react/')) return 'vendor'
-            if (id.includes('react-router')) return 'router'
-            if (id.includes('@tanstack')) return 'query'
-            if (id.includes('zustand')) return 'state'
-            if (id.includes('axios')) return 'http'
-            if (id.includes('jose') || id.includes('jwt')) return 'auth'
+          if (id.includes("node_modules")) {
+            if (id.includes("react-dom") || id.includes("react/"))
+              return "vendor";
+            if (id.includes("react-router")) return "router";
+            if (id.includes("@tanstack")) return "query";
+            if (id.includes("zustand")) return "state";
+            if (id.includes("axios")) return "http";
+            if (id.includes("jose") || id.includes("jwt")) return "auth";
           }
         },
       },
     },
   },
-})
+});
