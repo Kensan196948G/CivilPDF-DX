@@ -294,7 +294,7 @@ def get_build_info(_: User = Depends(get_current_user)) -> BuildInfo:
         git_commit=os.getenv("APPS_BUILD_COMMIT") or None,
         build_date=os.getenv("APPS_BUILD_DATE") or None,
         channel="stable",
-        runtime=".NET 8.0 Runtime",
+        runtime="ランタイム同梱（外部依存なし）",
         supported_os=["Windows 10 / 11 (64bit)", "macOS 13 Ventura+ (Universal)"],
         min_supported_version=os.getenv("APPS_MIN_SUPPORTED_VERSION", "2.3.0"),
     )
