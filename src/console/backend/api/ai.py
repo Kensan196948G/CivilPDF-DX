@@ -148,7 +148,7 @@ def classify_document(
     text = _get_document_text(doc)
     if not text:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="No extractable text found in document — run OCR first",
         )
 
@@ -251,7 +251,7 @@ def extract_document_data(
     text = _get_document_text(doc)
     if not text:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="No extractable text found in document — run OCR first",
         )
 
@@ -316,7 +316,7 @@ def get_document_summary(
     text = _get_document_text(doc)
     if not text:
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="No extractable text found in document — run OCR first",
         )
 
