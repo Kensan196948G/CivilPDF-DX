@@ -129,6 +129,14 @@ def _build_packages() -> list[ReleasePackage]:
             "87.4 MB",
         ),
         _pkg(
+            "win-msi",
+            "windows",
+            "msi",
+            "インストーラー (.msi)",
+            f"CivilPDF-Editor-{_STABLE}.msi",
+            "88.9 MB",
+        ),
+        _pkg(
             "win-zip",
             "windows",
             "zip",

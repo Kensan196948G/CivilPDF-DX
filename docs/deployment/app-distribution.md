@@ -17,7 +17,9 @@
 | GET      | `/api/v1/apps/build-info`             | 配布中ビルドのメタデータ                   |
 | GET      | `/api/v1/apps/download/{package_id}`  | ダウンロード URL（未設定時は `url=null`）  |
 
-`package_id`: `win-exe` / `win-zip` / `mac-dmg` / `mac-pkg` / `ent-intune`
+`package_id`: `win-exe` / `win-msi` / `win-zip` / `mac-dmg` / `mac-pkg` / `ent-intune`
+
+> 🪟 Windows インストーラーは **`.exe`（対話型）と `.msi`（GPO/SCCM サイレント展開）の選択式**。`.msi` のサイレント例: `msiexec /i CivilPDF-Editor-2.4.1.msi /qn`
 
 ---
 

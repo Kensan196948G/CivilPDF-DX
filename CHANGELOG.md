@@ -17,6 +17,7 @@
   - `APPS_BUILD_*` 環境変数をリクエスト時読み取り（秘密情報は非掲載）
 - **配布物チェックサム**: `APPS_SHA256_<PKG_ID>` から SHA-256 を解決し `releases`/`download` に反映
 - **macOS `.pkg` パッケージ**を追加（`.dmg` 維持・MDM/Jamf 一括展開向け）
+- **Windows `.msi` インストーラー**を追加（`.exe` と選択式・GPO/SCCM サイレント展開向け）
 - 配信ページ UI: リリースノート/ビルド情報ボタンを実 API 化、`dev:mock` で配信ページが動作、展開対象/KPI は「デモ」明示
 - 運用手順: `docs/deployment/app-distribution.md` を追加
 

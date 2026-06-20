@@ -49,7 +49,9 @@ const CHANNEL_PILL: Record<string, string> = {
 
 const DL_MODAL: Record<string, string> = {
   "win-exe":
-    "PDF Editor Client — Windows インストーラー\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-Setup-2.4.1.exe\nサイズ: 87.4 MB\n\n対応OS: Windows 10 / 11 (64bit)\n必要要件: .NET 8.0 Runtime\n\nインストール手順:\n1. exeをダウンロード\n2. 管理者権限で実行\n3. Entra IDでサインイン",
+    "PDF Editor Client — Windows インストーラー (.exe)\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-Setup-2.4.1.exe\nサイズ: 87.4 MB\n\n対応OS: Windows 10 / 11 (64bit)\n必要要件: .NET 8.0 Runtime\n\n用途: 個人 PC への対話型インストール\nインストール手順:\n1. exeをダウンロード\n2. 管理者権限で実行\n3. Entra IDでサインイン",
+  "win-msi":
+    "PDF Editor Client — Windows インストーラー (.msi)\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-2.4.1.msi\nサイズ: 88.9 MB\n\n対応OS: Windows 10 / 11 (64bit)\n必要要件: .NET 8.0 Runtime\n\n用途: グループポリシー (GPO) / SCCM によるサイレント一括展開向け\nサイレントインストール例:\n  msiexec /i CivilPDF-Editor-2.4.1.msi /qn",
   "win-zip":
     "PDF Editor Client — ポータブル版\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-Portable-2.4.1.zip\nサイズ: 94.1 MB\n\nインストール不要で使用可能。\nUSBメモリや持ち出し端末向け。\n\n注意: 透かし・DLPポリシーは適用されます。",
   "mac-dmg":
@@ -62,6 +64,7 @@ const DL_MODAL: Record<string, string> = {
 
 const DL_OS: Record<string, string> = {
   "win-exe": "Windows",
+  "win-msi": "Windows",
   "win-zip": "Windows",
   "mac-dmg": "macOS",
   "mac-pkg": "macOS",
@@ -250,7 +253,10 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
   };
 
   const scrollToReleaseNotes = () => {
-    releaseNotesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    releaseNotesRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
   };
 
   const notes = releaseNotes?.notes ?? [];
@@ -444,7 +450,10 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
         <div className="ep-panel-head">
           <h3>
             展開対象
-            <span className="ep-pill ep-pill-muted" style={{ marginLeft: "8px" }}>
+            <span
+              className="ep-pill ep-pill-muted"
+              style={{ marginLeft: "8px" }}
+            >
               デモ
             </span>
           </h3>
@@ -587,7 +596,10 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
                   className="ep-rn-item"
                   style={{ cursor: "pointer" }}
                   onClick={() =>
-                    onShowModal({ title: `リリースノート v${rn.version}`, body })
+                    onShowModal({
+                      title: `リリースノート v${rn.version}`,
+                      body,
+                    })
                   }
                   role="button"
                   tabIndex={0}
