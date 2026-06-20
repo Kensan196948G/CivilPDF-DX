@@ -87,7 +87,7 @@
 ### 📥 アプリ配信（PDF Editor Client）
 
 - デスクトップ版 **PDF Editor Client**（電子印鑑・OCR・大判図面）の配布窓口
-- Windows: インストーラー (.exe) / ポータブル (.zip) / Intune (.intunewin)
+- Windows: インストーラー (.exe / .msi 選択式) / ポータブル (.zip) / Intune (.intunewin)
 - macOS: ディスクイメージ (.dmg) / インストーラー (.pkg / MDM 向け)
 - リリースノート・ビルド情報・SHA-256 チェックサムを配信ページで提供
 - Stable / Beta / Insider のチャンネル運用

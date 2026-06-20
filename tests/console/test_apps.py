@@ -15,14 +15,31 @@ class TestReleases:
         assert isinstance(data["channels"], list)
         assert len(data["channels"]) == 3
 
-    def test_releases_include_macos_pkg(self, client, admin_token):
+    def test_releases_include_all_packages(self, client, admin_token):
         resp = client.get("/api/v1/apps/releases", headers=_auth(admin_token))
         ids = {p["id"] for p in resp.json()["packages"]}
-        # win exe/zip, mac dmg + new pkg, enterprise intune
-        assert {"win-exe", "win-zip", "mac-dmg", "mac-pkg", "ent-intune"} <= ids
+        # windows exe/msi/zip, macos dmg/pkg, enterprise intune
+        assert {
+            "win-exe",
+            "win-msi",
+            "win-zip",
+            "mac-dmg",
+            "mac-pkg",
+            "ent-intune",
+        } <= ids
+
+    def test_macos_pkg_metadata(self, client, admin_token):
+        resp = client.get("/api/v1/apps/releases", headers=_auth(admin_token))
         pkg = next(p for p in resp.json()["packages"] if p["id"] == "mac-pkg")
         assert pkg["platform"] == "macos"
         assert pkg["format"] == "pkg"
+
+    def test_windows_msi_metadata(self, client, admin_token):
+        resp = client.get("/api/v1/apps/releases", headers=_auth(admin_token))
+        pkg = next(p for p in resp.json()["packages"] if p["id"] == "win-msi")
+        assert pkg["platform"] == "windows"
+        assert pkg["format"] == "msi"
+        assert pkg["filename"].endswith(".msi")
 
     def test_releases_requires_auth(self, client):
         resp = client.get("/api/v1/apps/releases")
