@@ -1,246 +1,280 @@
-import { type FC, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
-import { getAppsReleases, getDownloadUrl, type ReleasePackage } from '../../../api/apps'
+import { type FC, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  getAppsReleases,
+  getDownloadUrl,
+  getReleaseNotes,
+  getBuildInfo,
+  type ReleasePackage,
+  type ReleaseChannel,
+} from "../../../api/apps";
 
 interface ViewProps {
-  onNavigate: (view: string) => void
-  onShowModal: (content: { title: string; body: string }) => void
-  onShowToast: (message: string, type?: 'ok' | 'warn' | 'error') => void
+  onNavigate: (view: string) => void;
+  onShowModal: (content: { title: string; body: string }) => void;
+  onShowToast: (message: string, type?: "ok" | "warn" | "error") => void;
 }
 
-type RnFilter = 'All' | 'Stable' | 'Beta' | 'Insider'
+type RnFilter = "All" | "Stable" | "Beta" | "Insider";
 
 interface ToggleItem {
-  id: string
-  label: string
-  sub: string
+  id: string;
+  label: string;
+  sub: string;
 }
 
 interface DeployTarget {
-  id: string
-  name: string
-  meta: string
-  progress: number
-  count: string
-  status: string
-  modalBody: string
-}
-
-interface ReleaseNote {
-  ver: string
-  date: string
-  channel: RnFilter
-  summary: string
-  items: { tag: string; tagClass: string; text: string }[]
-  modalBody: string
+  id: string;
+  name: string;
+  meta: string;
+  progress: number;
+  count: string;
+  status: string;
+  modalBody: string;
 }
 
 const CHANNELS_MODAL: Record<string, string> = {
   stable:
-    'Stable チャンネル\n\nバージョン: v2.4.1\nリリース日: 2026-04-28\n\n対象: 全ユーザー（デフォルト）\n更新頻度: 月1回程度\n検証期間: Beta → 4週間テスト後リリース',
-  beta:
-    'Beta チャンネル\n\nバージョン: v2.5.0-beta.3\nリリース日: 2026-05-07\n\n対象: 技術担当者・検証チーム\n更新頻度: 2週間に1回程度\n\nBugReport 先: GitHub Issues',
+    "Stable チャンネル\n\nバージョン: v2.4.1\nリリース日: 2026-04-28\n\n対象: 全ユーザー（デフォルト）\n更新頻度: 月1回程度\n検証期間: Beta → 4週間テスト後リリース",
+  beta: "Beta チャンネル\n\nバージョン: v2.5.0-beta.3\nリリース日: 2026-05-07\n\n対象: 技術担当者・検証チーム\n更新頻度: 2週間に1回程度\n\nBugReport 先: GitHub Issues",
   insider:
-    'Insider チャンネル\n\nバージョン: v2.5.0-alpha.9\nリリース日: 2026-05-10\n\n対象: 開発者・社内QAチームのみ\n更新頻度: 随時（CI通過時）\n\n警告: 本番業務には使用しないこと。',
-}
+    "Insider チャンネル\n\nバージョン: v2.5.0-alpha.9\nリリース日: 2026-05-10\n\n対象: 開発者・社内QAチームのみ\n更新頻度: 随時（CI通過時）\n\n警告: 本番業務には使用しないこと。",
+};
 
 const CHANNEL_PILL: Record<string, string> = {
-  stable: 'ep-pill ep-pill-stable',
-  beta: 'ep-pill ep-pill-beta',
-  insider: 'ep-pill ep-pill-insider',
-}
+  stable: "ep-pill ep-pill-stable",
+  beta: "ep-pill ep-pill-beta",
+  insider: "ep-pill ep-pill-insider",
+};
 
 const DL_MODAL: Record<string, string> = {
-  'win-exe':
-    'PDF Editor Client — Windows インストーラー\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-Setup-2.4.1.exe\nサイズ: 87.4 MB\n\n対応OS: Windows 10 / 11 (64bit)\n必要要件: .NET 8.0 Runtime\n\nインストール手順:\n1. exeをダウンロード\n2. 管理者権限で実行\n3. Entra IDでサインイン',
-  'win-zip':
-    'PDF Editor Client — ポータブル版\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-Portable-2.4.1.zip\nサイズ: 94.1 MB\n\nインストール不要で使用可能。\nUSBメモリや持ち出し端末向け。\n\n注意: 透かし・DLPポリシーは適用されます。',
-  'mac-dmg':
-    'PDF Editor Client — macOS 版\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-2.4.1.dmg\nサイズ: 82.6 MB\n\n対応OS: macOS 13 Ventura 以降\nApple Silicon / Intel 両対応 (Universal Binary)',
-  'ent-intune':
-    'PDF Editor Client — Intune 展開パッケージ\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-2.4.1.intunewin\nサイズ: 91.2 MB\n\nMicrosoft Endpoint Manager (Intune) 経由で\n一括展開が可能です。\n\n検出ルール・要件・依存関係は\nIntuneDeployGuide.pdf を参照してください。',
-}
+  "win-exe":
+    "PDF Editor Client — Windows インストーラー\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-Setup-2.4.1.exe\nサイズ: 87.4 MB\n\n対応OS: Windows 10 / 11 (64bit)\n必要要件: .NET 8.0 Runtime\n\nインストール手順:\n1. exeをダウンロード\n2. 管理者権限で実行\n3. Entra IDでサインイン",
+  "win-zip":
+    "PDF Editor Client — ポータブル版\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-Portable-2.4.1.zip\nサイズ: 94.1 MB\n\nインストール不要で使用可能。\nUSBメモリや持ち出し端末向け。\n\n注意: 透かし・DLPポリシーは適用されます。",
+  "mac-dmg":
+    "PDF Editor Client — macOS 版\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-2.4.1.dmg\nサイズ: 82.6 MB\n\n対応OS: macOS 13 Ventura 以降\nApple Silicon / Intel 両対応 (Universal Binary)",
+  "mac-pkg":
+    "PDF Editor Client — macOS インストーラー (.pkg)\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-2.4.1.pkg\nサイズ: 84.0 MB\n\n対応OS: macOS 13 Ventura 以降 (Universal Binary)\n\nMDM (Jamf / Intune for macOS) による\n一括展開向けのインストーラーパッケージです。",
+  "ent-intune":
+    "PDF Editor Client — Intune 展開パッケージ\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-2.4.1.intunewin\nサイズ: 91.2 MB\n\nMicrosoft Endpoint Manager (Intune) 経由で\n一括展開が可能です。\n\n検出ルール・要件・依存関係は\nIntuneDeployGuide.pdf を参照してください。",
+};
 
 const DL_OS: Record<string, string> = {
-  'win-exe': 'Windows',
-  'win-zip': 'Windows',
-  'mac-dmg': 'macOS',
-  'ent-intune': 'Enterprise',
-}
+  "win-exe": "Windows",
+  "win-zip": "Windows",
+  "mac-dmg": "macOS",
+  "mac-pkg": "macOS",
+  "ent-intune": "Enterprise",
+};
 
 const TOGGLES: ToggleItem[] = [
-  { id: 'autoUpdate', label: '自動アップデート', sub: 'バックグラウンドで最新版を自動適用' },
-  { id: 'forceMin', label: '最低バージョン強制', sub: 'v2.3.0未満はアクセスをブロック' },
-  { id: 'telemetry', label: 'テレメトリー収集', sub: 'クラッシュレポート・使用状況を収集（匿名）' },
-]
+  {
+    id: "autoUpdate",
+    label: "自動アップデート",
+    sub: "バックグラウンドで最新版を自動適用",
+  },
+  {
+    id: "forceMin",
+    label: "最低バージョン強制",
+    sub: "v2.3.0未満はアクセスをブロック",
+  },
+  {
+    id: "telemetry",
+    label: "テレメトリー収集",
+    sub: "クラッシュレポート・使用状況を収集（匿名）",
+  },
+];
 
 const DEPLOY_TARGETS: DeployTarget[] = [
   {
-    id: 'DT-001',
-    name: '本社ビル (東京)',
-    meta: 'Windows 11 · 98台',
+    id: "DT-001",
+    name: "本社ビル (東京)",
+    meta: "Windows 11 · 98台",
     progress: 100,
-    count: '98 / 98',
-    status: '完了',
-    modalBody: '本社ビル (東京)\n\n対象台数: 98台\nOS: Windows 11\nインストール方式: Intune\nバージョン: v2.4.1\nステータス: 全台展開済み\n最終更新: 2026-04-29',
+    count: "98 / 98",
+    status: "完了",
+    modalBody:
+      "本社ビル (東京)\n\n対象台数: 98台\nOS: Windows 11\nインストール方式: Intune\nバージョン: v2.4.1\nステータス: 全台展開済み\n最終更新: 2026-04-29",
   },
   {
-    id: 'DT-002',
-    name: '大阪支店',
-    meta: 'Windows 10/11 · 54台',
+    id: "DT-002",
+    name: "大阪支店",
+    meta: "Windows 10/11 · 54台",
     progress: 96,
-    count: '52 / 54',
-    status: '展開中',
-    modalBody: '大阪支店\n\n対象台数: 54台\nOS: Windows 10 / 11\nインストール方式: Intune\nバージョン: v2.4.1\nステータス: 展開中 (52/54)\n残り2台: オフライン端末',
+    count: "52 / 54",
+    status: "展開中",
+    modalBody:
+      "大阪支店\n\n対象台数: 54台\nOS: Windows 10 / 11\nインストール方式: Intune\nバージョン: v2.4.1\nステータス: 展開中 (52/54)\n残り2台: オフライン端末",
   },
   {
-    id: 'DT-003',
-    name: '名古屋支店',
-    meta: 'Windows 10 · 31台',
+    id: "DT-003",
+    name: "名古屋支店",
+    meta: "Windows 10 · 31台",
     progress: 87,
-    count: '27 / 31',
-    status: '展開中',
-    modalBody: '名古屋支店\n\n対象台数: 31台\nOS: Windows 10\nインストール方式: グループポリシー\nバージョン: v2.4.1\nステータス: 展開中 (27/31)',
+    count: "27 / 31",
+    status: "展開中",
+    modalBody:
+      "名古屋支店\n\n対象台数: 31台\nOS: Windows 10\nインストール方式: グループポリシー\nバージョン: v2.4.1\nステータス: 展開中 (27/31)",
   },
   {
-    id: 'DT-004',
-    name: '第3工区現場事務所',
-    meta: 'Windows 10 · 8台',
+    id: "DT-004",
+    name: "第3工区現場事務所",
+    meta: "Windows 10 · 8台",
     progress: 75,
-    count: '6 / 8',
-    status: '展開中',
-    modalBody: '第3工区現場事務所\n\n対象台数: 8台\nOS: Windows 10\nインストール方式: 手動（USB）\nバージョン: v2.4.1\nステータス: 展開中 (6/8)\n残り2台: 次回訪問時に対応予定',
+    count: "6 / 8",
+    status: "展開中",
+    modalBody:
+      "第3工区現場事務所\n\n対象台数: 8台\nOS: Windows 10\nインストール方式: 手動（USB）\nバージョン: v2.4.1\nステータス: 展開中 (6/8)\n残り2台: 次回訪問時に対応予定",
   },
   {
-    id: 'DT-005',
-    name: '協力会社A (外部)',
-    meta: 'Windows 11 · 12台',
+    id: "DT-005",
+    name: "協力会社A (外部)",
+    meta: "Windows 11 · 12台",
     progress: 100,
-    count: '12 / 12',
-    status: '完了',
-    modalBody: '協力会社A (外部)\n\n対象台数: 12台\nOS: Windows 11\nインストール方式: ポータブル版配布\nバージョン: v2.4.1\nステータス: 全台展開済み\n有効期限: 2026-08-31',
+    count: "12 / 12",
+    status: "完了",
+    modalBody:
+      "協力会社A (外部)\n\n対象台数: 12台\nOS: Windows 11\nインストール方式: ポータブル版配布\nバージョン: v2.4.1\nステータス: 全台展開済み\n有効期限: 2026-08-31",
   },
   {
-    id: 'DT-006',
-    name: '福岡支店',
-    meta: 'Windows 10/11 · 22台',
+    id: "DT-006",
+    name: "福岡支店",
+    meta: "Windows 10/11 · 22台",
     progress: 0,
-    count: '0 / 22',
-    status: '未開始',
-    modalBody: '福岡支店\n\n対象台数: 22台\nOS: Windows 10 / 11\nインストール方式: Intune（予定）\nバージョン: v2.4.1\nステータス: 未開始\n予定日: 2026-05-20',
+    count: "0 / 22",
+    status: "未開始",
+    modalBody:
+      "福岡支店\n\n対象台数: 22台\nOS: Windows 10 / 11\nインストール方式: Intune（予定）\nバージョン: v2.4.1\nステータス: 未開始\n予定日: 2026-05-20",
   },
-]
+];
 
-const RN_ITEMS: ReleaseNote[] = [
-  {
-    ver: 'v2.4.1',
-    date: '2026-04-28',
-    channel: 'Stable',
-    summary: 'PDF/A変換精度向上・セキュリティ修正',
-    items: [
-      { tag: 'FIX', tagClass: 'fix', text: 'PDF/A-1b変換時のフォント埋め込みエラーを修正' },
-      { tag: 'SEC', tagClass: 'sec', text: 'XSS脆弱性 (CVE-2026-1234) を修正' },
-      { tag: 'IMP', tagClass: 'imp', text: 'A0/A1大判図面のレンダリング速度を40%改善' },
-    ],
-    modalBody: 'v2.4.1 — リリースノート\n\nリリース日: 2026-04-28\nチャンネル: Stable\n\n変更内容:\n- PDF/A-1b変換時のフォント埋め込みエラーを修正\n- XSS脆弱性 (CVE-2026-1234) を修正\n- A0/A1大判図面のレンダリング速度を40%改善\n\n影響範囲: 全ユーザー（即時適用推奨）',
-  },
-  {
-    ver: 'v2.5.0-beta.3',
-    date: '2026-05-07',
-    channel: 'Beta',
-    summary: 'Teams連携・新承認フロー',
-    items: [
-      { tag: 'FEAT', tagClass: 'feat', text: 'Microsoft Teams通知連携を追加' },
-      { tag: 'FEAT', tagClass: 'feat', text: '承認フロー画面をリデザイン' },
-      { tag: 'FIX', tagClass: 'fix', text: 'OCR日本語縦書き認識精度を改善' },
-    ],
-    modalBody: 'v2.5.0-beta.3 — リリースノート\n\nリリース日: 2026-05-07\nチャンネル: Beta\n\n変更内容:\n- Microsoft Teams通知連携を追加\n- 承認フロー画面をリデザイン（多段承認の可視化）\n- OCR日本語縦書き認識精度を改善\n\nBeta参加者のフィードバックをお願いします。',
-  },
-  {
-    ver: 'v2.5.0-alpha.9',
-    date: '2026-05-10',
-    channel: 'Insider',
-    summary: 'AI文書分類・PDF生成エンジン刷新',
-    items: [
-      { tag: 'FEAT', tagClass: 'feat', text: 'Claude API連携による文書自動分類（実験的）' },
-      { tag: 'FEAT', tagClass: 'feat', text: 'PDF生成エンジンをpdf-lib v2に更新' },
-      { tag: 'IMP', tagClass: 'imp', text: 'メモリ使用量を30%削減（大判図面）' },
-    ],
-    modalBody: 'v2.5.0-alpha.9 — リリースノート\n\nリリース日: 2026-05-10\nチャンネル: Insider\n\n変更内容:\n- Claude API連携による文書自動分類（実験的機能）\n- PDF生成エンジンをpdf-lib v2に更新\n- メモリ使用量を30%削減（A0/A1大判図面）\n\n警告: 本番利用不可。フィードバック歓迎。',
-  },
-]
+const CHANNEL_LABEL: Record<ReleaseChannel, RnFilter> = {
+  stable: "Stable",
+  beta: "Beta",
+  insider: "Insider",
+};
 
-const RN_FILTER_OPTIONS: RnFilter[] = ['All', 'Stable', 'Beta', 'Insider']
+const RN_FILTER_OPTIONS: RnFilter[] = ["All", "Stable", "Beta", "Insider"];
 
 const rnChannelPill: Record<RnFilter, string> = {
-  All: '',
-  Stable: 'ep-pill ep-pill-stable',
-  Beta: 'ep-pill ep-pill-beta',
-  Insider: 'ep-pill ep-pill-insider',
-}
+  All: "",
+  Stable: "ep-pill ep-pill-stable",
+  Beta: "ep-pill ep-pill-beta",
+  Insider: "ep-pill ep-pill-insider",
+};
 
 export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
   const [toggles, setToggles] = useState<Record<string, boolean>>({
     autoUpdate: true,
     forceMin: true,
     telemetry: false,
-  })
-  const [rnFilter, setRnFilter] = useState<RnFilter>('All')
-  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  });
+  const [rnFilter, setRnFilter] = useState<RnFilter>("All");
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [buildInfoLoading, setBuildInfoLoading] = useState(false);
+  const releaseNotesRef = useRef<HTMLDivElement | null>(null);
 
   const { data: releases, isLoading: releasesLoading } = useQuery({
-    queryKey: ['apps', 'releases'],
+    queryKey: ["apps", "releases"],
     queryFn: getAppsReleases,
-  })
+  });
+
+  const { data: releaseNotes, isLoading: notesLoading } = useQuery({
+    queryKey: ["apps", "release-notes"],
+    queryFn: () => getReleaseNotes(),
+  });
 
   const handleDownload = async (pkg: ReleasePackage) => {
     if (!pkg.available) {
       onShowModal({
         title: `${DL_OS[pkg.id] ?? pkg.platform} — ${pkg.label}`,
-        body: DL_MODAL[pkg.id] ?? `${pkg.label}\n\nダウンロードリンクは近日公開予定です。`,
-      })
-      return
+        body:
+          DL_MODAL[pkg.id] ??
+          `${pkg.label}\n\nダウンロードリンクは近日公開予定です。`,
+      });
+      return;
     }
-    setDownloadingId(pkg.id)
+    setDownloadingId(pkg.id);
     try {
-      const res = await getDownloadUrl(pkg.id)
+      const res = await getDownloadUrl(pkg.id);
       if (!res.url) {
-        onShowToast(res.message ?? 'ダウンロードリンクは近日公開予定です', 'warn')
-        return
+        onShowToast(
+          res.message ?? "ダウンロードリンクは近日公開予定です",
+          "warn",
+        );
+        return;
       }
-      const a = document.createElement('a')
-      a.href = res.url
-      a.download = pkg.filename
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      onShowToast(`${pkg.label} のダウンロードを開始しました`, 'ok')
+      const a = document.createElement("a");
+      a.href = res.url;
+      a.download = pkg.filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      onShowToast(`${pkg.label} のダウンロードを開始しました`, "ok");
     } catch {
-      onShowToast('ダウンロードに失敗しました', 'error')
+      onShowToast("ダウンロードに失敗しました", "error");
     } finally {
-      setDownloadingId(null)
+      setDownloadingId(null);
     }
-  }
+  };
 
   const toggleSwitch = (id: string) => {
-    const next = !toggles[id]
-    setToggles((prev) => ({ ...prev, [id]: next }))
-    const label = TOGGLES.find((t) => t.id === id)?.label ?? id
-    onShowToast(`${label}: ${next ? 'ON' : 'OFF'}`, next ? 'ok' : 'warn')
-  }
+    const next = !toggles[id];
+    setToggles((prev) => ({ ...prev, [id]: next }));
+    const label = TOGGLES.find((t) => t.id === id)?.label ?? id;
+    onShowToast(`${label}: ${next ? "ON" : "OFF"}`, next ? "ok" : "warn");
+  };
 
+  const handleShowBuildInfo = async () => {
+    setBuildInfoLoading(true);
+    try {
+      const b = await getBuildInfo();
+      const lines = [
+        `製品: ${b.product}`,
+        `安定版: ${b.stable_version}`,
+        `ビルド番号: ${b.build_number}`,
+        b.git_commit ? `コミット: ${b.git_commit}` : null,
+        b.build_date ? `ビルド日: ${b.build_date}` : null,
+        `チャンネル: ${b.channel}`,
+        `ランタイム: ${b.runtime}`,
+        `対応OS: ${b.supported_os.join(" / ")}`,
+        `最低サポート版: v${b.min_supported_version}`,
+      ].filter(Boolean);
+      onShowModal({ title: "ビルド情報", body: lines.join("\n") });
+    } catch {
+      onShowToast("ビルド情報の取得に失敗しました", "error");
+    } finally {
+      setBuildInfoLoading(false);
+    }
+  };
+
+  const scrollToReleaseNotes = () => {
+    releaseNotesRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
+
+  const notes = releaseNotes?.notes ?? [];
   const filteredRn =
-    rnFilter === 'All' ? RN_ITEMS : RN_ITEMS.filter((r) => r.channel === rnFilter)
+    rnFilter === "All"
+      ? notes
+      : notes.filter((n) => CHANNEL_LABEL[n.channel] === rnFilter);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
       {/* App hero */}
       <div className="ep-app-hero">
         {/* App card */}
         <div className="ep-panel ep-app-card">
           <div className="ep-app-card-top">
             <div className="ep-app-icon">
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+              <svg
+                width="22"
+                height="22"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+              >
                 <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                 <polyline points="14 2 14 8 20 8" />
               </svg>
@@ -253,9 +287,11 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
                   Stable
                 </span>
               </h3>
-              <p>建設・土木業向け高機能PDFエディター。電子印鑑・OCR・大判図面対応。</p>
+              <p>
+                建設・土木業向け高機能PDFエディター。電子印鑑・OCR・大判図面対応。
+              </p>
               <div className="ep-app-meta">
-                <span>バージョン {releases?.stable_version ?? 'v2.4.1'}</span>
+                <span>バージョン {releases?.stable_version ?? "v2.4.1"}</span>
                 <span>Windows / macOS</span>
                 <span>248 ライセンス</span>
               </div>
@@ -264,11 +300,11 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
           {/* Download grid */}
           <div
             style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(4, 1fr)',
-              gap: '7px',
-              padding: '11px 16px',
-              borderTop: '1px solid var(--border)',
+              display: "grid",
+              gridTemplateColumns: "repeat(4, 1fr)",
+              gap: "7px",
+              padding: "11px 16px",
+              borderTop: "1px solid var(--border)",
             }}
           >
             {releasesLoading
@@ -280,7 +316,7 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
                   </div>
                 ))
               : (releases?.packages ?? []).map((pkg) => {
-                  const isLoading = downloadingId === pkg.id
+                  const isLoading = downloadingId === pkg.id;
                   return (
                     <div
                       key={pkg.id}
@@ -290,60 +326,72 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
                       tabIndex={0}
                       style={{ opacity: isLoading ? 0.6 : 1 }}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter' || e.key === ' ') handleDownload(pkg)
+                        if (e.key === "Enter" || e.key === " ")
+                          handleDownload(pkg);
                       }}
                     >
                       <div className="os">{DL_OS[pkg.id] ?? pkg.platform}</div>
                       <div className="fmt">{pkg.label}</div>
                       <div className="size">
-                        {isLoading ? '取得中...' : pkg.available ? pkg.size_label : '準備中'}
+                        {isLoading
+                          ? "取得中..."
+                          : pkg.available
+                            ? pkg.size_label
+                            : "準備中"}
                       </div>
                     </div>
-                  )
+                  );
                 })}
           </div>
           <div className="ep-app-card-actions">
             <button
               className="ep-btn ep-btn-secondary ep-btn-sm"
-              onClick={() => onShowToast('リリースノートを確認中...', 'ok')}
+              onClick={scrollToReleaseNotes}
             >
               リリースノート
             </button>
             <button
               className="ep-btn ep-btn-secondary ep-btn-sm"
-              onClick={() => onShowToast('ビルド情報を取得中...', 'ok')}
+              onClick={handleShowBuildInfo}
+              disabled={buildInfoLoading}
             >
-              ビルド情報
+              {buildInfoLoading ? "取得中..." : "ビルド情報"}
             </button>
           </div>
         </div>
 
         {/* Channel grid + toggles */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
           <div className="ep-channel-grid">
             {(releases?.channels ?? []).map((ch) => (
               <div
                 key={ch.id}
-                className={`ep-channel${ch.id === 'stable' ? ' active' : ''}`}
+                className={`ep-channel${ch.id === "stable" ? " active" : ""}`}
                 onClick={() =>
                   onShowModal({
                     title: `${ch.label} チャンネル`,
-                    body: CHANNELS_MODAL[ch.id] ?? `${ch.label} チャンネル\n\nバージョン: ${ch.version}\nリリース日: ${ch.release_date}\n\n${ch.description}\n\n参加ユーザー数: ${ch.user_count}`,
+                    body:
+                      CHANNELS_MODAL[ch.id] ??
+                      `${ch.label} チャンネル\n\nバージョン: ${ch.version}\nリリース日: ${ch.release_date}\n\n${ch.description}\n\n参加ユーザー数: ${ch.user_count}`,
                   })
                 }
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ')
+                  if (e.key === "Enter" || e.key === " ")
                     onShowModal({
                       title: `${ch.label} チャンネル`,
-                      body: CHANNELS_MODAL[ch.id] ?? `${ch.label} チャンネル\n\nバージョン: ${ch.version}\nリリース日: ${ch.release_date}\n\n${ch.description}\n\n参加ユーザー数: ${ch.user_count}`,
-                    })
+                      body:
+                        CHANNELS_MODAL[ch.id] ??
+                        `${ch.label} チャンネル\n\nバージョン: ${ch.version}\nリリース日: ${ch.release_date}\n\n${ch.description}\n\n参加ユーザー数: ${ch.user_count}`,
+                    });
                 }}
               >
                 <div className="ep-channel-head">
                   <h4>{ch.label}</h4>
-                  <span className={CHANNEL_PILL[ch.id] ?? 'ep-pill ep-pill-muted'}>
+                  <span
+                    className={CHANNEL_PILL[ch.id] ?? "ep-pill ep-pill-muted"}
+                  >
                     <span className="dot" />
                     {ch.label}
                   </span>
@@ -365,7 +413,7 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
                 <div
                   key={t.id}
                   className="ep-opt-row"
-                  style={{ cursor: 'pointer' }}
+                  style={{ cursor: "pointer" }}
                   onClick={() => toggleSwitch(t.id)}
                 >
                   <div className="lbl">
@@ -373,14 +421,14 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
                     <small>{t.sub}</small>
                   </div>
                   <div
-                    className={`ep-toggle${toggles[t.id] ? ' on' : ''}`}
+                    className={`ep-toggle${toggles[t.id] ? " on" : ""}`}
                     role="switch"
                     aria-checked={toggles[t.id]}
                     tabIndex={0}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault()
-                        toggleSwitch(t.id)
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        toggleSwitch(t.id);
                       }
                     }}
                   />
@@ -391,18 +439,23 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
         </div>
       </div>
 
-      {/* Deployment targets */}
+      {/* Deployment targets (demo data — real MDM/Intune integration is a follow-up) */}
       <div className="ep-panel">
         <div className="ep-panel-head">
-          <h3>展開対象</h3>
+          <h3>
+            展開対象
+            <span className="ep-pill ep-pill-muted" style={{ marginLeft: "8px" }}>
+              デモ
+            </span>
+          </h3>
           <span className="meta">6 グループ</span>
         </div>
         <div
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(3, 1fr)',
-            gap: '8px',
-            padding: '12px',
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "8px",
+            padding: "12px",
           }}
         >
           {DEPLOY_TARGETS.map((dt) => (
@@ -415,19 +468,19 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
               role="button"
               tabIndex={0}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ')
-                  onShowModal({ title: dt.name, body: dt.modalBody })
+                if (e.key === "Enter" || e.key === " ")
+                  onShowModal({ title: dt.name, body: dt.modalBody });
               }}
             >
               <h5>
                 {dt.name}
                 <span
                   className={`ep-pill ${
-                    dt.status === '完了'
-                      ? 'ep-pill-ok'
-                      : dt.status === '未開始'
-                      ? 'ep-pill-muted'
-                      : 'ep-pill-warn'
+                    dt.status === "完了"
+                      ? "ep-pill-ok"
+                      : dt.status === "未開始"
+                        ? "ep-pill-muted"
+                        : "ep-pill-warn"
                   }`}
                 >
                   {dt.status}
@@ -436,11 +489,11 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
               <div className="meta">{dt.meta}</div>
               <div
                 style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  fontSize: '10.5px',
-                  color: 'var(--muted)',
-                  marginTop: '4px',
+                  display: "flex",
+                  justifyContent: "space-between",
+                  fontSize: "10.5px",
+                  color: "var(--muted)",
+                  marginTop: "4px",
                 }}
               >
                 <span>{dt.count} 台</span>
@@ -454,8 +507,23 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
         </div>
       </div>
 
-      {/* KPI stats */}
-      <div className="ep-stat-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)', marginBottom: 0 }}>
+      {/* KPI stats (demo data — real MDM/Intune integration is a follow-up) */}
+      <div
+        style={{
+          fontSize: "11px",
+          color: "var(--muted)",
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+        }}
+      >
+        <span className="ep-pill ep-pill-muted">デモ</span>
+        展開状況の数値は MDM 連携前のサンプル表示です
+      </div>
+      <div
+        className="ep-stat-grid"
+        style={{ gridTemplateColumns: "repeat(4, 1fr)", marginBottom: 0 }}
+      >
         <div className="ep-stat">
           <div className="lbl">総展開台数</div>
           <div className="val">195</div>
@@ -479,14 +547,14 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
       </div>
 
       {/* Release notes */}
-      <div className="ep-panel">
+      <div className="ep-panel" ref={releaseNotesRef}>
         <div className="ep-panel-head">
           <h3>リリースノート</h3>
-          <div style={{ display: 'flex', gap: '4px' }}>
+          <div style={{ display: "flex", gap: "4px" }}>
             {RN_FILTER_OPTIONS.map((f) => (
               <button
                 key={f}
-                className={`ep-filter-pill${rnFilter === f ? ' active' : ''}`}
+                className={`ep-filter-pill${rnFilter === f ? " active" : ""}`}
                 onClick={() => setRnFilter(f)}
               >
                 {f}
@@ -495,46 +563,73 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
           </div>
         </div>
         <div>
-          {filteredRn.map((rn) => (
-            <div
-              key={rn.ver}
-              className="ep-rn-item"
-              style={{ cursor: 'pointer' }}
-              onClick={() =>
-                onShowModal({ title: `リリースノート ${rn.ver}`, body: rn.modalBody })
-              }
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ')
-                  onShowModal({ title: `リリースノート ${rn.ver}`, body: rn.modalBody })
-              }}
-            >
-              <div className="ep-rn-meta">
-                <div className="v">{rn.ver}</div>
-                <div className="d">{rn.date}</div>
-                <div style={{ marginTop: '4px' }}>
-                  <span className={rnChannelPill[rn.channel]}>
-                    <span className="dot" />
-                    {rn.channel}
-                  </span>
-                </div>
-              </div>
+          {notesLoading ? (
+            <div className="ep-rn-item" style={{ opacity: 0.5 }}>
               <div className="ep-rn-body">
-                <h5>{rn.summary}</h5>
-                <ul>
-                  {rn.items.map((item, i) => (
-                    <li key={i}>
-                      <span className={`ep-rn-tag ${item.tagClass}`}>{item.tag}</span>
-                      <span>{item.text}</span>
-                    </li>
-                  ))}
-                </ul>
+                <h5>読み込み中...</h5>
               </div>
             </div>
-          ))}
+          ) : filteredRn.length === 0 ? (
+            <div className="ep-rn-item">
+              <div className="ep-rn-body">
+                <h5>該当するリリースノートはありません</h5>
+              </div>
+            </div>
+          ) : (
+            filteredRn.map((rn) => {
+              const label = CHANNEL_LABEL[rn.channel];
+              const body =
+                rn.highlights ??
+                `v${rn.version} — リリースノート\n\nリリース日: ${rn.release_date}\nチャンネル: ${label}\n\n${rn.summary}`;
+              return (
+                <div
+                  key={rn.version}
+                  className="ep-rn-item"
+                  style={{ cursor: "pointer" }}
+                  onClick={() =>
+                    onShowModal({ title: `リリースノート v${rn.version}`, body })
+                  }
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ")
+                      onShowModal({
+                        title: `リリースノート v${rn.version}`,
+                        body,
+                      });
+                  }}
+                >
+                  <div className="ep-rn-meta">
+                    <div className="v">v{rn.version}</div>
+                    <div className="d">{rn.release_date}</div>
+                    <div style={{ marginTop: "4px" }}>
+                      <span className={rnChannelPill[label]}>
+                        <span className="dot" />
+                        {label}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="ep-rn-body">
+                    <h5>{rn.summary}</h5>
+                    <ul>
+                      {rn.items.map((item, i) => (
+                        <li key={i}>
+                          <span
+                            className={`ep-rn-tag ${item.type.toLowerCase()}`}
+                          >
+                            {item.type}
+                          </span>
+                          <span>{item.text}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
