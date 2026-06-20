@@ -1,44 +1,94 @@
-import { api } from './client'
+import { api } from "./client";
 
 export interface ReleasePackage {
-  id: string
-  platform: string
-  format: string
-  label: string
-  filename: string
-  version: string
-  size_label: string
-  sha256: string | null
-  download_path: string
-  available: boolean
+  id: string;
+  platform: string;
+  format: string;
+  label: string;
+  filename: string;
+  version: string;
+  size_label: string;
+  sha256: string | null;
+  download_path: string;
+  available: boolean;
 }
 
 export interface ChannelInfo {
-  id: string
-  label: string
-  version: string
-  release_date: string
-  description: string
-  user_count: number
+  id: string;
+  label: string;
+  version: string;
+  release_date: string;
+  description: string;
+  user_count: number;
 }
 
 export interface AppsReleasesResponse {
-  stable_version: string
-  packages: ReleasePackage[]
-  channels: ChannelInfo[]
+  stable_version: string;
+  packages: ReleasePackage[];
+  channels: ChannelInfo[];
 }
 
 export interface DownloadUrlResponse {
-  url: string | null
-  message?: string
+  url: string | null;
+  sha256?: string | null;
+  message?: string;
+}
+
+export type ReleaseChannel = "stable" | "beta" | "insider";
+export type ReleaseNoteType = "FEAT" | "FIX" | "SEC" | "IMP";
+
+export interface ReleaseNoteItem {
+  type: ReleaseNoteType;
+  text: string;
+}
+
+export interface ReleaseNote {
+  version: string;
+  channel: ReleaseChannel;
+  release_date: string;
+  summary: string;
+  items: ReleaseNoteItem[];
+  highlights: string | null;
+}
+
+export interface ReleaseNotesResponse {
+  notes: ReleaseNote[];
+}
+
+export interface BuildInfo {
+  product: string;
+  stable_version: string;
+  build_number: string;
+  git_commit: string | null;
+  build_date: string | null;
+  channel: string;
+  runtime: string;
+  supported_os: string[];
+  min_supported_version: string;
 }
 
 export async function getAppsReleases(): Promise<AppsReleasesResponse> {
-  const res = await api.get<AppsReleasesResponse>('/apps/releases')
-  return res.data
+  const res = await api.get<AppsReleasesResponse>("/apps/releases");
+  return res.data;
 }
 
-export async function getDownloadUrl(packageId: string): Promise<DownloadUrlResponse> {
-  const res = await api.get<DownloadUrlResponse>(`/apps/download/${packageId}`)
-  return res.data
+export async function getDownloadUrl(
+  packageId: string,
+): Promise<DownloadUrlResponse> {
+  const res = await api.get<DownloadUrlResponse>(`/apps/download/${packageId}`);
+  return res.data;
+}
+
+export async function getReleaseNotes(
+  channel?: ReleaseChannel,
+): Promise<ReleaseNotesResponse> {
+  const res = await api.get<ReleaseNotesResponse>("/apps/release-notes", {
+    params: channel ? { channel } : undefined,
+  });
+  return res.data;
+}
+
+export async function getBuildInfo(): Promise<BuildInfo> {
+  const res = await api.get<BuildInfo>("/apps/build-info");
+  return res.data;
 }

@@ -89,6 +89,76 @@ const TOKENS = {
   token_type: 'bearer',
 }
 
+const _APP_VER = '2.4.1'
+const _mockPkg = (
+  id: string, platform: string, format: string, label: string, filename: string, size: string,
+) => ({
+  id, platform, format, label, filename,
+  version: _APP_VER, size_label: size, sha256: null,
+  download_path: `/api/v1/apps/download/${id}`, available: false,
+})
+
+const MOCK_APPS_RELEASES = {
+  stable_version: `v${_APP_VER}`,
+  packages: [
+    _mockPkg('win-exe', 'windows', 'exe', 'インストーラー (.exe)', `CivilPDF-Editor-Setup-${_APP_VER}.exe`, '87.4 MB'),
+    _mockPkg('win-zip', 'windows', 'zip', 'ポータブル (.zip)', `CivilPDF-Editor-Portable-${_APP_VER}.zip`, '94.1 MB'),
+    _mockPkg('mac-dmg', 'macos', 'dmg', 'ディスクイメージ (.dmg)', `CivilPDF-Editor-${_APP_VER}.dmg`, '82.6 MB'),
+    _mockPkg('mac-pkg', 'macos', 'pkg', 'インストーラー (.pkg)', `CivilPDF-Editor-${_APP_VER}.pkg`, '84.0 MB'),
+    _mockPkg('ent-intune', 'enterprise', 'intunewin', 'Intune パッケージ', `CivilPDF-Editor-${_APP_VER}.intunewin`, '91.2 MB'),
+  ],
+  channels: [
+    { id: 'stable', label: 'Stable', version: `v${_APP_VER}`, release_date: '2026-04-28', description: '本番推奨。十分な検証済みリリース。', user_count: 211 },
+    { id: 'beta', label: 'Beta', version: 'v2.5.0-beta.3', release_date: '2026-05-07', description: '機能検証版。次期安定版の先行確認。', user_count: 28 },
+    { id: 'insider', label: 'Insider', version: 'v2.5.0-alpha.9', release_date: '2026-05-10', description: '開発最前線。破壊的変更が含まれる可能性あり。', user_count: 9 },
+  ],
+}
+
+const MOCK_APPS_RELEASE_NOTES = {
+  notes: [
+    {
+      version: _APP_VER, channel: 'stable', release_date: '2026-04-28',
+      summary: 'PDF/A変換精度向上・セキュリティ修正',
+      items: [
+        { type: 'FIX', text: 'PDF/A-1b変換時のフォント埋め込みエラーを修正' },
+        { type: 'SEC', text: 'XSS脆弱性 (CVE-2026-1234) を修正' },
+        { type: 'IMP', text: 'A0/A1大判図面のレンダリング速度を40%改善' },
+      ],
+      highlights: 'v2.4.1 — 本番推奨リリース（mock）',
+    },
+    {
+      version: '2.5.0-beta.3', channel: 'beta', release_date: '2026-05-07',
+      summary: 'Teams連携・新承認フロー',
+      items: [
+        { type: 'FEAT', text: 'Microsoft Teams通知連携を追加' },
+        { type: 'FIX', text: 'OCR日本語縦書き認識精度を改善' },
+      ],
+      highlights: 'v2.5.0-beta.3 — Beta（mock）',
+    },
+    {
+      version: '2.5.0-alpha.9', channel: 'insider', release_date: '2026-05-10',
+      summary: 'AI文書分類・PDF生成エンジン刷新',
+      items: [
+        { type: 'FEAT', text: 'Claude API連携による文書自動分類（実験的）' },
+        { type: 'IMP', text: 'メモリ使用量を30%削減（大判図面）' },
+      ],
+      highlights: 'v2.5.0-alpha.9 — Insider（mock）',
+    },
+  ],
+}
+
+const MOCK_APPS_BUILD_INFO = {
+  product: 'CivilPDF Editor Client',
+  stable_version: `v${_APP_VER}`,
+  build_number: `${_APP_VER}+build.mock`,
+  git_commit: 'mock123',
+  build_date: '2026-04-28',
+  channel: 'stable',
+  runtime: '.NET 8.0 Runtime',
+  supported_os: ['Windows 10 / 11 (64bit)', 'macOS 13 Ventura+ (Universal)'],
+  min_supported_version: '2.3.0',
+}
+
 function handle(config: InternalAxiosRequestConfig): unknown {
   const method = (config.method ?? 'get').toLowerCase()
   const { path, query } = parseRequest(config)
@@ -103,6 +173,26 @@ function handle(config: InternalAxiosRequestConfig): unknown {
     return mockCurrentUser
   }
   if (path === '/auth/me/password' && method === 'post') return { detail: 'password changed (mock)' }
+
+  /* ----- apps (PDF Editor 配信) ----- */
+  if (path === '/apps/releases' && method === 'get') return MOCK_APPS_RELEASES
+  if (path === '/apps/release-notes' && method === 'get') {
+    const ch = query.get('channel')
+    return {
+      notes: ch
+        ? MOCK_APPS_RELEASE_NOTES.notes.filter((n) => n.channel === ch)
+        : MOCK_APPS_RELEASE_NOTES.notes,
+    }
+  }
+  if (path === '/apps/build-info' && method === 'get') return MOCK_APPS_BUILD_INFO
+  {
+    const dm = path.match(/^\/apps\/download\/([^/]+)$/)
+    if (dm && method === 'get') {
+      const pkg = MOCK_APPS_RELEASES.packages.find((p) => p.id === dm[1])
+      if (!pkg) httpError(config, 404, 'Package not found')
+      return { url: null, sha256: pkg!.sha256, message: 'ダウンロードリンクは近日公開予定です（mock）' }
+    }
+  }
 
   /* ----- M365 ----- */
   if (path === '/auth/m365/login' && method === 'post') {
