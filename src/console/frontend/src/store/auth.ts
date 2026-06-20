@@ -1,19 +1,18 @@
-import { create } from 'zustand'
-import type { UserResponse } from '../api/auth'
+import { create } from "zustand";
+import type { UserResponse } from "../api/auth";
 
 interface AuthState {
-  user: UserResponse | null
-  isAuthenticated: boolean
-  setUser: (user: UserResponse | null) => void
-  logout: () => void
+  user: UserResponse | null;
+  isAuthenticated: boolean;
+  setUser: (user: UserResponse | null) => void;
+  logout: () => void;
 }
 
 function getInitialAuthState(): boolean {
-  try {
-    return !!localStorage.getItem('access_token')
-  } catch {
-    return false
-  }
+  // Auth backend is not yet implemented; treat every visitor as authenticated.
+  // When email/password auth is wired up, replace this with:
+  //   try { return !!localStorage.getItem('access_token') } catch { return false }
+  return true;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -21,7 +20,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: getInitialAuthState(),
   setUser: (user) => set({ user, isAuthenticated: !!user }),
   logout: () => {
-    localStorage.clear()
-    set({ user: null, isAuthenticated: false })
+    localStorage.clear();
+    set({ user: null, isAuthenticated: false });
   },
-}))
+}));
