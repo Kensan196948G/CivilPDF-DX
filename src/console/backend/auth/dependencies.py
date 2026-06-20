@@ -10,9 +10,7 @@ from auth.jwt import decode_token
 
 # auto_error=False: returns None instead of 401 when no token is present,
 # allowing the debug bypass below to kick in.
-oauth2_scheme = OAuth2PasswordBearer(
-    tokenUrl="/api/v1/auth/token", auto_error=False
-)
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token", auto_error=False)
 
 _DEV_USER_ID = "dev-admin-00000000-0000-0000-0000-000000000000"
 

@@ -19,7 +19,8 @@ export default function App() {
   // mode (DEBUG=true, no token) the backend's get_current_user returns the
   // dev admin user unconditionally, so the call still succeeds.
   useEffect(() => {
-    if (useAuthStore.getState().user) return
+    const { user, isAuthenticated } = useAuthStore.getState()
+    if (user || !isAuthenticated) return
     getMe()
       .then(setUser)
       .catch(() => {

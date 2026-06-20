@@ -38,6 +38,7 @@ async def lifespan(app: FastAPI):
         # Ensure the dev-bypass admin exists so unauthenticated requests work.
         from database import SessionLocal
         from auth.dependencies import _get_or_create_dev_user
+
         db = SessionLocal()
         try:
             _get_or_create_dev_user(db)
