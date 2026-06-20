@@ -269,7 +269,7 @@ const MOCK_APPS_BUILD_INFO = {
   git_commit: "mock123",
   build_date: "2026-04-28",
   channel: "stable",
-  runtime: ".NET 8.0 Runtime",
+  runtime: "ランタイム同梱（外部依存なし）",
   supported_os: ["Windows 10 / 11 (64bit)", "macOS 13 Ventura+ (Universal)"],
   min_supported_version: "2.3.0",
 };
