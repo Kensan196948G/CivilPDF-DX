@@ -233,7 +233,7 @@
       "verify",
       "improvement"
     ],
-    "phase_done": false,
+    "phase_done": true,
     "phase_done_at": null,
     "retry_count": 0,
     "max_retries": 2,
