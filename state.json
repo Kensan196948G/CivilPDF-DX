@@ -7,17 +7,17 @@
     "phase_mode": "release-ready"
   },
   "phase": {
-    "current": "release-ready",
+    "current": "improvement",
     "week": 4,
     "milestone": "Phase 8 全完了（P1〜P5）・CTO Production Ready 宣言済み（2026-06-03）。Phase 9: P1（Issue #38 電子納品 ZIP 実ファイル同梱テスト）+ P2（Issue #39 モーダルコンポーネントテスト15件）に加え、機能ページを Enterprise シェルへ統合（Phase 8 機能を実アプリで到達可能化）+ 認証再水和バグ修正 + Playwright E2E 導入 + CI に frontend vitest/e2e 追加（2026-06-09）。全テスト397件通過（backend 234 + e2e 20 + frontend vitest 132 + playwright 3 + org_filter 8）。 / 2026-06-12: WebUI モックモード追加（PR #43）+ verify フェーズ正規完了（CI 8ジョブ x2 pass・Codex Review・secret scan・pytest 262/vitest 142） / 2026-06-17: MVP Release Candidate — ViewerView 実API連携（PR #46 merged）+ pip-audit 6 CVE 修正（PR #47 merged）。main CI 8/8 success・vitest 152/152・本番依存脆弱性0・pip-audit クリーン・blocker 0。全テスト424件 / 2026-06-20: DashboardView UsersSubView 実API連携（PR #49 merged・Issue #48 closed）— listUsers() 実API切替・vitest 13件追加。全テスト437件（frontend vitest 165件）。vitest v2→v4 upgrade + npm audit fix（PR #68）— npm audit 0 vulnerabilities 完全解消・全テスト460件（frontend 174件）。 / 2026-06-21: コンソール全メニュー実データ化スプリント完了（PR #69-#73 merged）— deprecated HTTP status 定数更新(#69)・M365実API化(#70)・セキュリティページ実データ化(#71)・ダッシュボード完全実API化(#72)・配信API v0.1.0-beta整合(#73)。dead views 4件削除(PR #75 pending human merge)。全テスト522件（backend 287 + e2e 20 + frontend vitest 212 + playwright 3）"
   },
   "kpi": {
     "ci_success_rate": 1,
     "test_pass_rate": 1,
-    "test_count": 539,
+    "test_count": 546,
     "backend_unit_test_count": 287,
     "backend_e2e_test_count": 20,
-    "frontend_test_count": 229,
+    "frontend_test_count": 236,
     "frontend_e2e_test_count": 3,
     "coverage_percent": 98,
     "review_blocker_count": 0,
@@ -33,7 +33,7 @@
     "ci_retry_limit": 15,
     "same_error_limit": 3,
     "session_start": "2026-05-11T00:00:00+09:00",
-    "current_session_start_at": "2026-06-21T06:19:24.014Z",
+    "current_session_start_at": "2026-06-21T06:40:45.610Z",
     "last_trigger": "manual",
     "last_cron_session_id": "20260618-010001-CivilPDF-DX",
     "last_stop_at": "2026-06-21T06:07:46.383Z",
@@ -44,9 +44,9 @@
     "stable": true,
     "deploy_ready": true,
     "deploy_ready_note": "2026-06-20 CTO 再評価: 本番認証フローは完備（Login.tsx パスワード+M365 / api/auth login+getMe / axios Bearer+401 refresh / EnterpriseLayout ログアウト / PR #60 で本番ゲート有効）。テスト: Login 4 + ProtectedRoute redirect 2 + getInitialAuthState PROD/DEV 3 + authStore 4。当初の『ログイン UI 未実装』判断は誤りで、ログイン UI は最初から存在し #55/#56 がそれを意図的にバイパスしていた。PR #60 でバイパスを DEV 限定化し本番は完成済みログインフローを使用。残る本番化作業は人間タスク（管理者ユーザー作成 scripts/create_admin.py・docker compose・secrets 設定）のみ。",
-    "last_pr": 79,
-    "last_pr_status": "merged (2026-06-21T06:01:35Z) — PR #79 lp/upload/privacy 3 view テスト整備(+17件)。main 宛・人間承認 squash merge 済み。production code 不変・frontend vitest 212→229。",
-    "last_merged_pr": 79,
+    "last_pr": 80,
+    "last_pr_status": "merged (2026-06-21T06:25:58Z) — PR #80 chore: verify cycle 11 完了・goal_rotation.phase_done=true + warnings 集約 + README 539件 + handoff。main 宛・人間承認 squash merge 済み (b0c5bd4)。",
+    "last_merged_pr": 80,
     "verify_2026_06_20T23Z": "CTO Verify 独立検証（cycle 10）: backend pytest 278 passed・frontend vitest 174 passed・frontend lint exit0・npm audit 0 vulnerabilities(prod/all)・直近 main CI 8run 全 success。Release Ready を実証で確定。Verify 中に deprecated HTTP status 定数 6箇所を検出 → PR #69 で挙動不変リネーム（DeprecationWarning 3件消滅）。",
     "apps_distribution": "2026-06-20 Scope A 完了: アプリ配信ページ本番grade化（PR #63 backend release-notes/build-info/sha256/macOS .pkg + test14 / #64 frontend 実API化・デモ明示・mock対応 + test6 / #65 docs）。全 PR 人間承認 squash merge。Scope B（PDF Editor 本体 Electron/Tauri）は Issue #62 で別管理・着手前に再確認。",
     "auth_gate_finding": "2026-06-20 解決: state stale 中に #53〜#58 マージ（実 API 連携スプリント）。#55/#56 が既存ログイン UI を意図的にバイパスし本番ビルドにも漏れていた → Issue #59 起票 → PR #60 で DEV 限定ゲート化（人間承認 merge）→ Issue #59 closed。本番認証フローは検証済みで完備。",
@@ -208,7 +208,7 @@
     }
   },
   "compact": {
-    "last_pre_compact_at": "2026-06-21T06:18:00.430Z"
+    "last_pre_compact_at": "2026-06-21T06:38:53.618Z"
   },
   "dreaming": {
     "patterns": [],
@@ -222,34 +222,36 @@
       "at": "2026-06-21T05:35:00Z",
       "kind": "cleanup",
       "message": "旧 warnings 95件（tdd_required + goal_rotation_forced_advance）を一括クリーンアップ。テスト 522件全通過・CI 8/8 success で全て解消済み（2026-06-21）。"
-    },
-    {
-      "at": "2026-06-21T06:19:00Z",
-      "kind": "tdd_required",
-      "message": "[P3] stats.py / stats.ts の専用テスト未追加（UploadView.tsx・SecurityView.tsx は PR #79/#71 で解消済み）。4件重複を1件に集約。",
-      "files": [
-        "src/console/backend/api/stats.py",
-        "src/console/frontend/src/api/stats.ts"
-      ],
-      "truncated": false,
-      "dedup_note": "元 4件(05:58/06:04/06:06/06:07)を集約。UploadView/SecurityView は PR #79/#71 でテスト追加済みのため除外"
     }
   ],
   "goal_rotation": {
     "mode": "phase",
-    "current": "verify",
-    "sequence": ["monitor", "development", "verify", "improvement"],
-    "phase_done": true,
-    "phase_done_at": "2026-06-21T06:19:00Z",
+    "current": "improvement",
+    "sequence": [
+      "monitor",
+      "development",
+      "verify",
+      "improvement"
+    ],
+    "phase_done": false,
+    "phase_done_at": null,
     "retry_count": 0,
     "max_retries": 2,
     "on_retry_exhausted": "advance",
     "blocked": false,
     "cycle_count": 11,
-    "last_advanced_at": "2026-06-21T06:19:00Z",
-    "last_outcome": "completed",
+    "last_advanced_at": "2026-06-21T06:26:00Z",
+    "last_outcome": "in_progress",
     "last_finalized_session": "20260621T0616Z-verify",
     "history": [
+      {
+        "at": "2026-06-21T06:26:00Z",
+        "from": "verify",
+        "to": "improvement",
+        "outcome": "advanced",
+        "via": "manual",
+        "note": "PR #80 マージ (b0c5bd4) 後、improvement phase cycle 11 開始。verify 完了確認済み。推奨タスク: P3 test_workflows.py fixture isolation / README cycle 11 リリースノート / stats.py・stats.ts テスト追加"
+      },
       {
         "at": "2026-06-21T06:19:00Z",
         "from": "verify",
