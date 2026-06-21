@@ -12,6 +12,7 @@ from models.m365_setting import M365Setting
 from models.audit_log import AuditLog
 from models.retention_policy import RetentionPolicy, RetentionCategory, DEFAULT_POLICIES
 from models.consent import ConsentRecord, ConsentType
+from models.ai_setting import AiSetting
 
 __all__ = [
     "Organization",
@@ -33,4 +34,5 @@ __all__ = [
     "DEFAULT_POLICIES",
     "ConsentRecord",
     "ConsentType",
+    "AiSetting",
 ]

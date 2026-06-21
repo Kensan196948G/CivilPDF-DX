@@ -1,7 +1,6 @@
 """AI-powered document analysis API endpoints (Phase 7)."""
 
 import json
-import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -14,6 +13,7 @@ from auth.dependencies import get_current_user
 from database import get_db
 from models.document import Document
 from models.user import User, UserRole
+from services import ai_settings as ai_settings_service
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
@@ -86,8 +86,8 @@ def _get_document_text(doc: Document) -> str:
         return ""
 
 
-def _get_anthropic_client():
-    """Return Anthropic client; raises 503 if API key is not configured."""
+def _get_anthropic_client(db: Session):
+    """Return Anthropic client; checks DB first, then env var fallback."""
     try:
         import anthropic
     except ImportError as exc:
@@ -96,13 +96,24 @@ def _get_anthropic_client():
             detail="anthropic package not installed",
         ) from exc
 
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    api_key = ai_settings_service.get_api_key(db)
     if not api_key:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="ANTHROPIC_API_KEY is not configured",
         )
     return anthropic.Anthropic(api_key=api_key)
+
+
+def _get_model_name(db: Session) -> str:
+    """Return model name from DB settings, fallback to compile-time default."""
+    try:
+        row = ai_settings_service.get_ai_setting_row(db)
+        if row.model_name:
+            return row.model_name
+    except Exception:
+        pass
+    return _CLAUDE_MODEL
 
 
 # ── Classification ─────────────────────────────────────────────────────────────
@@ -152,12 +163,13 @@ def classify_document(
             detail="No extractable text found in document — run OCR first",
         )
 
-    client = _get_anthropic_client()
+    client = _get_anthropic_client(db)
+    model_name = _get_model_name(db)
 
     prompt = f"以下の文書を分類してください:\n\n文書名: {doc.title}\n\nテキスト（最初の3000字）:\n{text[:3000]}"
 
     message = client.messages.create(
-        model=_CLAUDE_MODEL,
+        model=model_name,
         max_tokens=256,
         system=_CLASSIFY_SYSTEM,
         messages=[{"role": "user", "content": prompt}],
@@ -200,7 +212,7 @@ def classify_document(
         "confidence": confidence,
         "reasoning": result.get("reasoning", ""),
         "classified_at": classified_at,
-        "model": _CLAUDE_MODEL,
+        "model": model_name,
     }
     doc.extra_data = extra
 
@@ -213,7 +225,7 @@ def classify_document(
         confidence=confidence,
         tags=merged_tags,
         classified_at=classified_at,
-        model=_CLAUDE_MODEL,
+        model=model_name,
     )
 
 
@@ -255,12 +267,13 @@ def extract_document_data(
             detail="No extractable text found in document — run OCR first",
         )
 
-    client = _get_anthropic_client()
+    client = _get_anthropic_client(db)
+    model_name = _get_model_name(db)
 
     prompt = f"文書名: {doc.title}\n\nテキスト:\n{text[:4000]}"
 
     message = client.messages.create(
-        model=_CLAUDE_MODEL,
+        model=model_name,
         max_tokens=512,
         system=_EXTRACT_SYSTEM,
         messages=[{"role": "user", "content": prompt}],
@@ -279,7 +292,7 @@ def extract_document_data(
     extra["ai_extraction"] = {
         "data": extracted,
         "extracted_at": extracted_at,
-        "model": _CLAUDE_MODEL,
+        "model": model_name,
     }
     doc.extra_data = extra
     db.commit()
@@ -287,7 +300,7 @@ def extract_document_data(
     return ExtractResponse(
         document_id=document_id,
         extracted_at=extracted_at,
-        model=_CLAUDE_MODEL,
+        model=model_name,
         data=extracted,
     )
 
@@ -320,12 +333,13 @@ def get_document_summary(
             detail="No extractable text found in document — run OCR first",
         )
 
-    client = _get_anthropic_client()
+    client = _get_anthropic_client(db)
+    model_name = _get_model_name(db)
 
     prompt = f"文書名: {doc.title}\n\nテキスト:\n{text[:5000]}"
 
     message = client.messages.create(
-        model=_CLAUDE_MODEL,
+        model=model_name,
         max_tokens=256,
         system=_SUMMARY_SYSTEM,
         messages=[{"role": "user", "content": prompt}],
@@ -339,7 +353,7 @@ def get_document_summary(
     extra["ai_summary"] = {
         "summary": summary,
         "summarized_at": summarized_at,
-        "model": _CLAUDE_MODEL,
+        "model": model_name,
     }
     doc.extra_data = extra
     db.commit()
@@ -348,5 +362,5 @@ def get_document_summary(
         document_id=document_id,
         summary=summary,
         summarized_at=summarized_at,
-        model=_CLAUDE_MODEL,
+        model=model_name,
     )

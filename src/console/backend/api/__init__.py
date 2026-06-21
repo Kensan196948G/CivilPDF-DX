@@ -12,6 +12,7 @@ from api.m365 import router as m365_router
 from api.ocr import router as ocr_router
 from api.privacy import router as privacy_router
 from api.ai import router as ai_router
+from api.ai_settings import router as ai_settings_router
 from api.search import router as search_router
 
 __all__ = [
@@ -29,5 +30,6 @@ __all__ = [
     "ocr_router",
     "privacy_router",
     "ai_router",
+    "ai_settings_router",
     "search_router",
 ]
