@@ -33,10 +33,10 @@
     "ci_retry_limit": 15,
     "same_error_limit": 3,
     "session_start": "2026-05-11T00:00:00+09:00",
-    "current_session_start_at": "2026-06-21T03:03:39.396Z",
+    "current_session_start_at": "2026-06-21T03:11:21.501Z",
     "last_trigger": "manual",
     "last_cron_session_id": "20260618-010001-CivilPDF-DX",
-    "last_stop_at": "2026-06-21T01:49:46.327Z",
+    "last_stop_at": "2026-06-21T03:09:36.128Z",
     "last_claude_session_id": "4fea8d38-647c-4028-aaef-3c069d7a952e"
   },
   "status": {
@@ -206,7 +206,7 @@
     }
   },
   "compact": {
-    "last_pre_compact_at": "2026-06-21T03:02:26.659Z"
+    "last_pre_compact_at": "2026-06-21T03:10:06.060Z"
   },
   "dreaming": {
     "patterns": [],
@@ -1389,23 +1389,46 @@
         "tests/console/test_stats.py"
       ],
       "truncated": false
+    },
+    {
+      "at": "2026-06-21T03:09:36.137Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 7 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/backend/api/stats.py",
+        "src/console/frontend/src/api/stats.ts",
+        "src/console/frontend/src/components/enterprise/views/DashboardView.tsx",
+        "src/console/frontend/src/components/enterprise/views/SecurityView.tsx",
+        "tests/console/test_apps.py",
+        "tests/console/test_stats.py"
+      ],
+      "truncated": false
     }
   ],
   "goal_rotation": {
     "mode": "phase",
-    "current": "improvement",
+    "current": "monitor",
     "sequence": ["monitor", "development", "verify", "improvement"],
     "phase_done": true,
-    "phase_done_at": "2026-06-21T03:10:00Z",
+    "phase_done_at": "2026-06-21T03:25:00Z",
     "retry_count": 0,
     "max_retries": 2,
     "on_retry_exhausted": "advance",
     "blocked": false,
-    "cycle_count": 10,
-    "last_advanced_at": "2026-06-21T03:00:00Z",
+    "cycle_count": 11,
+    "last_advanced_at": "2026-06-21T03:25:00Z",
     "last_outcome": "completed",
-    "last_finalized_session": "20260612-174051-CivilPDF-DX",
+    "last_finalized_session": "20260621T0259Z-improvement",
     "history": [
+      {
+        "at": "2026-06-21T03:25:00Z",
+        "from": "improvement",
+        "to": "monitor",
+        "outcome": "completed",
+        "via": "manual",
+        "note": "improvement cycle 10 完了 — Release Ready 宣言。PR #75 MERGEABLE(human gate)。cycle_count → 11"
+      },
       {
         "at": "2026-06-12T08:43:52.845Z",
         "from": "development",
