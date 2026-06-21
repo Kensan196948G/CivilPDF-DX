@@ -1,4 +1,20 @@
-"""Tests for the app distribution API (releases, release notes, build info, downloads)."""
+"""Tests for the app distribution API (releases, release notes, build info, downloads).
+
+These assert that responses reflect the real CivilPDF-Editor GitHub Release
+v0.1.0-beta (Tauri v2, unsigned public beta, M1 viewing + M2 electronic seal).
+"""
+
+# Real asset filenames as attached to GitHub Release v0.1.0-beta (GitHub replaces
+# spaces with dots). Download URLs are `{base}/{filename}`.
+_BASE = "https://github.com/Kensan196948G/CivilPDF-Editor/releases/download/v0.1.0-beta"
+_REAL_FILENAMES = {
+    "win-exe": "CivilPDF.Editor_0.1.0_x64-setup.exe",
+    "win-msi": "CivilPDF.Editor_0.1.0_x64_en-US.msi",
+    "mac-dmg": "CivilPDF.Editor_0.1.0_universal.dmg",
+    "linux-deb": "CivilPDF.Editor_0.1.0_amd64.deb",
+    "linux-appimage": "CivilPDF.Editor_0.1.0_amd64.AppImage",
+    "linux-rpm": "CivilPDF.Editor-0.1.0-1.x86_64.rpm",
+}
 
 
 def _auth(token: str) -> dict:
@@ -10,29 +26,48 @@ class TestReleases:
         resp = client.get("/api/v1/apps/releases", headers=_auth(admin_token))
         assert resp.status_code == 200
         data = resp.json()
-        assert data["stable_version"] == "v2.4.1"
+        assert data["stable_version"] == "v0.1.0-beta"
         assert isinstance(data["packages"], list)
         assert isinstance(data["channels"], list)
-        assert len(data["channels"]) == 3
+        # Only the public beta channel exists today.
+        assert len(data["channels"]) == 1
+        assert data["channels"][0]["id"] == "beta"
+        assert data["channels"][0]["version"] == "v0.1.0-beta"
+        # user_count is not measured, so it is reported as 0 (no fabrication).
+        assert data["channels"][0]["user_count"] == 0
 
-    def test_releases_include_all_packages(self, client, admin_token):
+    def test_releases_include_all_real_packages(self, client, admin_token):
         resp = client.get("/api/v1/apps/releases", headers=_auth(admin_token))
         ids = {p["id"] for p in resp.json()["packages"]}
-        # windows exe/msi/zip, macos dmg/pkg, enterprise intune
-        assert {
+        # Exactly the six real Tauri-generated assets — no fabricated zip/pkg/intune.
+        assert ids == {
             "win-exe",
             "win-msi",
-            "win-zip",
             "mac-dmg",
-            "mac-pkg",
-            "ent-intune",
-        } <= ids
+            "linux-deb",
+            "linux-appimage",
+            "linux-rpm",
+        }
 
-    def test_macos_pkg_metadata(self, client, admin_token):
+    def test_no_fabricated_packages(self, client, admin_token):
         resp = client.get("/api/v1/apps/releases", headers=_auth(admin_token))
-        pkg = next(p for p in resp.json()["packages"] if p["id"] == "mac-pkg")
+        ids = {p["id"] for p in resp.json()["packages"]}
+        # These were fabricated (Tauri does not produce them) and must be gone.
+        assert {"win-zip", "mac-pkg", "ent-intune"}.isdisjoint(ids)
+
+    def test_real_filenames_and_version(self, client, admin_token):
+        resp = client.get("/api/v1/apps/releases", headers=_auth(admin_token))
+        by_id = {p["id"]: p for p in resp.json()["packages"]}
+        for pkg_id, filename in _REAL_FILENAMES.items():
+            assert by_id[pkg_id]["filename"] == filename
+            assert by_id[pkg_id]["version"] == "0.1.0-beta"
+
+    def test_macos_dmg_metadata(self, client, admin_token):
+        resp = client.get("/api/v1/apps/releases", headers=_auth(admin_token))
+        pkg = next(p for p in resp.json()["packages"] if p["id"] == "mac-dmg")
         assert pkg["platform"] == "macos"
-        assert pkg["format"] == "pkg"
+        assert pkg["format"] == "dmg"
+        assert pkg["filename"].endswith(".dmg")
 
     def test_windows_msi_metadata(self, client, admin_token):
         resp = client.get("/api/v1/apps/releases", headers=_auth(admin_token))
@@ -40,6 +75,25 @@ class TestReleases:
         assert pkg["platform"] == "windows"
         assert pkg["format"] == "msi"
         assert pkg["filename"].endswith(".msi")
+
+    def test_linux_packages_present(self, client, admin_token):
+        resp = client.get("/api/v1/apps/releases", headers=_auth(admin_token))
+        linux = {
+            p["format"] for p in resp.json()["packages"] if p["platform"] == "linux"
+        }
+        assert linux == {"deb", "appimage", "rpm"}
+
+    def test_packages_unavailable_without_base_url(
+        self, client, admin_token, monkeypatch
+    ):
+        monkeypatch.delenv("APPS_RELEASE_BASE_URL", raising=False)
+        resp = client.get("/api/v1/apps/releases", headers=_auth(admin_token))
+        assert all(p["available"] is False for p in resp.json()["packages"])
+
+    def test_packages_available_with_base_url(self, client, admin_token, monkeypatch):
+        monkeypatch.setenv("APPS_RELEASE_BASE_URL", _BASE)
+        resp = client.get("/api/v1/apps/releases", headers=_auth(admin_token))
+        assert all(p["available"] is True for p in resp.json()["packages"])
 
     def test_releases_requires_auth(self, client):
         resp = client.get("/api/v1/apps/releases")
@@ -51,11 +105,27 @@ class TestReleaseNotes:
         resp = client.get("/api/v1/apps/release-notes", headers=_auth(admin_token))
         assert resp.status_code == 200
         notes = resp.json()["notes"]
-        assert len(notes) == 3
+        assert len(notes) == 1
         first = notes[0]
-        assert first["version"] == "2.4.1"
-        assert first["channel"] == "stable"
+        assert first["version"] == "0.1.0-beta"
+        assert first["channel"] == "beta"
         assert all("type" in i and "text" in i for i in first["items"])
+
+    def test_notes_describe_real_features(self, client, admin_token):
+        resp = client.get("/api/v1/apps/release-notes", headers=_auth(admin_token))
+        texts = " ".join(i["text"] for n in resp.json()["notes"] for i in n["items"])
+        # Real features: PDF viewing (M1) and electronic seal (M2).
+        assert "PDF 表示" in texts
+        assert "電子印鑑" in texts
+        # Honest disclosure of the unsigned-beta limitation.
+        assert "未署名" in texts
+
+    def test_notes_have_no_fabricated_content(self, client, admin_token):
+        resp = client.get("/api/v1/apps/release-notes", headers=_auth(admin_token))
+        blob = resp.text
+        # Fabricated items from the old fake data must not reappear.
+        for fake in ("CVE-2026-1234", "Teams", "2.4.1", "2.5.0", "OCR日本語縦書き"):
+            assert fake not in blob
 
     def test_filter_by_channel(self, client, admin_token):
         resp = client.get(
@@ -71,9 +141,10 @@ class TestReleaseNotes:
     def test_invalid_channel_rejected(self, client, admin_token):
         resp = client.get(
             "/api/v1/apps/release-notes",
-            params={"channel": "nope"},
+            params={"channel": "stable"},
             headers=_auth(admin_token),
         )
+        # stable/insider no longer exist — only "beta" is a valid channel.
         assert resp.status_code == 422
 
     def test_requires_auth(self, client):
@@ -87,9 +158,12 @@ class TestBuildInfo:
         assert resp.status_code == 200
         data = resp.json()
         assert data["product"] == "CivilPDF Editor Client"
-        assert data["stable_version"] == "v2.4.1"
-        assert data["channel"] == "stable"
+        assert data["stable_version"] == "v0.1.0-beta"
+        assert data["channel"] == "beta"
+        assert "Tauri" in data["runtime"]
         assert isinstance(data["supported_os"], list) and data["supported_os"]
+        # Linux support is now declared (Tauri produces .deb/.AppImage/.rpm).
+        assert any("Linux" in os_name for os_name in data["supported_os"])
         assert "min_supported_version" in data
         # build_number always present; commit/date may be None when env unset
         assert data["build_number"]
@@ -98,13 +172,13 @@ class TestBuildInfo:
         # Env is read at request time, so monkeypatch alone takes effect.
         monkeypatch.setenv("APPS_BUILD_COMMIT", "abc1234")
         monkeypatch.setenv("APPS_BUILD_DATE", "2026-06-20")
-        monkeypatch.setenv("APPS_BUILD_NUMBER", "2.4.1+build.999")
+        monkeypatch.setenv("APPS_BUILD_NUMBER", "0.1.0-beta+build.42")
         resp = client.get("/api/v1/apps/build-info", headers=_auth(admin_token))
         assert resp.status_code == 200
         data = resp.json()
         assert data["git_commit"] == "abc1234"
         assert data["build_date"] == "2026-06-20"
-        assert data["build_number"] == "2.4.1+build.999"
+        assert data["build_number"] == "0.1.0-beta+build.42"
 
     def test_requires_auth(self, client):
         resp = client.get("/api/v1/apps/build-info")
@@ -122,18 +196,35 @@ class TestDownload:
         assert data["url"] is None
         assert data["message"]
 
-    def test_download_configured_returns_url_and_checksum(
+    def test_download_configured_returns_real_github_url(
         self, client, admin_token, monkeypatch
     ):
-        monkeypatch.setenv("APPS_RELEASE_BASE_URL", "https://cdn.example.com/dl/")
+        monkeypatch.setenv("APPS_RELEASE_BASE_URL", _BASE)
         monkeypatch.setenv("APPS_SHA256_WIN_EXE", "deadbeef")
         resp = client.get("/api/v1/apps/download/win-exe", headers=_auth(admin_token))
         assert resp.status_code == 200
         data = resp.json()
-        assert (
-            data["url"] == "https://cdn.example.com/dl/CivilPDF-Editor-Setup-2.4.1.exe"
-        )
+        assert data["url"] == f"{_BASE}/CivilPDF.Editor_0.1.0_x64-setup.exe"
         assert data["sha256"] == "deadbeef"
+
+    def test_download_url_for_every_package(self, client, admin_token, monkeypatch):
+        monkeypatch.setenv("APPS_RELEASE_BASE_URL", _BASE)
+        for pkg_id, filename in _REAL_FILENAMES.items():
+            resp = client.get(
+                f"/api/v1/apps/download/{pkg_id}", headers=_auth(admin_token)
+            )
+            assert resp.status_code == 200
+            assert resp.json()["url"] == f"{_BASE}/{filename}"
+
+    def test_download_sha256_none_when_env_unset(
+        self, client, admin_token, monkeypatch
+    ):
+        monkeypatch.setenv("APPS_RELEASE_BASE_URL", _BASE)
+        monkeypatch.delenv("APPS_SHA256_MAC_DMG", raising=False)
+        resp = client.get("/api/v1/apps/download/mac-dmg", headers=_auth(admin_token))
+        assert resp.status_code == 200
+        # No fabricated checksum: None when the env var is not set.
+        assert resp.json()["sha256"] is None
 
     def test_download_unknown_package_404(self, client, admin_token):
         resp = client.get(
