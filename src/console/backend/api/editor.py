@@ -78,6 +78,7 @@ def get_review_sidecar(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> ReviewSidecarGetResponse:
+    _require_engineer(current_user)
     doc = _get_doc_or_404(doc_id, db)
     return ReviewSidecarGetResponse(
         review_sidecar=doc.review_sidecar,
