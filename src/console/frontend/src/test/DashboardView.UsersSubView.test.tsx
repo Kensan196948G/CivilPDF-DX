@@ -13,16 +13,18 @@ vi.mock("../api/stats", () => ({
 
 import { listUsers } from "../api/users";
 
-const makeUser = (overrides: Partial<{
-  id: string;
-  email: string;
-  username: string;
-  full_name: string;
-  role: "admin" | "manager" | "engineer" | "viewer";
-  status: "active" | "inactive" | "suspended";
-  last_login: string | null;
-  created_at: string;
-}> = {}) => ({
+const makeUser = (
+  overrides: Partial<{
+    id: string;
+    email: string;
+    username: string;
+    full_name: string;
+    role: "admin" | "manager" | "engineer" | "viewer";
+    status: "active" | "inactive" | "suspended";
+    last_login: string | null;
+    created_at: string;
+  }> = {},
+) => ({
   id: "user-1",
   email: "admin@example.com",
   username: "admin_user",
@@ -34,7 +36,9 @@ const makeUser = (overrides: Partial<{
   ...overrides,
 });
 
-function makeProps(overrides: Partial<Parameters<typeof DashboardView>[0]> = {}) {
+function makeProps(
+  overrides: Partial<Parameters<typeof DashboardView>[0]> = {},
+) {
   return {
     subView: "users" as const,
     period: 30,
@@ -76,7 +80,9 @@ describe("DashboardView > UsersSubView", () => {
   });
 
   it("shows initials avatar from full_name", async () => {
-    vi.mocked(listUsers).mockResolvedValueOnce([makeUser({ full_name: "鈴木花子" })]);
+    vi.mocked(listUsers).mockResolvedValueOnce([
+      makeUser({ full_name: "鈴木花子" }),
+    ]);
 
     render(<DashboardView {...makeProps()} />);
 
@@ -87,12 +93,18 @@ describe("DashboardView > UsersSubView", () => {
   });
 
   it("shows 未ログイン when last_login is null", async () => {
-    vi.mocked(listUsers).mockResolvedValueOnce([makeUser({ last_login: null })]);
+    vi.mocked(listUsers).mockResolvedValueOnce([
+      makeUser({ last_login: null }),
+    ]);
 
     render(<DashboardView {...makeProps()} />);
 
+    // "未ログイン" appears both in the login-status panel label and in the
+    // user table cell, so assert at least one occurrence.
     await waitFor(() => {
-      expect(screen.getByText("未ログイン")).toBeInTheDocument();
+      expect(screen.getAllByText("未ログイン").length).toBeGreaterThanOrEqual(
+        1,
+      );
     });
   });
 
@@ -168,7 +180,12 @@ describe("DashboardView > UsersSubView", () => {
   it("calls onShowModal with user details when row is clicked", async () => {
     const onShowModal = vi.fn();
     vi.mocked(listUsers).mockResolvedValueOnce([
-      makeUser({ full_name: "田中次郎", email: "tanaka@example.com", username: "tanaka", role: "manager" }),
+      makeUser({
+        full_name: "田中次郎",
+        email: "tanaka@example.com",
+        username: "tanaka",
+        role: "manager",
+      }),
     ]);
 
     render(<DashboardView {...makeProps({ onShowModal })} />);
@@ -201,7 +218,9 @@ describe("DashboardView > UsersSubView", () => {
     await waitFor(() => {
       expect(screen.getAllByText("管理者").length).toBeGreaterThanOrEqual(1);
     });
-    expect(screen.getAllByText("マネージャー").length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("マネージャー").length).toBeGreaterThanOrEqual(
+      1,
+    );
     expect(screen.getAllByText("エンジニア").length).toBeGreaterThanOrEqual(1);
     expect(screen.getAllByText("閲覧者").length).toBeGreaterThanOrEqual(1);
   });
