@@ -9,21 +9,21 @@
   "phase": {
     "current": "release-ready",
     "week": 4,
-    "milestone": "Phase 8 全完了（P1〜P5）・CTO Production Ready 宣言済み（2026-06-03）。Phase 9: P1（Issue #38 電子納品 ZIP 実ファイル同梱テスト）+ P2（Issue #39 モーダルコンポーネントテスト15件）に加え、機能ページを Enterprise シェルへ統合（Phase 8 機能を実アプリで到達可能化）+ 認証再水和バグ修正 + Playwright E2E 導入 + CI に frontend vitest/e2e 追加（2026-06-09）。全テスト397件通過（backend 234 + e2e 20 + frontend vitest 132 + playwright 3 + org_filter 8）。 / 2026-06-12: WebUI モックモード追加（PR #43）+ verify フェーズ正規完了（CI 8ジョブ x2 pass・Codex Review・secret scan・pytest 262/vitest 142）"
+    "milestone": "Phase 8 全完了（P1〜P5）・CTO Production Ready 宣言済み（2026-06-03）。Phase 9: P1（Issue #38 電子納品 ZIP 実ファイル同梱テスト）+ P2（Issue #39 モーダルコンポーネントテスト15件）に加え、機能ページを Enterprise シェルへ統合（Phase 8 機能を実アプリで到達可能化）+ 認証再水和バグ修正 + Playwright E2E 導入 + CI に frontend vitest/e2e 追加（2026-06-09）。全テスト397件通過（backend 234 + e2e 20 + frontend vitest 132 + playwright 3 + org_filter 8）。 / 2026-06-12: WebUI モックモード追加（PR #43）+ verify フェーズ正規完了（CI 8ジョブ x2 pass・Codex Review・secret scan・pytest 262/vitest 142） / 2026-06-17: MVP Release Candidate — ViewerView 実API連携（PR #46 merged）+ pip-audit 6 CVE 修正（PR #47 merged）。main CI 8/8 success・vitest 152/152・本番依存脆弱性0・pip-audit クリーン・blocker 0。全テスト424件 / 2026-06-20: DashboardView UsersSubView 実API連携（PR #49 merged・Issue #48 closed）— listUsers() 実API切替・vitest 13件追加。全テスト437件（frontend vitest 165件）。vitest v2→v4 upgrade + npm audit fix（PR #68）— npm audit 0 vulnerabilities 完全解消・全テスト460件（frontend 174件）。 / 2026-06-21: コンソール全メニュー実データ化スプリント完了（PR #69-#73 merged）— deprecated HTTP status 定数更新(#69)・M365実API化(#70)・セキュリティページ実データ化(#71)・ダッシュボード完全実API化(#72)・配信API v0.1.0-beta整合(#73)。dead views 4件削除(PR #75 pending human merge)。全テスト522件（backend 287 + e2e 20 + frontend vitest 212 + playwright 3）"
   },
   "kpi": {
     "ci_success_rate": 1,
     "test_pass_rate": 1,
-    "test_count": 414,
-    "backend_unit_test_count": 242,
+    "test_count": 522,
+    "backend_unit_test_count": 287,
     "backend_e2e_test_count": 20,
-    "frontend_test_count": 142,
+    "frontend_test_count": 212,
     "frontend_e2e_test_count": 3,
     "coverage_percent": 98,
     "review_blocker_count": 0,
     "security_issue_count": 0,
     "security_prod_vuln_count": 0,
-    "security_dev_vuln_note": "npm audit: 本番依存0件。dev依存に esbuild<=0.24.2 経由 5件（3 moderate/2 critical, dev サーバのみ・本番非該当）。修正は vite/vitest メジャー更新要のため別 Issue。",
+    "security_dev_vuln_note": "npm audit: 本番依存0件・dev依存0件（PR #68 vitest v2→v4 upgrade + npm audit fix により完全解消）。/ 2026-06-17: backend pip-audit 6件（python-multipart/starlette/cryptography の新規 CVE-2026-*）を fix 版へ更新し解消（PR #47 merged）。pip-audit クリーン。/ 2026-06-20: vitest@4 で peer vite@^8 解消 + vite 8.0.16・react-router-dom 7.18.0・undici/form-data 更新（PR #68）。",
     "frontend_build_max_chunk_kb": 366
   },
   "execution": {
@@ -33,24 +33,31 @@
     "ci_retry_limit": 15,
     "same_error_limit": 3,
     "session_start": "2026-05-11T00:00:00+09:00",
-    "current_session_start_at": "2026-06-14T04:56:07.609Z",
-    "last_trigger": "cron",
-    "last_cron_session_id": "20260614-062412-CMDB-DocKit",
-    "last_stop_at": "2026-06-12T09:43:49.621Z"
+    "current_session_start_at": "2026-06-21T03:03:39.396Z",
+    "last_trigger": "manual",
+    "last_cron_session_id": "20260618-010001-CivilPDF-DX",
+    "last_stop_at": "2026-06-21T01:49:46.327Z",
+    "last_claude_session_id": "4fea8d38-647c-4028-aaef-3c069d7a952e"
   },
   "status": {
     "current_phase": "release-ready",
     "stable": true,
     "deploy_ready": true,
-    "last_pr": 45,
-    "last_pr_status": "open (2026-06-14) — README 非エンジニア向け全面改訂 + docs/for-it-staff.md + docs/tech-stack.md 新規作成（Phase 10 ドキュメント再編・c69d80f）",
-    "last_merged_pr": 43,
+    "deploy_ready_note": "2026-06-20 CTO 再評価: 本番認証フローは完備（Login.tsx パスワード+M365 / api/auth login+getMe / axios Bearer+401 refresh / EnterpriseLayout ログアウト / PR #60 で本番ゲート有効）。テスト: Login 4 + ProtectedRoute redirect 2 + getInitialAuthState PROD/DEV 3 + authStore 4。当初の『ログイン UI 未実装』判断は誤りで、ログイン UI は最初から存在し #55/#56 がそれを意図的にバイパスしていた。PR #60 でバイパスを DEV 限定化し本番は完成済みログインフローを使用。残る本番化作業は人間タスク（管理者ユーザー作成 scripts/create_admin.py・docker compose・secrets 設定）のみ。",
+    "last_pr": 75,
+    "last_pr_status": "open (2026-06-21) — cleanup: Enterprise 旧 views/ 4件削除（DocumentsView/WorkflowView/AuditView/SettingsView・dead code 2258行）。PR #75 MERGEABLE・人間 merge 承認待ち。",
+    "last_merged_pr": 73,
+    "verify_2026_06_20T23Z": "CTO Verify 独立検証（cycle 10）: backend pytest 278 passed・frontend vitest 174 passed・frontend lint exit0・npm audit 0 vulnerabilities(prod/all)・直近 main CI 8run 全 success。Release Ready を実証で確定。Verify 中に deprecated HTTP status 定数 6箇所を検出 → PR #69 で挙動不変リネーム（DeprecationWarning 3件消滅）。",
+    "apps_distribution": "2026-06-20 Scope A 完了: アプリ配信ページ本番grade化（PR #63 backend release-notes/build-info/sha256/macOS .pkg + test14 / #64 frontend 実API化・デモ明示・mock対応 + test6 / #65 docs）。全 PR 人間承認 squash merge。Scope B（PDF Editor 本体 Electron/Tauri）は Issue #62 で別管理・着手前に再確認。",
+    "auth_gate_finding": "2026-06-20 解決: state stale 中に #53〜#58 マージ（実 API 連携スプリント）。#55/#56 が既存ログイン UI を意図的にバイパスし本番ビルドにも漏れていた → Issue #59 起票 → PR #60 で DEV 限定ゲート化（人間承認 merge）→ Issue #59 closed。本番認証フローは検証済みで完備。",
+    "scope_b_status": "2026-06-21 確定: Scope B(PDF Editor 本体)の実体は別 repo CivilPDF-Editor（Tauri v2・~/Projects/CivilPDF-Editor）。DX 内に desktop/ 新規構築は重複ゆえ不可。当セッションで Editor を整理: M2 電子印鑑 PR #2 を superseded close（main と byte 同一）/ Issue #4 fs scope 最小権限化 PR #5 merge / M3(OCR)/M4(大判図面) 設計 PR #6 merge（docs/design/m3-m4-ocr-largeformat.md）+ Issue #7〜#10 起票（着手順 #7→(#8∥#9)→#10）。Editor main に未コミット WIP(icons/vitest)残存・要次セッション PR 化。DX 本体は Release Ready 維持。",
+    "security_pr_47": "merged (2026-06-17) — pip-audit 6 CVE 修正（python-multipart 0.0.31 / starlette 1.3.1 / cryptography 48.0.1）→ main (c9ddfea)",
     "release_version": "v0.8.0-phase8-complete",
     "last_closed_issue": 42,
     "frontend_lan_url": "http://192.168.0.185:5181/",
     "frontend_systemd_unit": "civilpdf-frontend.service (dev:lan @ 5181)",
     "frontend_pid": 922295,
-    "frontend_app_architecture": "App.tsx → EnterpriseLayout(shell) → documents/projects/workflow/audit/users/settings は API 接続済み pages/ をレンダリング。lp/upload/viewer/apps/security/m365/privacy/dashboard は現状 mockup views/（実 API 接続は follow-up）。",
+    "frontend_app_architecture": "App.tsx → EnterpriseLayout(shell) → documents/projects/workflow/audit/users/settings は API 接続済み pages/ をレンダリング。apps/security/m365/dashboard/viewer も実 API 接続済み（PR #70-#72・#46）。lp/upload/privacy は現状 mockup views/。dead views 4件（DocumentsView/WorkflowView/AuditView/SettingsView）は PR #75 で削除予定（human merge 待ち）。",
     "cto_production_ready_at": "2026-06-03T12:31:55Z",
     "cto_declaration": "Phase 8 全完了。Phase 9 で Phase 8 機能のシェル統合・到達性を E2E 検証。全テスト397件・CI 全8ジョブ pass・本番依存脆弱性0・blocker 0。Production Ready 維持。",
     "mock_webui_url": "http://192.168.0.143:5180/ (dev:mock セッション内プロセス・任意資格情報でログイン可)"
@@ -113,7 +120,16 @@
     "Phase 9: Playwright E2E 導入（2026-06-09）— playwright.config.ts + e2e/ 3件（timestamp/delivery/filter モーダル開閉・実ブラウザ・API モック）。Issue #39 のフロントエンド E2E を完遂",
     "Phase 9: CI 強化（2026-06-09）— frontend-lint-test に npm run test（vitest）追加 + frontend-e2e ジョブ（Playwright chromium）新設。従来 frontend vitest は CI 未実行だった欠落を解消",
     "Phase 9: vitest 統合テスト追加（2026-06-09）— App.test.tsx 4件（routing/再水和）+ EnterpriseLayout.integration.test.tsx 5件（シェル経由 Phase 8 到達性）",
-    "WebUI モックモード（VITE_MOCK / dev 専用）— axios adapter 差し替えで全 /api/v1/* をブラウザ内応答。建設業ダミーデータ大量投入（文書150/プロジェクト24/ユーザー32/WF60/監査ログ400）。dev:mock / dev:lan:mock スクリプト。Codex Review 対応で DEV 限定化・enum/decision 422 検証（PR #43 マージ 2026-06-12）"
+    "WebUI モックモード（VITE_MOCK / dev 専用）— axios adapter 差し替えで全 /api/v1/* をブラウザ内応答。建設業ダミーデータ大量投入（文書150/プロジェクト24/ユーザー32/WF60/監査ログ400）。dev:mock / dev:lan:mock スクリプト。Codex Review 対応で DEV 限定化・enum/decision 422 検証（PR #43 マージ 2026-06-12）",
+    "ViewerView 実API連携（2026-06-17・PR #46 merged e6e2637）— 静的モックから listDocuments/extractDocumentData/classifyDocument の実 API へ切替。vitest 10件追加（合計152）。React Compiler lint（eslint-plugin-react-hooks v6）対応: 同期 setState 撤廃・派生値 useMemo 化・未使用 import 削除。CI 8/8 success",
+    "セキュリティ依存更新（2026-06-17・PR #47 merged c9ddfea）— pip-audit が新規 CVE-2026-* 6件を検出（python-multipart/starlette/cryptography）。fix 版へ bump（0.0.31/1.3.1/48.0.1）。fastapi 0.136.3 は starlette>=0.46.0 で互換確認。Backend Security Scan 回復",
+    "DashboardView UsersSubView 実API連携（2026-06-20・PR #49 merged・Issue #48 closed）— 旧ハードコードモック（admin/reviewer/operator/external）から実 RBAC ロール（admin/manager/engineer/viewer）対応の listUsers() API へ切替。useEffect + useState + useMemo でロールフィルタ・ステータスフィルタ実装。vitest 13件追加（計165件）。CI 9/9 success・CodeRabbit pass",
+    "chore(backend): deprecated HTTP status 定数更新（2026-06-20・PR #69 merged）— HTTP_422_UNPROCESSABLE_ENTITY → HTTP_422_UNPROCESSABLE_CONTENT 等 6箇所リネーム。DeprecationWarning 3件消滅。挙動不変",
+    "vitest v2→v4 upgrade + npm audit fix（PR #68 merged）— npm audit 0 vulnerabilities 完全解消（prod/dev 両方）。全テスト460件（frontend 174件）",
+    "feat(console-ui): M365メニュー完全モックから実API結線（2026-06-21・PR #70 merged）— useM365Status/useM365Users/useM365 query hooks + M365Overview/M365Users/M365Sync 実API接続。vitest tests追加",
+    "feat(console): セキュリティページ実データ駆動化（2026-06-21・PR #71 merged）— SecurityStatus/SecurityEvents/SecurityConfig を監査ログ/設定由来へ置換。useSecurityStats/useSecurityConfig hooks。vitest tests追加",
+    "feat(console): ダッシュボード完全実API化（2026-06-21・PR #72 merged）— DashboardView全体を実API化（KPI/チャート/プロジェクト統計）。useStats/useProjectStats/useDailyStats hooks。vitest tests追加",
+    "fix(apps): 配信APIを実GitHub Release v0.1.0-beta へ整合（2026-06-21・PR #73 merged）— 架空データ排除・準備中→DL可（TAURI_DX_DOWNLOAD_BASE_URL設定時）。全テスト522件（backend 287 + e2e 20 + frontend 212 + playwright 3）"
   ],
   "next_targets": [
     "[必須/人間作業] GitHub Secrets: ANTHROPIC_API_KEY を repo Settings > Secrets に手動設定",
@@ -121,7 +137,8 @@
     "[必須/人間作業] 初回管理者ユーザー作成・デフォルトパスワード変更（docs/deployment/docker-production-deployment.md §5 参照）",
     "[必須/人間作業] Windows 11 展開当日は docs/deployment/windows11-precheck-network-m365.md を参照して作業",
     "[P3] dev 依存脆弱性（esbuild<=0.24.2 経由 vite/vitest）解消 — vite/vitest メジャー更新の影響評価込みで別 Issue 化",
-    "[P3] Enterprise mockup views の整理 — 未使用化した DocumentsView/WorkflowView/AuditView/SettingsView の削除可否判断、および dashboard/upload/viewer/security/m365/apps の実 API 接続検討"
+    "[P3] lp/upload/privacy の実 API 接続検討（現状 mockup views/ のみ）",
+    "[必須/人間作業] PR #75 マージ承認（cleanup: dead views 4件削除 — DocumentsView/WorkflowView/AuditView/SettingsView）"
   ],
   "learning": {
     "failure_patterns": [
@@ -155,12 +172,27 @@
     "usage_history": {
       "agents": {
         "Explore": {
-          "call_count": 1,
-          "last_used": "2026-06-12T09:14:04.637Z",
-          "last_description": "frontend モック化調査"
+          "call_count": 4,
+          "last_used": "2026-06-21T00:19:51.538Z",
+          "last_description": "PDF Editor Client 完成度監査"
         },
-        "_total_agent_calls": 1,
-        "_last_agent_call_at": "2026-06-12T09:14:04.637Z"
+        "_total_agent_calls": 9,
+        "_last_agent_call_at": "2026-06-21T01:09:16.064Z",
+        "architect": {
+          "call_count": 1,
+          "last_used": "2026-06-20T23:53:38.286Z",
+          "last_description": "M3/M4 マイルストーン設計"
+        },
+        "dev-ui": {
+          "call_count": 3,
+          "last_used": "2026-06-21T00:57:36.186Z",
+          "last_description": "Security 実データ結線"
+        },
+        "dev-api": {
+          "call_count": 1,
+          "last_used": "2026-06-21T01:09:16.064Z",
+          "last_description": "配信ページを実リリース整合"
+        }
       },
       "skills": {
         "coderabbit:coderabbit-review": {
@@ -174,7 +206,7 @@
     }
   },
   "compact": {
-    "last_pre_compact_at": "2026-06-14T04:54:31.369Z"
+    "last_pre_compact_at": "2026-06-21T03:02:26.659Z"
   },
   "dreaming": {
     "patterns": [],
@@ -484,21 +516,894 @@
         "tests/console/test_electronic_delivery.py"
       ],
       "truncated": false
+    },
+    {
+      "at": "2026-06-17T01:32:27.596Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 41 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        ".claude/claudeos/scripts/hooks/agent-teams-tracker.js",
+        ".claude/claudeos/scripts/hooks/agent-transcript.js",
+        ".claude/claudeos/scripts/hooks/auto-format.js",
+        ".claude/claudeos/scripts/hooks/dreaming-runner.js",
+        ".claude/claudeos/scripts/hooks/evaluate-session.js",
+        ".claude/claudeos/scripts/hooks/goal-rotation.js",
+        ".claude/claudeos/scripts/hooks/notify-stable.js",
+        ".claude/claudeos/scripts/hooks/pre-commit-gate.js",
+        ".claude/claudeos/scripts/hooks/pre-compact.js",
+        ".claude/claudeos/scripts/hooks/quality-gate-check.js",
+        ".claude/claudeos/scripts/hooks/reasoning-bank.js",
+        ".claude/claudeos/scripts/hooks/session-end.js",
+        ".claude/claudeos/scripts/hooks/session-start.js",
+        ".claude/claudeos/scripts/hooks/stop-continue-gate.js",
+        ".claude/claudeos/scripts/hooks/suggest-compact.js",
+        ".claude/claudeos/scripts/hooks/task-completed-gate.js",
+        ".claude/claudeos/scripts/hooks/task-created-gate.js",
+        ".claude/claudeos/scripts/hooks/tdd-coverage-scan.js",
+        ".claude/claudeos/scripts/hooks/teammate-idle-gate.js",
+        ".claude/claudeos/scripts/hooks/usage-tracker.js",
+        ".claude/claudeos/scripts/hooks/verify-goal-set.js",
+        ".claude/claudeos/scripts/hooks/webhook-notifier.js",
+        ".claude/claudeos/scripts/lib/package-manager.js",
+        ".claude/claudeos/scripts/lib/utils.js",
+        ".claude/claudeos/scripts/setup-package-manager.js",
+        ".claude/claudeos/scripts/tools/run-ultrareview.js",
+        ".claude/claudeos/tests/run-all.js",
+        ".claude/statusline.py",
+        ".claude/workflows/bug-investigation.js",
+        ".claude/workflows/classify-and-act.js"
+      ],
+      "truncated": true
+    },
+    {
+      "at": "2026-06-17T01:34:49.560Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 41 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        ".claude/claudeos/scripts/hooks/agent-teams-tracker.js",
+        ".claude/claudeos/scripts/hooks/agent-transcript.js",
+        ".claude/claudeos/scripts/hooks/auto-format.js",
+        ".claude/claudeos/scripts/hooks/dreaming-runner.js",
+        ".claude/claudeos/scripts/hooks/evaluate-session.js",
+        ".claude/claudeos/scripts/hooks/goal-rotation.js",
+        ".claude/claudeos/scripts/hooks/notify-stable.js",
+        ".claude/claudeos/scripts/hooks/pre-commit-gate.js",
+        ".claude/claudeos/scripts/hooks/pre-compact.js",
+        ".claude/claudeos/scripts/hooks/quality-gate-check.js",
+        ".claude/claudeos/scripts/hooks/reasoning-bank.js",
+        ".claude/claudeos/scripts/hooks/session-end.js",
+        ".claude/claudeos/scripts/hooks/session-start.js",
+        ".claude/claudeos/scripts/hooks/stop-continue-gate.js",
+        ".claude/claudeos/scripts/hooks/suggest-compact.js",
+        ".claude/claudeos/scripts/hooks/task-completed-gate.js",
+        ".claude/claudeos/scripts/hooks/task-created-gate.js",
+        ".claude/claudeos/scripts/hooks/tdd-coverage-scan.js",
+        ".claude/claudeos/scripts/hooks/teammate-idle-gate.js",
+        ".claude/claudeos/scripts/hooks/usage-tracker.js",
+        ".claude/claudeos/scripts/hooks/verify-goal-set.js",
+        ".claude/claudeos/scripts/hooks/webhook-notifier.js",
+        ".claude/claudeos/scripts/lib/package-manager.js",
+        ".claude/claudeos/scripts/lib/utils.js",
+        ".claude/claudeos/scripts/setup-package-manager.js",
+        ".claude/claudeos/scripts/tools/run-ultrareview.js",
+        ".claude/claudeos/tests/run-all.js",
+        ".claude/statusline.py",
+        ".claude/workflows/bug-investigation.js",
+        ".claude/workflows/classify-and-act.js"
+      ],
+      "truncated": true
+    },
+    {
+      "at": "2026-06-17T01:36:49.747Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 41 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        ".claude/claudeos/scripts/hooks/agent-teams-tracker.js",
+        ".claude/claudeos/scripts/hooks/agent-transcript.js",
+        ".claude/claudeos/scripts/hooks/auto-format.js",
+        ".claude/claudeos/scripts/hooks/dreaming-runner.js",
+        ".claude/claudeos/scripts/hooks/evaluate-session.js",
+        ".claude/claudeos/scripts/hooks/goal-rotation.js",
+        ".claude/claudeos/scripts/hooks/notify-stable.js",
+        ".claude/claudeos/scripts/hooks/pre-commit-gate.js",
+        ".claude/claudeos/scripts/hooks/pre-compact.js",
+        ".claude/claudeos/scripts/hooks/quality-gate-check.js",
+        ".claude/claudeos/scripts/hooks/reasoning-bank.js",
+        ".claude/claudeos/scripts/hooks/session-end.js",
+        ".claude/claudeos/scripts/hooks/session-start.js",
+        ".claude/claudeos/scripts/hooks/stop-continue-gate.js",
+        ".claude/claudeos/scripts/hooks/suggest-compact.js",
+        ".claude/claudeos/scripts/hooks/task-completed-gate.js",
+        ".claude/claudeos/scripts/hooks/task-created-gate.js",
+        ".claude/claudeos/scripts/hooks/tdd-coverage-scan.js",
+        ".claude/claudeos/scripts/hooks/teammate-idle-gate.js",
+        ".claude/claudeos/scripts/hooks/usage-tracker.js",
+        ".claude/claudeos/scripts/hooks/verify-goal-set.js",
+        ".claude/claudeos/scripts/hooks/webhook-notifier.js",
+        ".claude/claudeos/scripts/lib/package-manager.js",
+        ".claude/claudeos/scripts/lib/utils.js",
+        ".claude/claudeos/scripts/setup-package-manager.js",
+        ".claude/claudeos/scripts/tools/run-ultrareview.js",
+        ".claude/claudeos/tests/run-all.js",
+        ".claude/statusline.py",
+        ".claude/workflows/bug-investigation.js",
+        ".claude/workflows/classify-and-act.js"
+      ],
+      "truncated": true
+    },
+    {
+      "at": "2026-06-17T01:38:48.431Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 41 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        ".claude/claudeos/scripts/hooks/agent-teams-tracker.js",
+        ".claude/claudeos/scripts/hooks/agent-transcript.js",
+        ".claude/claudeos/scripts/hooks/auto-format.js",
+        ".claude/claudeos/scripts/hooks/dreaming-runner.js",
+        ".claude/claudeos/scripts/hooks/evaluate-session.js",
+        ".claude/claudeos/scripts/hooks/goal-rotation.js",
+        ".claude/claudeos/scripts/hooks/notify-stable.js",
+        ".claude/claudeos/scripts/hooks/pre-commit-gate.js",
+        ".claude/claudeos/scripts/hooks/pre-compact.js",
+        ".claude/claudeos/scripts/hooks/quality-gate-check.js",
+        ".claude/claudeos/scripts/hooks/reasoning-bank.js",
+        ".claude/claudeos/scripts/hooks/session-end.js",
+        ".claude/claudeos/scripts/hooks/session-start.js",
+        ".claude/claudeos/scripts/hooks/stop-continue-gate.js",
+        ".claude/claudeos/scripts/hooks/suggest-compact.js",
+        ".claude/claudeos/scripts/hooks/task-completed-gate.js",
+        ".claude/claudeos/scripts/hooks/task-created-gate.js",
+        ".claude/claudeos/scripts/hooks/tdd-coverage-scan.js",
+        ".claude/claudeos/scripts/hooks/teammate-idle-gate.js",
+        ".claude/claudeos/scripts/hooks/usage-tracker.js",
+        ".claude/claudeos/scripts/hooks/verify-goal-set.js",
+        ".claude/claudeos/scripts/hooks/webhook-notifier.js",
+        ".claude/claudeos/scripts/lib/package-manager.js",
+        ".claude/claudeos/scripts/lib/utils.js",
+        ".claude/claudeos/scripts/setup-package-manager.js",
+        ".claude/claudeos/scripts/tools/run-ultrareview.js",
+        ".claude/claudeos/tests/run-all.js",
+        ".claude/statusline.py",
+        ".claude/workflows/bug-investigation.js",
+        ".claude/workflows/classify-and-act.js"
+      ],
+      "truncated": true
+    },
+    {
+      "at": "2026-06-17T11:25:25.517Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 41 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        ".claude/claudeos/scripts/hooks/agent-teams-tracker.js",
+        ".claude/claudeos/scripts/hooks/agent-transcript.js",
+        ".claude/claudeos/scripts/hooks/auto-format.js",
+        ".claude/claudeos/scripts/hooks/dreaming-runner.js",
+        ".claude/claudeos/scripts/hooks/evaluate-session.js",
+        ".claude/claudeos/scripts/hooks/goal-rotation.js",
+        ".claude/claudeos/scripts/hooks/notify-stable.js",
+        ".claude/claudeos/scripts/hooks/pre-commit-gate.js",
+        ".claude/claudeos/scripts/hooks/pre-compact.js",
+        ".claude/claudeos/scripts/hooks/quality-gate-check.js",
+        ".claude/claudeos/scripts/hooks/reasoning-bank.js",
+        ".claude/claudeos/scripts/hooks/session-end.js",
+        ".claude/claudeos/scripts/hooks/session-start.js",
+        ".claude/claudeos/scripts/hooks/stop-continue-gate.js",
+        ".claude/claudeos/scripts/hooks/suggest-compact.js",
+        ".claude/claudeos/scripts/hooks/task-completed-gate.js",
+        ".claude/claudeos/scripts/hooks/task-created-gate.js",
+        ".claude/claudeos/scripts/hooks/tdd-coverage-scan.js",
+        ".claude/claudeos/scripts/hooks/teammate-idle-gate.js",
+        ".claude/claudeos/scripts/hooks/usage-tracker.js",
+        ".claude/claudeos/scripts/hooks/verify-goal-set.js",
+        ".claude/claudeos/scripts/hooks/webhook-notifier.js",
+        ".claude/claudeos/scripts/lib/package-manager.js",
+        ".claude/claudeos/scripts/lib/utils.js",
+        ".claude/claudeos/scripts/setup-package-manager.js",
+        ".claude/claudeos/scripts/tools/run-ultrareview.js",
+        ".claude/claudeos/tests/run-all.js",
+        ".claude/statusline.py",
+        ".claude/workflows/bug-investigation.js",
+        ".claude/workflows/classify-and-act.js"
+      ],
+      "truncated": true
+    },
+    {
+      "at": "2026-06-17T16:02:34.538Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 41 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        ".claude/claudeos/scripts/hooks/agent-teams-tracker.js",
+        ".claude/claudeos/scripts/hooks/agent-transcript.js",
+        ".claude/claudeos/scripts/hooks/auto-format.js",
+        ".claude/claudeos/scripts/hooks/dreaming-runner.js",
+        ".claude/claudeos/scripts/hooks/evaluate-session.js",
+        ".claude/claudeos/scripts/hooks/goal-rotation.js",
+        ".claude/claudeos/scripts/hooks/notify-stable.js",
+        ".claude/claudeos/scripts/hooks/pre-commit-gate.js",
+        ".claude/claudeos/scripts/hooks/pre-compact.js",
+        ".claude/claudeos/scripts/hooks/quality-gate-check.js",
+        ".claude/claudeos/scripts/hooks/reasoning-bank.js",
+        ".claude/claudeos/scripts/hooks/session-end.js",
+        ".claude/claudeos/scripts/hooks/session-start.js",
+        ".claude/claudeos/scripts/hooks/stop-continue-gate.js",
+        ".claude/claudeos/scripts/hooks/suggest-compact.js",
+        ".claude/claudeos/scripts/hooks/task-completed-gate.js",
+        ".claude/claudeos/scripts/hooks/task-created-gate.js",
+        ".claude/claudeos/scripts/hooks/tdd-coverage-scan.js",
+        ".claude/claudeos/scripts/hooks/teammate-idle-gate.js",
+        ".claude/claudeos/scripts/hooks/usage-tracker.js",
+        ".claude/claudeos/scripts/hooks/verify-goal-set.js",
+        ".claude/claudeos/scripts/hooks/webhook-notifier.js",
+        ".claude/claudeos/scripts/lib/package-manager.js",
+        ".claude/claudeos/scripts/lib/utils.js",
+        ".claude/claudeos/scripts/setup-package-manager.js",
+        ".claude/claudeos/scripts/tools/run-ultrareview.js",
+        ".claude/claudeos/tests/run-all.js",
+        ".claude/statusline.py",
+        ".claude/workflows/bug-investigation.js",
+        ".claude/workflows/classify-and-act.js"
+      ],
+      "truncated": true
+    },
+    {
+      "at": "2026-06-20T04:55:00.737Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 42 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        ".claude/claudeos/scripts/hooks/agent-teams-tracker.js",
+        ".claude/claudeos/scripts/hooks/agent-transcript.js",
+        ".claude/claudeos/scripts/hooks/auto-format.js",
+        ".claude/claudeos/scripts/hooks/dreaming-runner.js",
+        ".claude/claudeos/scripts/hooks/evaluate-session.js",
+        ".claude/claudeos/scripts/hooks/goal-rotation.js",
+        ".claude/claudeos/scripts/hooks/notify-stable.js",
+        ".claude/claudeos/scripts/hooks/pre-commit-gate.js",
+        ".claude/claudeos/scripts/hooks/pre-compact.js",
+        ".claude/claudeos/scripts/hooks/quality-gate-check.js",
+        ".claude/claudeos/scripts/hooks/reasoning-bank.js",
+        ".claude/claudeos/scripts/hooks/session-end.js",
+        ".claude/claudeos/scripts/hooks/session-start.js",
+        ".claude/claudeos/scripts/hooks/stop-continue-gate.js",
+        ".claude/claudeos/scripts/hooks/suggest-compact.js",
+        ".claude/claudeos/scripts/hooks/task-completed-gate.js",
+        ".claude/claudeos/scripts/hooks/task-created-gate.js",
+        ".claude/claudeos/scripts/hooks/tdd-coverage-scan.js",
+        ".claude/claudeos/scripts/hooks/teammate-idle-gate.js",
+        ".claude/claudeos/scripts/hooks/usage-tracker.js",
+        ".claude/claudeos/scripts/hooks/verify-goal-set.js",
+        ".claude/claudeos/scripts/hooks/webhook-notifier.js",
+        ".claude/claudeos/scripts/lib/package-manager.js",
+        ".claude/claudeos/scripts/lib/utils.js",
+        ".claude/claudeos/scripts/setup-package-manager.js",
+        ".claude/claudeos/scripts/tools/run-ultrareview.js",
+        ".claude/claudeos/tests/run-all.js",
+        ".claude/statusline.py",
+        ".claude/workflows/bug-investigation.js",
+        ".claude/workflows/classify-and-act.js"
+      ],
+      "truncated": true
+    },
+    {
+      "at": "2026-06-20T05:36:46.348Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 9 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/__init__.py",
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/eslint.config.js",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "src/console/frontend/src/components/enterprise/views/DashboardView.tsx",
+        "src/console/frontend/src/components/enterprise/views/ViewerView.tsx",
+        "src/console/frontend/vite.config.ts"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T05:38:37.709Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 9 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/__init__.py",
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/eslint.config.js",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "src/console/frontend/src/components/enterprise/views/DashboardView.tsx",
+        "src/console/frontend/src/components/enterprise/views/ViewerView.tsx",
+        "src/console/frontend/vite.config.ts"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T05:42:11.226Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 9 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/__init__.py",
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/eslint.config.js",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "src/console/frontend/src/components/enterprise/views/DashboardView.tsx",
+        "src/console/frontend/src/components/enterprise/views/ViewerView.tsx",
+        "src/console/frontend/vite.config.ts"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T05:47:51.456Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 9 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/__init__.py",
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/eslint.config.js",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "src/console/frontend/src/components/enterprise/views/DashboardView.tsx",
+        "src/console/frontend/src/components/enterprise/views/ViewerView.tsx",
+        "src/console/frontend/vite.config.ts"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T05:52:05.379Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 9 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/__init__.py",
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/eslint.config.js",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "src/console/frontend/src/components/enterprise/views/DashboardView.tsx",
+        "src/console/frontend/src/components/enterprise/views/ViewerView.tsx",
+        "src/console/frontend/vite.config.ts"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T06:06:27.274Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 9 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/__init__.py",
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/eslint.config.js",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "src/console/frontend/src/components/enterprise/views/DashboardView.tsx",
+        "src/console/frontend/src/components/enterprise/views/ViewerView.tsx",
+        "src/console/frontend/vite.config.ts"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T06:07:46.881Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 9 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/__init__.py",
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/eslint.config.js",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "src/console/frontend/src/components/enterprise/views/DashboardView.tsx",
+        "src/console/frontend/src/components/enterprise/views/ViewerView.tsx",
+        "src/console/frontend/vite.config.ts"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T06:12:06.290Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 9 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/__init__.py",
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/eslint.config.js",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "src/console/frontend/src/components/enterprise/views/DashboardView.tsx",
+        "src/console/frontend/src/components/enterprise/views/ViewerView.tsx",
+        "src/console/frontend/vite.config.ts"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T06:17:22.406Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 7 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/__init__.py",
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/components/ProtectedRoute.tsx",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "src/console/frontend/src/components/enterprise/views/DashboardView.tsx",
+        "src/console/frontend/vite.config.ts"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T06:24:19.383Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 7 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/__init__.py",
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/components/ProtectedRoute.tsx",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "src/console/frontend/vite.config.ts"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T07:02:16.727Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 6 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/backend/auth/dependencies.py",
+        "src/console/frontend/src/App.tsx",
+        "src/console/frontend/src/components/ProtectedRoute.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "src/console/frontend/vite.config.ts"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T07:14:16.051Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/backend/auth/dependencies.py",
+        "src/console/frontend/src/App.tsx",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/components/ProtectedRoute.tsx",
+        "src/console/frontend/src/components/enterprise/views/DocumentsView.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "src/console/frontend/vite.config.ts"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T07:16:01.428Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/backend/auth/dependencies.py",
+        "src/console/frontend/src/App.tsx",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/components/ProtectedRoute.tsx",
+        "src/console/frontend/src/components/enterprise/views/DocumentsView.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "src/console/frontend/vite.config.ts"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T07:23:56.186Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/auth/dependencies.py",
+        "src/console/frontend/src/App.tsx",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/components/ProtectedRoute.tsx",
+        "src/console/frontend/src/components/enterprise/views/DocumentsView.tsx",
+        "src/console/frontend/src/components/enterprise/views/SecurityView.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "src/console/frontend/vite.config.ts"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T08:02:16.562Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 7 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/auth/dependencies.py",
+        "src/console/frontend/src/App.tsx",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/components/ProtectedRoute.tsx",
+        "src/console/frontend/src/components/enterprise/views/DocumentsView.tsx",
+        "src/console/frontend/src/components/enterprise/views/SecurityView.tsx",
+        "src/console/frontend/src/store/auth.ts"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T08:10:39.670Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 7 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/auth/dependencies.py",
+        "src/console/frontend/src/App.tsx",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/components/ProtectedRoute.tsx",
+        "src/console/frontend/src/components/enterprise/views/DocumentsView.tsx",
+        "src/console/frontend/src/components/enterprise/views/SecurityView.tsx",
+        "src/console/frontend/src/store/auth.ts"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T08:21:20.009Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 7 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/auth/dependencies.py",
+        "src/console/frontend/src/App.tsx",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/components/ProtectedRoute.tsx",
+        "src/console/frontend/src/components/enterprise/views/DocumentsView.tsx",
+        "src/console/frontend/src/components/enterprise/views/SecurityView.tsx",
+        "src/console/frontend/src/store/auth.ts"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T08:33:04.471Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/backend/auth/dependencies.py",
+        "src/console/frontend/src/App.tsx",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/components/enterprise/views/DocumentsView.tsx",
+        "src/console/frontend/src/components/enterprise/views/SecurityView.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "tests/console/test_apps.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T08:49:16.465Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "src/console/frontend/src/components/enterprise/views/DocumentsView.tsx",
+        "src/console/frontend/src/components/enterprise/views/SecurityView.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "tests/console/test_apps.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T08:51:40.445Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "src/console/frontend/src/components/enterprise/views/DocumentsView.tsx",
+        "src/console/frontend/src/components/enterprise/views/SecurityView.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "tests/console/test_apps.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T08:57:00.948Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 7 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "src/console/frontend/src/components/enterprise/views/DocumentsView.tsx",
+        "src/console/frontend/src/components/enterprise/views/SecurityView.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "tests/console/test_apps.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T09:04:15.238Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 7 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "src/console/frontend/src/components/enterprise/views/DocumentsView.tsx",
+        "src/console/frontend/src/components/enterprise/views/SecurityView.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "tests/console/test_apps.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T09:36:19.172Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 5 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "tests/console/test_apps.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T09:54:02.118Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 4 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "tests/console/test_apps.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T09:56:27.112Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 4 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "tests/console/test_apps.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T09:58:11.197Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 4 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "tests/console/test_apps.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T10:36:51.497Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 4 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "tests/console/test_apps.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T10:41:08.780Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 4 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "tests/console/test_apps.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T10:49:03.245Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 4 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "tests/console/test_apps.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T10:52:16.456Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 4 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "tests/console/test_apps.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T10:53:10.199Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 4 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "tests/console/test_apps.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T10:53:41.358Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 4 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "tests/console/test_apps.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T11:42:23.626Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 4 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "tests/console/test_apps.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T11:57:07.835Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 4 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "tests/console/test_apps.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T12:00:28.485Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 4 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "tests/console/test_apps.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T12:06:07.060Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 4 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "tests/console/test_apps.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T13:04:00.735Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 4 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "tests/console/test_apps.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-20T13:06:53.540Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 4 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/apps.py",
+        "src/console/frontend/src/api/apps.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "tests/console/test_apps.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-21T00:01:31.059Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 7 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/ai.py",
+        "src/console/backend/api/apps.py",
+        "src/console/backend/api/auth.py",
+        "src/console/backend/api/documents.py",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "tests/console/test_apps.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-21T00:08:13.577Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 7 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/ai.py",
+        "src/console/backend/api/apps.py",
+        "src/console/backend/api/auth.py",
+        "src/console/backend/api/documents.py",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "tests/console/test_apps.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-21T01:10:50.353Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 7 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/ai.py",
+        "src/console/backend/api/apps.py",
+        "src/console/backend/api/auth.py",
+        "src/console/backend/api/documents.py",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "tests/console/test_apps.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-21T01:49:46.335Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 10 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/ai.py",
+        "src/console/backend/api/apps.py",
+        "src/console/backend/api/auth.py",
+        "src/console/backend/api/documents.py",
+        "src/console/backend/api/stats.py",
+        "src/console/frontend/src/api/stats.ts",
+        "src/console/frontend/src/components/enterprise/views/AppsView.tsx",
+        "src/console/frontend/src/components/enterprise/views/DashboardView.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "tests/console/test_stats.py"
+      ],
+      "truncated": false
     }
   ],
   "goal_rotation": {
     "mode": "phase",
-    "current": "verify",
+    "current": "improvement",
     "sequence": ["monitor", "development", "verify", "improvement"],
     "phase_done": true,
-    "phase_done_at": "2026-06-12T09:40:00.000Z",
+    "phase_done_at": "2026-06-21T03:10:00Z",
     "retry_count": 0,
     "max_retries": 2,
     "on_retry_exhausted": "advance",
     "blocked": false,
     "cycle_count": 10,
-    "last_advanced_at": "2026-06-12T08:43:52.845Z",
-    "last_outcome": "forced-advance",
+    "last_advanced_at": "2026-06-21T03:00:00Z",
+    "last_outcome": "completed",
     "last_finalized_session": "20260612-174051-CivilPDF-DX",
     "history": [
       {
