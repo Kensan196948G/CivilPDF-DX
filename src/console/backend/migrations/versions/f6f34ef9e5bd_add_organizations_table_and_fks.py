@@ -72,42 +72,13 @@ def upgrade() -> None:
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint("name"),
     )
-    op.create_table(
-        "audit_logs",
-        sa.Column("id", sa.String(), nullable=False),
-        sa.Column("user_id", sa.String(), nullable=True),
-        sa.Column("action", sa.String(), nullable=False),
-        sa.Column("resource_type", sa.String(), nullable=True),
-        sa.Column("resource_id", sa.String(), nullable=True),
-        sa.Column("detail", sa.Text(), nullable=True),
-        sa.Column("ip_address", sa.String(), nullable=True),
-        sa.Column(
-            "created_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("(CURRENT_TIMESTAMP)"),
-            nullable=True,
-        ),
-        sa.Column("sequence_number", sa.Integer(), nullable=True),
-        sa.Column("record_hash", sa.String(), nullable=True),
-        sa.Column("prev_hash", sa.String(), nullable=True),
-        sa.ForeignKeyConstraint(
-            ["user_id"],
-            ["users.id"],
-        ),
-        sa.PrimaryKeyConstraint("id"),
+    # audit_logs already exists (created by Base.metadata.create_all before Alembic took over).
+    # Only add the new columns that were not part of the original table.
+    op.add_column(
+        "audit_logs", sa.Column("sequence_number", sa.Integer(), nullable=True)
     )
-    op.create_index(
-        op.f("ix_audit_logs_action"), "audit_logs", ["action"], unique=False
-    )
-    op.create_index(
-        op.f("ix_audit_logs_created_at"), "audit_logs", ["created_at"], unique=False
-    )
-    op.create_index(
-        op.f("ix_audit_logs_resource_type"),
-        "audit_logs",
-        ["resource_type"],
-        unique=False,
-    )
+    op.add_column("audit_logs", sa.Column("record_hash", sa.String(), nullable=True))
+    op.add_column("audit_logs", sa.Column("prev_hash", sa.String(), nullable=True))
     op.create_index(
         op.f("ix_audit_logs_sequence_number"),
         "audit_logs",
@@ -242,10 +213,9 @@ def downgrade() -> None:
     op.drop_index(op.f("ix_consent_records_consent_type"), table_name="consent_records")
     op.drop_table("consent_records")
     op.drop_index(op.f("ix_audit_logs_sequence_number"), table_name="audit_logs")
-    op.drop_index(op.f("ix_audit_logs_resource_type"), table_name="audit_logs")
-    op.drop_index(op.f("ix_audit_logs_created_at"), table_name="audit_logs")
-    op.drop_index(op.f("ix_audit_logs_action"), table_name="audit_logs")
-    op.drop_table("audit_logs")
+    op.drop_column("audit_logs", "prev_hash")
+    op.drop_column("audit_logs", "record_hash")
+    op.drop_column("audit_logs", "sequence_number")
     op.drop_table("retention_policies")
     op.drop_table("organizations")
     # ### end Alembic commands ###
