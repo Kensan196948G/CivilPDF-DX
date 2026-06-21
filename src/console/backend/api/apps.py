@@ -135,9 +135,9 @@ def _build_packages() -> list[ReleasePackage]:
     """Build the package list fresh so env-driven checksums/availability stay current.
 
     Filenames MUST match the real assets attached to the GitHub Release v1.1.0
-    (GitHub replaces spaces in asset names with dots). Note: asset filenames contain
-    "1.0.0" because the version was not bumped in package.json / tauri.conf.json
-    before this build; the release tag is v1.1.0. The download URL is then
+    (GitHub replaces spaces in asset names with dots). Asset filenames contain
+    "1.1.0" because package.json / tauri.conf.json version was correctly bumped
+    to 1.1.0 before the CI build. The download URL is then
     `{APPS_RELEASE_BASE_URL}/{filename}`.
     """
     return [
@@ -146,7 +146,7 @@ def _build_packages() -> list[ReleasePackage]:
             "windows",
             "exe",
             "インストーラー (.exe / NSIS)",
-            "CivilPDF.Editor_1.0.0_x64-setup.exe",
+            "CivilPDF.Editor_1.1.0_x64-setup.exe",
             "約 1.9 MB",
         ),
         _pkg(
@@ -154,7 +154,7 @@ def _build_packages() -> list[ReleasePackage]:
             "windows",
             "msi",
             "インストーラー (.msi)",
-            "CivilPDF.Editor_1.0.0_x64_en-US.msi",
+            "CivilPDF.Editor_1.1.0_x64_en-US.msi",
             "約 2.4 MB",
         ),
         _pkg(
@@ -162,7 +162,7 @@ def _build_packages() -> list[ReleasePackage]:
             "macos",
             "dmg",
             "ディスクイメージ (.dmg / Universal)",
-            "CivilPDF.Editor_1.0.0_universal.dmg",
+            "CivilPDF.Editor_1.1.0_universal.dmg",
             "約 4.5 MB",
         ),
         _pkg(
@@ -170,7 +170,7 @@ def _build_packages() -> list[ReleasePackage]:
             "linux",
             "deb",
             "Debian / Ubuntu (.deb)",
-            "CivilPDF.Editor_1.0.0_amd64.deb",
+            "CivilPDF.Editor_1.1.0_amd64.deb",
             "約 2.3 MB",
         ),
         _pkg(
@@ -178,7 +178,7 @@ def _build_packages() -> list[ReleasePackage]:
             "linux",
             "appimage",
             "AppImage (.AppImage)",
-            "CivilPDF.Editor_1.0.0_amd64.AppImage",
+            "CivilPDF.Editor_1.1.0_amd64.AppImage",
             "約 80 MB",
         ),
         _pkg(
@@ -186,7 +186,7 @@ def _build_packages() -> list[ReleasePackage]:
             "linux",
             "rpm",
             "Fedora / RHEL (.rpm)",
-            "CivilPDF.Editor-1.0.0-1.x86_64.rpm",
+            "CivilPDF.Editor-1.1.0-1.x86_64.rpm",
             "約 2.3 MB",
         ),
     ]
