@@ -176,12 +176,13 @@ class TestClassifyDocument:
     def test_classify_no_api_key(
         self, client: TestClient, auth_headers: dict, sample_doc_id: str, monkeypatch
     ):
-        """Returns 503 when ANTHROPIC_API_KEY is not set."""
+        """Returns 503 when no API key is available (env var removed, DB key forced empty)."""
         monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
-        resp = client.post(
-            f"/api/v1/ai/documents/{sample_doc_id}/classify",
-            headers=auth_headers,
-        )
+        with patch("api.ai.ai_settings_service.get_api_key", return_value=""):
+            resp = client.post(
+                f"/api/v1/ai/documents/{sample_doc_id}/classify",
+                headers=auth_headers,
+            )
         assert resp.status_code == 503
 
     def test_classify_malformed_json_response(

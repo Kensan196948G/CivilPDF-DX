@@ -1,6 +1,5 @@
 """AI model settings API — admin-only configuration for Anthropic API key and model."""
 
-import os
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -100,7 +99,7 @@ def test_ai_connection(
         model = row.model_name or "claude-haiku-4-5-20251001"
 
         client = anthropic.Anthropic(api_key=api_key)
-        msg = client.messages.create(
+        client.messages.create(
             model=model,
             max_tokens=10,
             messages=[{"role": "user", "content": "ping"}],

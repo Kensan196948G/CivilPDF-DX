@@ -33,10 +33,10 @@
     "ci_retry_limit": 15,
     "same_error_limit": 3,
     "session_start": "2026-05-11T00:00:00+09:00",
-    "current_session_start_at": "2026-06-21T06:40:45.610Z",
+    "current_session_start_at": "2026-06-21T08:15:30.214Z",
     "last_trigger": "manual",
     "last_cron_session_id": "20260618-010001-CivilPDF-DX",
-    "last_stop_at": "2026-06-21T06:07:46.383Z",
+    "last_stop_at": "2026-06-21T07:49:42.407Z",
     "last_claude_session_id": "4fea8d38-647c-4028-aaef-3c069d7a952e"
   },
   "status": {
@@ -208,7 +208,7 @@
     }
   },
   "compact": {
-    "last_pre_compact_at": "2026-06-21T06:38:53.618Z"
+    "last_pre_compact_at": "2026-06-21T08:19:01.117Z"
   },
   "dreaming": {
     "patterns": [],
@@ -222,6 +222,23 @@
       "at": "2026-06-21T05:35:00Z",
       "kind": "cleanup",
       "message": "旧 warnings 95件（tdd_required + goal_rotation_forced_advance）を一括クリーンアップ。テスト 522件全通過・CI 8/8 success で全て解消済み（2026-06-21）。"
+    },
+    {
+      "at": "2026-06-21T07:49:42.415Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 9 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/__init__.py",
+        "src/console/backend/api/ai.py",
+        "src/console/backend/api/ai_settings.py",
+        "src/console/backend/models/__init__.py",
+        "src/console/backend/models/ai_setting.py",
+        "src/console/backend/services/ai_settings.py",
+        "src/console/frontend/src/api/aiSettings.ts",
+        "src/console/frontend/src/pages/Settings.tsx",
+        "tests/console/test_ai_settings.py"
+      ],
+      "truncated": false
     }
   ],
   "goal_rotation": {
@@ -234,7 +251,7 @@
       "improvement"
     ],
     "phase_done": true,
-    "phase_done_at": null,
+    "phase_done_at": "2026-06-21T07:00:08.094Z",
     "retry_count": 0,
     "max_retries": 2,
     "on_retry_exhausted": "advance",
