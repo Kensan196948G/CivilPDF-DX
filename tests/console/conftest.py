@@ -1,6 +1,8 @@
 """Shared test fixtures for console API tests."""
+
 import sys
 import os
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src/console/backend"))
 
 import pytest
@@ -15,7 +17,9 @@ from models.user import User, UserRole, UserStatus
 
 SQLALCHEMY_TEST_URL = "sqlite:///./test_console.db"
 
-engine_test = create_engine(SQLALCHEMY_TEST_URL, connect_args={"check_same_thread": False})
+engine_test = create_engine(
+    SQLALCHEMY_TEST_URL, connect_args={"check_same_thread": False}
+)
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine_test)
 
 
@@ -78,6 +82,7 @@ def admin_token(client, admin_user):
 @pytest.fixture
 def inactive_user():
     from auth.jwt import get_password_hash
+
     db = TestingSessionLocal()
     user = User(
         email="inactive@example.com",
@@ -97,6 +102,7 @@ def inactive_user():
 @pytest.fixture
 def viewer_user():
     from auth.jwt import get_password_hash
+
     db = TestingSessionLocal()
     user = User(
         email="viewer@example.com",
@@ -118,6 +124,68 @@ def viewer_token(client, viewer_user):
     resp = client.post(
         "/api/v1/auth/token",
         data={"username": "viewer@example.com", "password": "Viewer123!"},
+    )
+    assert resp.status_code == 200
+    return resp.json()["access_token"]
+
+
+@pytest.fixture
+def manager_user():
+    from auth.jwt import get_password_hash
+    from models.user import UserRole, UserStatus
+
+    db = TestingSessionLocal()
+    user = User(
+        email="manager@example.com",
+        username="manager1",
+        full_name="Manager User",
+        hashed_password=get_password_hash("Manager123!"),
+        role=UserRole.MANAGER,
+        status=UserStatus.ACTIVE,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    db.close()
+    return user
+
+
+@pytest.fixture
+def manager_token(client, manager_user):
+    resp = client.post(
+        "/api/v1/auth/token",
+        data={"username": "manager@example.com", "password": "Manager123!"},
+    )
+    assert resp.status_code == 200
+    return resp.json()["access_token"]
+
+
+@pytest.fixture
+def engineer_user():
+    from auth.jwt import get_password_hash
+    from models.user import UserRole, UserStatus
+
+    db = TestingSessionLocal()
+    user = User(
+        email="engineer@example.com",
+        username="engineer1",
+        full_name="Engineer User",
+        hashed_password=get_password_hash("Engineer123!"),
+        role=UserRole.ENGINEER,
+        status=UserStatus.ACTIVE,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    db.close()
+    return user
+
+
+@pytest.fixture
+def engineer_token(client, engineer_user):
+    resp = client.post(
+        "/api/v1/auth/token",
+        data={"username": "engineer@example.com", "password": "Engineer123!"},
     )
     assert resp.status_code == 200
     return resp.json()["access_token"]

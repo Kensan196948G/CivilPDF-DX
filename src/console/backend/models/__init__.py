@@ -7,6 +7,7 @@ from models.document import (
     DocumentType,
     ApprovalWorkflow,
     ApprovalStep,
+    ConversionJob,
 )
 from models.m365_setting import M365Setting
 from models.audit_log import AuditLog
@@ -27,6 +28,7 @@ __all__ = [
     "DocumentType",
     "ApprovalWorkflow",
     "ApprovalStep",
+    "ConversionJob",
     "M365Setting",
     "AuditLog",
     "RetentionPolicy",

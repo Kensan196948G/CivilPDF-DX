@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, field_validator
-from typing import Optional, List
+from typing import Optional, List, Any
 from datetime import datetime
 from models.organization import OrgType
 from models.user import UserRole, UserStatus
@@ -255,3 +255,71 @@ class PaginatedResponse(BaseModel):
     page: int
     per_page: int
     pages: int
+
+
+# ─── Editor Integration ───
+class ReviewSidecarPayload(BaseModel):
+    version: Optional[str] = None
+    stamps: List[Any] = []
+    annotations: List[Any] = []
+    exported_at: Optional[str] = None
+    model_config = {"extra": "allow"}
+
+
+class ReviewSidecarImportResponse(BaseModel):
+    id: str
+    status: DocumentStatus
+    review_sidecar: Optional[Any] = None
+    review_sidecar_imported_at: Optional[datetime] = None
+    model_config = {"from_attributes": True}
+
+
+class ReviewSidecarGetResponse(BaseModel):
+    review_sidecar: Optional[Any] = None
+    review_sidecar_imported_at: Optional[datetime] = None
+
+
+class FlattenCheckResponse(BaseModel):
+    is_flattened: bool
+    flattened_hash: Optional[str] = None
+    status: DocumentStatus
+
+
+class EditorEventItem(BaseModel):
+    event_type: str
+    detail: Optional[Any] = None
+    occurred_at: datetime
+
+    @field_validator("event_type")
+    @classmethod
+    def validate_event_type(cls, v: str) -> str:
+        allowed = {"stamp.placed", "stamp.removed", "annotation.added", "comment.added"}
+        if v not in allowed:
+            raise ValueError(f"event_type must be one of: {sorted(allowed)}")
+        return v
+
+
+class EditorEventsResponse(BaseModel):
+    created: int
+
+
+class WorkflowStatusResponse(BaseModel):
+    status: str
+    updated_at: Optional[datetime] = None
+    steps: List[Any] = []
+    editor_sync: Optional[Any] = None
+
+
+# ─── Revisions ───
+class RevisionResponse(BaseModel):
+    id: str
+    document_id: str
+    version_number: int
+    filename: str
+    file_size: int
+    revision: Optional[str] = None
+    revision_note: Optional[str] = None
+    is_from_editor: bool = False
+    editor_session_id: Optional[str] = None
+    created_at: datetime
+    model_config = {"from_attributes": True}

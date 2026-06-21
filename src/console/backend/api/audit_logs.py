@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from typing import Optional
+from typing import Any, Optional
 import math
 
 from database import get_db
@@ -23,12 +23,13 @@ def _require_admin(current_user: User) -> User:
     return current_user
 
 
-@router.get("/", response_model=dict)
+@router.get("/", response_model=Any)
 def list_audit_logs(
     page: int = Query(1, ge=1),
     per_page: int = Query(50, ge=1, le=200),
     action: Optional[str] = None,
     resource_type: Optional[str] = None,
+    resource_id: Optional[str] = None,
     user_id: Optional[str] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -40,6 +41,8 @@ def list_audit_logs(
         q = q.filter(AuditLog.action == action)
     if resource_type:
         q = q.filter(AuditLog.resource_type == resource_type)
+    if resource_id:
+        q = q.filter(AuditLog.resource_id == resource_id)
     if user_id:
         q = q.filter(AuditLog.user_id == user_id)
 
@@ -51,8 +54,14 @@ def list_audit_logs(
         .all()
     )
 
+    items = [AuditLogResponse.model_validate(log) for log in logs]
+
+    # resource_id filter: return flat list for Editor polling compatibility
+    if resource_id:
+        return items
+
     return {
-        "items": [AuditLogResponse.model_validate(log) for log in logs],
+        "items": items,
         "total": total,
         "page": page,
         "per_page": per_page,
