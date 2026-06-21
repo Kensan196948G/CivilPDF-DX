@@ -35,7 +35,7 @@ def upgrade() -> None:
     op.add_column(
         "documents",
         sa.Column(
-            "is_flattened", sa.Boolean(), nullable=True, server_default=sa.text("0")
+            "is_flattened", sa.Boolean(), nullable=True, server_default=sa.text("false")
         ),
     )
     op.add_column(
@@ -54,7 +54,7 @@ def upgrade() -> None:
     op.add_column(
         "document_versions",
         sa.Column(
-            "is_from_editor", sa.Boolean(), nullable=True, server_default=sa.text("0")
+            "is_from_editor", sa.Boolean(), nullable=True, server_default=sa.text("false")
         ),
     )
     op.add_column(
