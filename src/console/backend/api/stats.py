@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_
 from datetime import datetime, timedelta, timezone
@@ -100,7 +100,16 @@ def get_security_stats(
 
     All counts are derived from rows actually written to the audit_logs table
     (see api/auth.py). No synthetic/real-time values are fabricated.
+
+    Admin-only: these metrics are derived from the audit log, whose direct
+    access (api/audit_logs.list_audit_logs) is restricted to admins. Gating
+    here keeps the aggregate view consistent and prevents non-admins from
+    inferring audit data they cannot read directly.
     """
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
+        )
     now = datetime.now(timezone.utc)
     thirty_days_ago = now - timedelta(days=30)
 
@@ -143,7 +152,14 @@ def get_security_config(
 
     These are config-based (static) values reflecting the running config, not
     real-time traffic. Frontend must label them as such, never as live metrics.
+
+    Admin-only: the security console is an administrative view; gating keeps it
+    consistent with /stats/security and the admin-only audit log access.
     """
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
+        )
     return {
         # From config.py (real running settings).
         "access_token_expire_minutes": settings.access_token_expire_minutes,

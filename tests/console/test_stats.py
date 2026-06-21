@@ -131,3 +131,20 @@ class TestSecurityConfig:
         # Audit hash chain is implemented
         assert data["audit_chain_enabled"] is True
         assert data["audit_hash_algorithm"] == "SHA-256"
+
+    def test_security_stats_admin_only(self, client, viewer_token):
+        """Non-admins must not read audit-derived security metrics (consistent
+        with the admin-only audit log access in api/audit_logs)."""
+        resp = client.get(
+            "/api/v1/stats/security",
+            headers={"Authorization": f"Bearer {viewer_token}"},
+        )
+        assert resp.status_code == 403
+
+    def test_security_config_admin_only(self, client, viewer_token):
+        """The security console (config view) is admin-only."""
+        resp = client.get(
+            "/api/v1/stats/security-config",
+            headers={"Authorization": f"Bearer {viewer_token}"},
+        )
+        assert resp.status_code == 403
