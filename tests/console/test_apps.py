@@ -4,18 +4,18 @@ These assert that responses reflect the real CivilPDF-Editor GitHub Release
 v1.1.0 (Tauri v2, unsigned stable, Phase A/B/C features included).
 """
 
-# Real asset filenames as attached to GitHub Release v1.1.0. Note: filenames
-# contain "1.0.0" because the version was not bumped in package.json /
-# tauri.conf.json before the v1.1.0 build. GitHub replaces spaces with dots.
+# Real asset filenames as attached to GitHub Release v1.1.0. Filenames contain
+# "1.1.0" matching the version set in package.json / tauri.conf.json for this
+# release. GitHub replaces spaces with dots in asset names.
 # Download URLs are `{base}/{filename}`.
 _BASE = "https://github.com/Kensan196948G/CivilPDF-Editor/releases/download/v1.1.0"
 _REAL_FILENAMES = {
-    "win-exe": "CivilPDF.Editor_1.0.0_x64-setup.exe",
-    "win-msi": "CivilPDF.Editor_1.0.0_x64_en-US.msi",
-    "mac-dmg": "CivilPDF.Editor_1.0.0_universal.dmg",
-    "linux-deb": "CivilPDF.Editor_1.0.0_amd64.deb",
-    "linux-appimage": "CivilPDF.Editor_1.0.0_amd64.AppImage",
-    "linux-rpm": "CivilPDF.Editor-1.0.0-1.x86_64.rpm",
+    "win-exe": "CivilPDF.Editor_1.1.0_x64-setup.exe",
+    "win-msi": "CivilPDF.Editor_1.1.0_x64_en-US.msi",
+    "mac-dmg": "CivilPDF.Editor_1.1.0_universal.dmg",
+    "linux-deb": "CivilPDF.Editor_1.1.0_amd64.deb",
+    "linux-appimage": "CivilPDF.Editor_1.1.0_amd64.AppImage",
+    "linux-rpm": "CivilPDF.Editor-1.1.0-1.x86_64.rpm",
 }
 
 
