@@ -7,7 +7,7 @@
     "phase_mode": "release-ready"
   },
   "phase": {
-    "current": "improvement",
+    "current": "monitor",
     "week": 4,
     "milestone": "Phase 8 全完了（P1〜P5）・CTO Production Ready 宣言済み（2026-06-03）。Phase 9: P1（Issue #38 電子納品 ZIP 実ファイル同梱テスト）+ P2（Issue #39 モーダルコンポーネントテスト15件）に加え、機能ページを Enterprise シェルへ統合（Phase 8 機能を実アプリで到達可能化）+ 認証再水和バグ修正 + Playwright E2E 導入 + CI に frontend vitest/e2e 追加（2026-06-09）。全テスト397件通過（backend 234 + e2e 20 + frontend vitest 132 + playwright 3 + org_filter 8）。 / 2026-06-12: WebUI モックモード追加（PR #43）+ verify フェーズ正規完了（CI 8ジョブ x2 pass・Codex Review・secret scan・pytest 262/vitest 142） / 2026-06-17: MVP Release Candidate — ViewerView 実API連携（PR #46 merged）+ pip-audit 6 CVE 修正（PR #47 merged）。main CI 8/8 success・vitest 152/152・本番依存脆弱性0・pip-audit クリーン・blocker 0。全テスト424件 / 2026-06-20: DashboardView UsersSubView 実API連携（PR #49 merged・Issue #48 closed）— listUsers() 実API切替・vitest 13件追加。全テスト437件（frontend vitest 165件）。vitest v2→v4 upgrade + npm audit fix（PR #68）— npm audit 0 vulnerabilities 完全解消・全テスト460件（frontend 174件）。 / 2026-06-21: コンソール全メニュー実データ化スプリント完了（PR #69-#73 merged）— deprecated HTTP status 定数更新(#69)・M365実API化(#70)・セキュリティページ実データ化(#71)・ダッシュボード完全実API化(#72)・配信API v0.1.0-beta整合(#73)。dead views 4件削除(PR #75 pending human merge)。全テスト522件（backend 287 + e2e 20 + frontend vitest 212 + playwright 3）"
   },
@@ -33,10 +33,10 @@
     "ci_retry_limit": 15,
     "same_error_limit": 3,
     "session_start": "2026-05-11T00:00:00+09:00",
-    "current_session_start_at": "2026-06-21T10:50:34.863Z",
+    "current_session_start_at": "2026-06-21T11:06:01.988Z",
     "last_trigger": "manual",
     "last_cron_session_id": "20260618-010001-CivilPDF-DX",
-    "last_stop_at": "2026-06-21T10:26:33.067Z",
+    "last_stop_at": "2026-06-21T11:01:54.262Z",
     "last_claude_session_id": "4fea8d38-647c-4028-aaef-3c069d7a952e"
   },
   "status": {
@@ -44,9 +44,9 @@
     "stable": true,
     "deploy_ready": true,
     "deploy_ready_note": "2026-06-20 CTO 再評価: 本番認証フローは完備（Login.tsx パスワード+M365 / api/auth login+getMe / axios Bearer+401 refresh / EnterpriseLayout ログアウト / PR #60 で本番ゲート有効）。テスト: Login 4 + ProtectedRoute redirect 2 + getInitialAuthState PROD/DEV 3 + authStore 4。当初の『ログイン UI 未実装』判断は誤りで、ログイン UI は最初から存在し #55/#56 がそれを意図的にバイパスしていた。PR #60 でバイパスを DEV 限定化し本番は完成済みログインフローを使用。残る本番化作業は人間タスク（管理者ユーザー作成 scripts/create_admin.py・docker compose・secrets 設定）のみ。",
-    "last_pr": 80,
-    "last_pr_status": "merged (2026-06-21T06:25:58Z) — PR #80 chore: verify cycle 11 完了・goal_rotation.phase_done=true + warnings 集約 + README 539件 + handoff。main 宛・人間承認 squash merge 済み (b0c5bd4)。",
-    "last_merged_pr": 80,
+    "last_pr": 83,
+    "last_pr_status": "merged (2026-06-21T11:03:42Z) — PR #83 feat(console): AI model settings — API key入力・テスト接続・Fernet暗号化。main 宛・人間承認 squash merge 済み (a3ddf90)。CI 8/8 SUCCESS。test 570件。tdd_required 警告 0件。",
+    "last_merged_pr": 83,
     "verify_2026_06_20T23Z": "CTO Verify 独立検証（cycle 10）: backend pytest 278 passed・frontend vitest 174 passed・frontend lint exit0・npm audit 0 vulnerabilities(prod/all)・直近 main CI 8run 全 success。Release Ready を実証で確定。Verify 中に deprecated HTTP status 定数 6箇所を検出 → PR #69 で挙動不変リネーム（DeprecationWarning 3件消滅）。",
     "apps_distribution": "2026-06-20 Scope A 完了: アプリ配信ページ本番grade化（PR #63 backend release-notes/build-info/sha256/macOS .pkg + test14 / #64 frontend 実API化・デモ明示・mock対応 + test6 / #65 docs）。全 PR 人間承認 squash merge。Scope B（PDF Editor 本体 Electron/Tauri）は Issue #62 で別管理・着手前に再確認。",
     "auth_gate_finding": "2026-06-20 解決: state stale 中に #53〜#58 マージ（実 API 連携スプリント）。#55/#56 が既存ログイン UI を意図的にバイパスし本番ビルドにも漏れていた → Issue #59 起票 → PR #60 で DEV 限定ゲート化（人間承認 merge）→ Issue #59 closed。本番認証フローは検証済みで完備。",
@@ -208,7 +208,7 @@
     }
   },
   "compact": {
-    "last_pre_compact_at": "2026-06-21T10:48:48.966Z"
+    "last_pre_compact_at": "2026-06-21T11:04:39.043Z"
   },
   "dreaming": {
     "patterns": [],
@@ -227,23 +227,85 @@
       "at": "2026-06-21T11:00:00Z",
       "kind": "resolved",
       "message": "tdd_required 3件解消: test_ai_settings.py 13件 (backend 287→300) + Settings.test.tsx AI section 11件 (frontend 236→247) — PR #83 commit c05c4de。合計 test_count 546→570。"
+    },
+    {
+      "at": "2026-06-21T10:57:18.348Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 10 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/__init__.py",
+        "src/console/backend/api/ai.py",
+        "src/console/backend/api/ai_settings.py",
+        "src/console/backend/models/__init__.py",
+        "src/console/backend/models/ai_setting.py",
+        "src/console/backend/services/ai_settings.py",
+        "src/console/frontend/src/api/aiSettings.ts",
+        "src/console/frontend/src/pages/Settings.tsx",
+        "tests/console/test_ai.py",
+        "tests/console/test_ai_settings.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-21T10:57:39.654Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 10 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/__init__.py",
+        "src/console/backend/api/ai.py",
+        "src/console/backend/api/ai_settings.py",
+        "src/console/backend/models/__init__.py",
+        "src/console/backend/models/ai_setting.py",
+        "src/console/backend/services/ai_settings.py",
+        "src/console/frontend/src/api/aiSettings.ts",
+        "src/console/frontend/src/pages/Settings.tsx",
+        "tests/console/test_ai.py",
+        "tests/console/test_ai_settings.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-06-21T11:01:54.270Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 10 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/api/__init__.py",
+        "src/console/backend/api/ai.py",
+        "src/console/backend/api/ai_settings.py",
+        "src/console/backend/models/__init__.py",
+        "src/console/backend/models/ai_setting.py",
+        "src/console/backend/services/ai_settings.py",
+        "src/console/frontend/src/api/aiSettings.ts",
+        "src/console/frontend/src/pages/Settings.tsx",
+        "tests/console/test_ai.py",
+        "tests/console/test_ai_settings.py"
+      ],
+      "truncated": false
     }
   ],
   "goal_rotation": {
     "mode": "phase",
-    "current": "improvement",
+    "current": "monitor",
     "sequence": ["monitor", "development", "verify", "improvement"],
-    "phase_done": true,
-    "phase_done_at": "2026-06-21T07:00:08.094Z",
+    "phase_done": false,
+    "phase_done_at": null,
     "retry_count": 0,
     "max_retries": 2,
     "on_retry_exhausted": "advance",
     "blocked": false,
-    "cycle_count": 11,
-    "last_advanced_at": "2026-06-21T06:26:00Z",
-    "last_outcome": "in_progress",
-    "last_finalized_session": "20260621T0616Z-verify",
+    "cycle_count": 12,
+    "last_advanced_at": "2026-06-21T11:10:00Z",
+    "last_outcome": "success",
+    "last_finalized_session": "20260621T1058Z-improvement",
     "history": [
+      {
+        "at": "2026-06-21T11:10:00Z",
+        "from": "improvement",
+        "to": "monitor",
+        "outcome": "advanced",
+        "via": "manual",
+        "note": "PR #83 merged (a3ddf90) — feat(console): AI model settings。Fernet暗号化・admin RBAC・test 570件(+24)・tdd_required 警告 0件。CI 8/8 SUCCESS。handoff: 20260621T1058Z-improvement.md。cycle 12 monitor 開始。"
+      },
       {
         "at": "2026-06-21T06:26:00Z",
         "from": "verify",
