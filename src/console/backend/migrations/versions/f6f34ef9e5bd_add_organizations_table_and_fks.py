@@ -74,7 +74,9 @@ def upgrade() -> None:
     )
     # audit_logs already exists (created by Base.metadata.create_all before Alembic took over).
     # Only add the new columns that were not part of the original table.
-    op.add_column("audit_logs", sa.Column("sequence_number", sa.Integer(), nullable=True))
+    op.add_column(
+        "audit_logs", sa.Column("sequence_number", sa.Integer(), nullable=True)
+    )
     op.add_column("audit_logs", sa.Column("record_hash", sa.String(), nullable=True))
     op.add_column("audit_logs", sa.Column("prev_hash", sa.String(), nullable=True))
     op.create_index(

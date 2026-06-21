@@ -54,7 +54,10 @@ def upgrade() -> None:
     op.add_column(
         "document_versions",
         sa.Column(
-            "is_from_editor", sa.Boolean(), nullable=True, server_default=sa.text("false")
+            "is_from_editor",
+            sa.Boolean(),
+            nullable=True,
+            server_default=sa.text("false"),
         ),
     )
     op.add_column(
