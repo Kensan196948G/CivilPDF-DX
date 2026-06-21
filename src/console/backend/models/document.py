@@ -24,6 +24,10 @@ class DocumentStatus(str, enum.Enum):
     APPROVED = "approved"
     REJECTED = "rejected"
     ARCHIVED = "archived"
+    # Editor integration states
+    EDITOR_DRAFT = "editor_draft"
+    EDITOR_REVIEWED = "editor_reviewed"
+    FINALIZED = "finalized"
 
 
 class DocumentType(str, enum.Enum):
@@ -87,6 +91,19 @@ class Document(Base):
     tags = Column(JSON, default=list)
     extra_data = Column(JSON, default=dict)
 
+    # Editor integration: ReviewSidecar (feature #1)
+    review_sidecar = Column(JSON, nullable=True)
+    review_sidecar_imported_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Revision management (feature #2)
+    revision = Column(String, nullable=True)
+    revision_note = Column(String, nullable=True)
+
+    # Flatten gate (feature #3)
+    is_flattened = Column(Boolean, default=False)
+    flattened_verified_at = Column(DateTime(timezone=True), nullable=True)
+    flattened_hash = Column(String, nullable=True)
+
     # Relations
     project_id = Column(String, ForeignKey("projects.id"), nullable=False)
     owner_id = Column(String, ForeignKey("users.id"), nullable=False)
@@ -119,6 +136,12 @@ class DocumentVersion(Base):
     created_by = Column(String, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    # Editor integration (feature #2)
+    revision = Column(String, nullable=True)
+    revision_note = Column(String, nullable=True)
+    is_from_editor = Column(Boolean, default=False)
+    editor_session_id = Column(String, nullable=True)
+
     document = relationship("Document", back_populates="versions")
 
 
@@ -139,6 +162,25 @@ class ApprovalWorkflow(Base):
     steps = relationship(
         "ApprovalStep", back_populates="workflow", order_by="ApprovalStep.order"
     )
+
+
+class ConversionJob(Base):
+    __tablename__ = "conversion_jobs"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    document_id = Column(String, ForeignKey("documents.id"), nullable=False)
+    job_type = Column(String, nullable=False)  # pdf_to_pdfa, flatten, etc.
+    status = Column(String, default="pending")  # pending|running|done|failed
+    output_path = Column(String, nullable=True)
+    output_size = Column(BigInteger, nullable=True)
+    error_message = Column(Text, nullable=True)
+    requested_by = Column(String, ForeignKey("users.id"), nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    document = relationship("Document")
+    requester = relationship("User")
 
 
 class ApprovalStep(Base):

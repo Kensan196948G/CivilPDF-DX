@@ -2,13 +2,10 @@
 
 Source of truth: the public GitHub Release of CivilPDF-Editor (Tauri v2 desktop app).
 
-    https://github.com/Kensan196948G/CivilPDF-Editor/releases/tag/v0.1.0-beta
+    https://github.com/Kensan196948G/CivilPDF-Editor/releases/tag/v1.1.0
 
 This module intentionally avoids fabricated metadata. Values that are not measured
 (e.g. active user counts) are reported honestly (0 / None) rather than guessed.
-The current release is an UNSIGNED public beta whose features are limited to
-M1 (PDF viewing) and M2 (electronic seal). OCR and large-format drawings are not
-implemented yet.
 """
 
 import os
@@ -22,12 +19,12 @@ from models.user import User
 
 router = APIRouter(prefix="/apps", tags=["App Distribution"])
 
-# Current (and only) published release. Matches the GitHub Release tag v0.1.0-beta.
-_VERSION = "0.1.0-beta"
-# Public release date of v0.1.0-beta (GitHub Release publication date).
-_RELEASE_DATE = "2026-06-20"
+# Current published stable release. Matches the GitHub Release tag v1.1.0.
+_VERSION = "1.1.0"
+# Public release date of v1.1.0 (GitHub Release publication date).
+_RELEASE_DATE = "2026-06-21"
 
-Channel = Literal["beta"]
+Channel = Literal["stable"]
 NoteType = Literal["FEAT", "FIX", "SEC", "IMP", "NOTE"]
 
 
@@ -37,7 +34,7 @@ def _base_url() -> str:
     """Base URL of the GitHub Releases asset path (empty when unconfigured).
 
     Set in deployment to:
-        https://github.com/Kensan196948G/CivilPDF-Editor/releases/download/v0.1.0-beta
+        https://github.com/Kensan196948G/CivilPDF-Editor/releases/download/v1.1.0
     """
     return os.getenv("APPS_RELEASE_BASE_URL", "").rstrip("/")
 
@@ -137,8 +134,10 @@ def _pkg(
 def _build_packages() -> list[ReleasePackage]:
     """Build the package list fresh so env-driven checksums/availability stay current.
 
-    Filenames MUST match the real assets attached to the GitHub Release v0.1.0-beta
-    (GitHub replaces spaces in asset names with dots). The download URL is then
+    Filenames MUST match the real assets attached to the GitHub Release v1.1.0
+    (GitHub replaces spaces in asset names with dots). Note: asset filenames contain
+    "1.0.0" because the version was not bumped in package.json / tauri.conf.json
+    before this build; the release tag is v1.1.0. The download URL is then
     `{APPS_RELEASE_BASE_URL}/{filename}`.
     """
     return [
@@ -147,7 +146,7 @@ def _build_packages() -> list[ReleasePackage]:
             "windows",
             "exe",
             "インストーラー (.exe / NSIS)",
-            "CivilPDF.Editor_0.1.0_x64-setup.exe",
+            "CivilPDF.Editor_1.0.0_x64-setup.exe",
             "約 1.9 MB",
         ),
         _pkg(
@@ -155,7 +154,7 @@ def _build_packages() -> list[ReleasePackage]:
             "windows",
             "msi",
             "インストーラー (.msi)",
-            "CivilPDF.Editor_0.1.0_x64_en-US.msi",
+            "CivilPDF.Editor_1.0.0_x64_en-US.msi",
             "約 2.4 MB",
         ),
         _pkg(
@@ -163,7 +162,7 @@ def _build_packages() -> list[ReleasePackage]:
             "macos",
             "dmg",
             "ディスクイメージ (.dmg / Universal)",
-            "CivilPDF.Editor_0.1.0_universal.dmg",
+            "CivilPDF.Editor_1.0.0_universal.dmg",
             "約 4.5 MB",
         ),
         _pkg(
@@ -171,7 +170,7 @@ def _build_packages() -> list[ReleasePackage]:
             "linux",
             "deb",
             "Debian / Ubuntu (.deb)",
-            "CivilPDF.Editor_0.1.0_amd64.deb",
+            "CivilPDF.Editor_1.0.0_amd64.deb",
             "約 2.3 MB",
         ),
         _pkg(
@@ -179,7 +178,7 @@ def _build_packages() -> list[ReleasePackage]:
             "linux",
             "appimage",
             "AppImage (.AppImage)",
-            "CivilPDF.Editor_0.1.0_amd64.AppImage",
+            "CivilPDF.Editor_1.0.0_amd64.AppImage",
             "約 80 MB",
         ),
         _pkg(
@@ -187,23 +186,22 @@ def _build_packages() -> list[ReleasePackage]:
             "linux",
             "rpm",
             "Fedora / RHEL (.rpm)",
-            "CivilPDF.Editor-0.1.0-1.x86_64.rpm",
+            "CivilPDF.Editor-1.0.0-1.x86_64.rpm",
             "約 2.3 MB",
         ),
     ]
 
 
-# Only the beta channel exists today. user_count is 0 because we do not collect
-# install telemetry — reporting a measured-looking number would be dishonest.
 _CHANNELS: list[ChannelInfo] = [
     ChannelInfo(
-        id="beta",
-        label="Beta",
+        id="stable",
+        label="Stable",
         version=f"v{_VERSION}",
         release_date=_RELEASE_DATE,
         description=(
-            "公開ベータ（未署名）。機能は M1 PDF表示 + M2 電子印鑑のみ。"
-            "SmartScreen / Gatekeeper の警告が表示されます。"
+            "安定版。注釈（Phase A）・検索/しおり/透かし/メタデータ（Phase B）・"
+            "画像→PDF/比較/フォーム（Phase C）を搭載。"
+            "未署名ビルドのため OS のセキュリティ警告が表示される場合があります。"
         ),
         user_count=0,
     ),
@@ -213,35 +211,83 @@ _CHANNELS: list[ChannelInfo] = [
 _RELEASE_NOTES: list[ReleaseNote] = [
     ReleaseNote(
         version=_VERSION,
-        channel="beta",
+        channel="stable",
         release_date=_RELEASE_DATE,
-        summary="初回公開ベータ — PDF表示 + 電子印鑑",
+        summary="v1.1.0 安定版 — 注釈・検索・文書加工・変換機能を追加",
         items=[
             ReleaseNoteItem(type="FEAT", text="PDF 表示（M1: ページ閲覧・ズーム）"),
             ReleaseNoteItem(
                 type="FEAT",
                 text="電子印鑑（M2: 印影作成・配置・PDF 埋め込み）",
             ),
+            ReleaseNoteItem(type="FEAT", text="OCR テキスト抽出（M3: Tesseract.js）"),
+            ReleaseNoteItem(type="FEAT", text="大判図面対応（M4: A0/A1 タイル表示）"),
             ReleaseNoteItem(
-                type="NOTE",
-                text="未署名ベータ。Windows SmartScreen / macOS Gatekeeper の警告あり",
+                type="FEAT",
+                text="注釈（Phase A: ハイライト・下線・取消線・付箋・手書き・消去 + 6色カラーピッカー）",
+            ),
+            ReleaseNoteItem(
+                type="FEAT",
+                text="テキスト検索（Phase B: 全ページ横断・前後ナビ・コンテキスト表示）",
+            ),
+            ReleaseNoteItem(
+                type="FEAT",
+                text="しおり/目次ナビゲーション（Phase B: PDF アウトライン階層表示）",
+            ),
+            ReleaseNoteItem(
+                type="FEAT",
+                text="透かし追加（Phase B: CJK 対応テキスト透かし）",
+            ),
+            ReleaseNoteItem(
+                type="FEAT",
+                text="メタデータ編集（Phase B: タイトル・著者・件名・キーワード）",
+            ),
+            ReleaseNoteItem(
+                type="FEAT",
+                text="画像から PDF 作成（Phase C: PNG/JPEG → PDF A4/A3 対応）",
+            ),
+            ReleaseNoteItem(
+                type="FEAT",
+                text="PDF 比較（Phase C: LCS アルゴリズムによるテキスト差分表示）",
+            ),
+            ReleaseNoteItem(
+                type="FEAT",
+                text="フォームフィールド確認（Phase C: AcroForm Widget 読み取り）",
+            ),
+            ReleaseNoteItem(
+                type="FEAT",
+                text="ネイティブメニュー（File/Edit/View・キーボードショートカット対応）",
+            ),
+            ReleaseNoteItem(
+                type="FEAT",
+                text="レビューワークフロー（承認・却下スタンプ・非破壊保存）",
             ),
             ReleaseNoteItem(
                 type="NOTE",
-                text="OCR・大判図面（A0/A1）対応は未実装。今後のリリースで提供予定",
+                text="未署名ビルド。Windows SmartScreen / macOS Gatekeeper の警告が表示される場合があります",
             ),
         ],
         highlights=(
-            "v0.1.0-beta — リリースノート\n\n"
-            f"リリース日: {_RELEASE_DATE}\nチャンネル: Beta（公開ベータ・未署名）\n\n"
-            "搭載機能:\n"
+            "v1.1.0 — リリースノート\n\n"
+            f"リリース日: {_RELEASE_DATE}\nチャンネル: Stable（安定版）\n\n"
+            "新機能（v1.1.0）:\n"
+            "- 注釈（Phase A）: ハイライト・下線・取消線・付箋・手書き・消去 + 6色カラーピッカー\n"
+            "- テキスト検索（Phase B）: 全ページ横断検索・前後ナビゲーション・コンテキスト表示\n"
+            "- しおり/目次（Phase B）: PDF アウトライン階層表示・クリックでページ移動\n"
+            "- 透かし（Phase B）: CJK 対応テキスト透かし\n"
+            "- メタデータ編集（Phase B）: タイトル・著者・件名・キーワード・作成アプリ\n"
+            "- 画像から PDF 作成（Phase C）: PNG/JPEG → PDF（A4/A3/自動）\n"
+            "- PDF 比較（Phase C）: LCS アルゴリズムによるテキスト差分表示\n"
+            "- フォームフィールド確認（Phase C）: AcroForm Widget フィールド読み取り\n"
+            "- ネイティブメニュー: File/Edit/View メニュー・キーボードショートカット\n\n"
+            "継続機能（v1.0.0 から）:\n"
             "- PDF 表示（M1）: ページ閲覧・ズーム\n"
-            "- 電子印鑑（M2）: 印影作成・配置・PDF への埋め込み\n\n"
-            "既知の制約:\n"
-            "- 未署名ビルドのため、Windows では SmartScreen、macOS では Gatekeeper の\n"
-            "  警告が表示されます（実行は可能）。\n"
-            "- OCR・大判図面（A0/A1）対応は本リリースには含まれません。\n\n"
-            "技術スタック: Tauri v2（システムの WebView を利用）"
+            "- 電子印鑑（M2）: 印影作成・配置・PDF 埋め込み\n"
+            "- OCR（M3）: テキスト抽出（Tesseract.js）\n"
+            "- 大判図面（M4）: A0/A1 タイル表示\n"
+            "- レビューワークフロー: 承認・却下スタンプ・非破壊保存\n\n"
+            "技術スタック: Tauri v2（システムの WebView を利用）\n"
+            "注意: 未署名ビルドのため、OS のセキュリティ警告が表示される場合があります。"
         ),
     ),
 ]
@@ -281,8 +327,8 @@ def get_build_info(_: User = Depends(get_current_user)) -> BuildInfo:
         build_number=os.getenv("APPS_BUILD_NUMBER", f"{_VERSION}+local"),
         git_commit=os.getenv("APPS_BUILD_COMMIT") or None,
         build_date=os.getenv("APPS_BUILD_DATE") or None,
-        channel="beta",
-        runtime="Tauri v2（システムの WebView を利用・未署名ベータ）",
+        channel="stable",
+        runtime="Tauri v2（システムの WebView を利用）",
         supported_os=[
             "Windows 10 / 11 (64bit)",
             "macOS 13 Ventura+ (Universal)",
