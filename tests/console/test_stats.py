@@ -141,6 +141,24 @@ class TestProjectStats:
         )
         assert resp.status_code == 422
 
+    def test_non_admin_does_not_see_other_projects(
+        self, client, admin_token, viewer_token
+    ):
+        """Authorization scope: a non-admin who is not a project member must not
+        see another organization's project (or its aggregates) via /stats/projects."""
+        _create_project(client, admin_token, code="STAT-SCOPE", name="Scoped")
+        admin_items = client.get(
+            "/api/v1/stats/projects",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        ).json()["items"]
+        assert any(p["code"] == "STAT-SCOPE" for p in admin_items)
+
+        viewer_items = client.get(
+            "/api/v1/stats/projects",
+            headers={"Authorization": f"Bearer {viewer_token}"},
+        ).json()["items"]
+        assert all(p["code"] != "STAT-SCOPE" for p in viewer_items)
+
 
 class TestDailyStats:
     def test_requires_auth(self, client):
@@ -182,3 +200,24 @@ class TestDailyStats:
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert resp.status_code == 422
+
+    def test_non_admin_daily_excludes_other_projects(
+        self, client, admin_token, viewer_token
+    ):
+        """Authorization scope: daily upload counts for a non-admin must exclude
+        documents in projects they do not belong to (no cross-tenant volume leak)."""
+        project_id = _create_project(client, admin_token, code="STAT-DSCOPE")
+        _upload(client, admin_token, project_id, title="X")
+        _upload(client, admin_token, project_id, title="Y")
+
+        viewer_series = client.get(
+            "/api/v1/stats/daily?period=30",
+            headers={"Authorization": f"Bearer {viewer_token}"},
+        ).json()["series"]
+        assert sum(p["count"] for p in viewer_series) == 0
+
+        admin_series = client.get(
+            "/api/v1/stats/daily?period=30",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        ).json()["series"]
+        assert sum(p["count"] for p in admin_series) >= 2

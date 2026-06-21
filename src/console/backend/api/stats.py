@@ -92,16 +92,29 @@ def get_project_stats(
     now = datetime.now(timezone.utc)
     since = now - timedelta(days=period)
 
-    projects = db.query(Project).order_by(Project.created_at.desc()).all()
+    # Authorization scope: admins see all projects; non-admins only the
+    # projects they belong to (mirrors api/projects.list_projects), so per-project
+    # aggregates cannot leak cross-organization data.
+    if current_user.role.value == "admin":
+        projects = db.query(Project).order_by(Project.created_at.desc()).all()
+    else:
+        projects = sorted(
+            current_user.projects, key=lambda p: p.created_at, reverse=True
+        )
+    project_ids = [p.id for p in projects]
 
-    # One grouped query: (project_id, status) -> count, filtered by period.
+    # One grouped query: (project_id, status) -> count, filtered by period and
+    # restricted to the caller's visible projects.
     rows = (
         db.query(
             Document.project_id,
             Document.status,
             func.count(Document.id),
         )
-        .filter(Document.created_at >= since)
+        .filter(
+            Document.created_at >= since,
+            Document.project_id.in_(project_ids),
+        )
         .group_by(Document.project_id, Document.status)
         .all()
     )
@@ -156,7 +169,13 @@ def get_daily_stats(
         hour=0, minute=0, second=0, microsecond=0
     )
 
-    docs = db.query(Document.created_at).filter(Document.created_at >= start).all()
+    # Authorization scope: non-admins only count documents in projects they
+    # belong to, so the daily trend cannot leak cross-organization upload volume.
+    docs_query = db.query(Document.created_at).filter(Document.created_at >= start)
+    if current_user.role.value != "admin":
+        member_ids = [p.id for p in current_user.projects]
+        docs_query = docs_query.filter(Document.project_id.in_(member_ids))
+    docs = docs_query.all()
 
     # Bucket by calendar day (UTC).
     counts: dict[str, int] = {}
