@@ -1,5 +1,14 @@
 import { useState, useCallback, useMemo, useEffect } from "react";
-import { getStats, type StatsResponse } from "../../../api/stats";
+import {
+  getStats,
+  getProjectStats,
+  getDailyStats,
+  type StatsResponse,
+  type ProjectStatItem,
+  type DailyStatPoint,
+} from "../../../api/stats";
+import { listDocuments, type DocumentResponse } from "../../../api/documents";
+import { listAuditLogs, type AuditLogItem } from "../../../api/auditLogs";
 import {
   listUsers,
   type UserResponse,
@@ -18,249 +27,128 @@ interface DashboardViewProps extends ViewProps {
   filter: string;
 }
 
-// ─── Deterministic pseudo-random ──────────────────────────────────────────────
-// Uses sin-based PRNG so the same (period, index) always yields the same value.
-function prng(seed: number, i: number): number {
-  const x = Math.sin(seed * 9301 + i * 49297 + 233) * 10000;
-  return x - Math.floor(x); // 0..1
+// ─── Real-data label maps ──────────────────────────────────────────────────────
+
+const DOC_TYPE_LABELS: Record<string, string> = {
+  drawing: "図面",
+  photo: "写真台帳",
+  inspection: "検査記録",
+  safety: "安全書類",
+  contract: "契約書",
+  report: "報告書",
+  correction: "是正指示書",
+  other: "その他",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  draft: "下書き",
+  pending_review: "レビュー待ち",
+  approved: "承認済",
+  rejected: "却下",
+  archived: "アーカイブ",
+};
+
+function statusPillClass(status: string): string {
+  switch (status) {
+    case "approved":
+      return "ep-pill ep-pill-ok";
+    case "rejected":
+      return "ep-pill ep-pill-ng";
+    case "pending_review":
+      return "ep-pill ep-pill-info-2";
+    case "draft":
+      return "ep-pill ep-pill-warn";
+    default:
+      return "ep-pill ep-pill-muted";
+  }
 }
 
-// ─── Data derivation helpers ───────────────────────────────────────────────────
-
-function deriveKpi(period: number, filter: string) {
-  const s = period / 30;
-  const processed = Math.round(1284 * s);
-  const ng = filter === "ok" ? 0 : Math.round(248 * s);
-  const passRate =
-    filter === "ok"
-      ? 100
-      : filter === "ng"
-        ? +(85.2 + (period - 30) * 0.03).toFixed(1)
-        : +(97.3 + (30 - period) * 0.015).toFixed(1);
-  const pending =
-    filter === "ok" ? 0 : Math.max(1, Math.round(14 * Math.sqrt(s)));
-  const activeUsers = Math.min(Math.round(12 * Math.sqrt(s)), 200);
-  const delta = Math.round(38 * s);
-  const ngDelta = filter === "ok" ? 0 : Math.round(12 * s);
-  return { processed, ng, passRate, pending, activeUsers, delta, ngDelta };
+function docTypeLabel(t: string): string {
+  return DOC_TYPE_LABELS[t] ?? t;
 }
 
-function deriveBarData(period: number): number[] {
-  const count = Math.min(period, 60);
-  return Array.from({ length: count }, (_, i) =>
-    Math.round(30 + prng(period, i) * 65),
-  );
+function statusLabel(s: string): string {
+  return STATUS_LABELS[s] ?? s;
 }
 
-function deriveProcessingStats(period: number) {
-  const s = period / 30;
-  const maxVal = Math.round(Math.max(2000, 1842) * s);
-  return [
-    {
-      type: "OCR テキスト抽出",
-      count: Math.round(1842 * s),
-      max: maxVal,
-      color: "var(--accent)",
-    },
-    {
-      type: "表データ抽出",
-      count: Math.round(1124 * s),
-      max: maxVal,
-      color: "var(--info)",
-    },
-    {
-      type: "基準突合チェック",
-      count: Math.round(968 * s),
-      max: maxVal,
-      color: "var(--success)",
-    },
-  ];
+// ─── Relative time formatting (real timestamps) ────────────────────────────────
+
+function relativeTime(iso: string): string {
+  const then = new Date(iso).getTime();
+  if (Number.isNaN(then)) return iso;
+  const diffSec = Math.max(0, Math.round((Date.now() - then) / 1000));
+  if (diffSec < 60) return `${diffSec}秒前`;
+  const diffMin = Math.round(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}分前`;
+  const diffHr = Math.round(diffMin / 60);
+  if (diffHr < 24) return `${diffHr}時間前`;
+  const diffDay = Math.round(diffHr / 24);
+  return `${diffDay}日前`;
 }
 
-const NG_BASE = [
-  { rank: 1, category: "縮尺表記の不一致", base: 142 },
-  { rank: 2, category: "ファイル命名規則違反", base: 98 },
-  { rank: 3, category: "PDF/A 非準拠", base: 76 },
-  { rank: 4, category: "しおり構造エラー", base: 54 },
-  { rank: 5, category: "メタデータ欠落", base: 32 },
-];
+// ─── Audit-log action → human label / icon ─────────────────────────────────────
 
-function deriveNgDetection(period: number, filter: string) {
-  if (filter === "ok") return [];
-  const s = period / 30;
-  const total = Math.round(1284 * s);
-  return NG_BASE.map((item) => {
-    const count = Math.round(item.base * s);
-    return {
-      rank: item.rank,
-      category: item.category,
-      count,
-      rate: total > 0 ? ((count / total) * 100).toFixed(1) + "%" : "0.0%",
-    };
-  });
+type ActivityKind = "ok" | "ng" | "run" | "warn" | "user" | "app";
+
+interface AuditActionMeta {
+  kind: ActivityKind;
+  line: string;
 }
 
-const PROJECT_BASE = [
-  {
-    id: "p1",
-    name: "県道○○号線 道路改良工事 (2024-038)",
-    baseTotal: 48,
-    baseOk: 38,
-    baseNg: 6,
-    baseWarn: 4,
-  },
-  {
-    id: "p2",
-    name: "△△橋 詳細設計 (2024-041)",
-    baseTotal: 32,
-    baseOk: 30,
-    baseNg: 1,
-    baseWarn: 1,
-  },
-  {
-    id: "p3",
-    name: "××トンネル工事 (2024-052)",
-    baseTotal: 18,
-    baseOk: 14,
-    baseNg: 3,
-    baseWarn: 1,
-  },
-  {
-    id: "p4",
-    name: "下水道第3期工事 (2024-061)",
-    baseTotal: 12,
-    baseOk: 8,
-    baseNg: 3,
-    baseWarn: 1,
-  },
-];
-
-function deriveProjectStats(period: number, filter: string) {
-  const s = period / 30;
-  const rows = PROJECT_BASE.map((p) => ({
-    id: p.id,
-    name: p.name,
-    total: Math.round(p.baseTotal * s),
-    ok: Math.round(p.baseOk * s),
-    ng: filter === "ok" ? 0 : Math.round(p.baseNg * s),
-    warn: filter === "ok" ? 0 : Math.round(p.baseWarn * s),
-  }));
-  if (filter === "ok") return rows.filter((r) => r.ng === 0);
-  if (filter === "ng") return rows.filter((r) => r.ng > 0);
-  return rows;
+function auditActionMeta(action: string): AuditActionMeta {
+  const a = action.toLowerCase();
+  if (a.includes("login_success") || a.includes("login")) {
+    return { kind: "user", line: "がログイン" };
+  }
+  if (a.includes("login_failed")) {
+    return { kind: "warn", line: "のログインに失敗" };
+  }
+  if (a.includes("provisioned") || a.includes("user_created")) {
+    return { kind: "user", line: "が登録されました" };
+  }
+  if (a.includes("approve")) {
+    return { kind: "ok", line: "が承認されました" };
+  }
+  if (a.includes("reject")) {
+    return { kind: "ng", line: "が却下されました" };
+  }
+  if (a.includes("deletion") || a.includes("delete")) {
+    return { kind: "warn", line: "の削除が処理されました" };
+  }
+  if (a.includes("export")) {
+    return { kind: "run", line: "がエクスポートされました" };
+  }
+  if (a.includes("upload") || a.includes("create")) {
+    return { kind: "run", line: "が作成されました" };
+  }
+  if (a.includes("consent")) {
+    return { kind: "ok", line: "の同意が記録されました" };
+  }
+  return { kind: "app", line: `: ${action}` };
 }
-
-// ─── Static reference data ────────────────────────────────────────────────────
 
 interface ActivityItem {
   id: string;
-  type: "run" | "ok" | "ng" | "warn" | "user" | "app";
+  type: ActivityKind;
   line: string;
   highlight: string;
   time: string;
 }
 
-const ALL_ACTIVITY: ActivityItem[] = [
-  {
-    id: "a1",
-    type: "ok",
-    line: "が承認されました",
-    highlight: "特記仕様書 R6-04rev2",
-    time: "3分前",
-  },
-  {
-    id: "a2",
-    type: "ng",
-    line: "でNGを検出",
-    highlight: "数量計算書 R6-04",
-    time: "12分前",
-  },
-  {
-    id: "a3",
-    type: "run",
-    line: "の処理が完了",
-    highlight: "県道○○号 詳細図",
-    time: "28分前",
-  },
-  {
-    id: "a4",
-    type: "user",
-    line: "がログイン",
-    highlight: "山田 直人",
-    time: "1時間前",
-  },
-  {
-    id: "a5",
-    type: "app",
-    line: "が配布されました",
-    highlight: "v2.4.1 アップデート",
-    time: "2時間前",
-  },
-];
-
-interface RecentJob {
-  id: string;
-  title: string;
-  project: string;
-  pages: number;
-  ngCount: number;
-  status: string;
-  time: string;
+function auditLogToActivity(log: AuditLogItem): ActivityItem {
+  const meta = auditActionMeta(log.action);
+  const actor =
+    log.user?.full_name || log.user?.username || log.user?.email || "システム";
+  return {
+    id: log.id,
+    type: meta.kind,
+    line: meta.line,
+    highlight: actor,
+    time: relativeTime(log.created_at),
+  };
 }
 
-const ALL_JOBS: RecentJob[] = [
-  {
-    id: "j1",
-    title: "特記仕様書 R6-04rev2",
-    project: "2024-038",
-    pages: 42,
-    ngCount: 0,
-    status: "承認済",
-    time: "3分前",
-  },
-  {
-    id: "j2",
-    title: "数量計算書 R6-04",
-    project: "2024-038",
-    pages: 18,
-    ngCount: 3,
-    status: "NGあり",
-    time: "12分前",
-  },
-  {
-    id: "j3",
-    title: "県道○○号 詳細図",
-    project: "2024-038",
-    pages: 8,
-    ngCount: 2,
-    status: "回覧中",
-    time: "28分前",
-  },
-  {
-    id: "j4",
-    title: "△△橋 詳細設計図",
-    project: "2024-041",
-    pages: 56,
-    ngCount: 0,
-    status: "承認済",
-    time: "1時間前",
-  },
-  {
-    id: "j5",
-    title: "グリーンファイル一式",
-    project: "2024-038",
-    pages: 24,
-    ngCount: 1,
-    status: "差戻し",
-    time: "2時間前",
-  },
-];
-
-const AUTH_STATS = [
-  { method: "パスキー (FIDO2)", count: 164, total: 200 },
-  { method: "Authenticator App", count: 28, total: 200 },
-  { method: "SMS OTP", count: 8, total: 200 },
-];
+// ─── Static role data ──────────────────────────────────────────────────────────
 
 type RoleKey = "all" | UserRole;
 
@@ -284,7 +172,15 @@ const ROLE_FILTER_OPTIONS: { key: RoleKey; label: string }[] = [
   { key: "viewer", label: "閲覧者" },
 ];
 
-// ─── Overview sub-view ────────────────────────────────────────────────────────
+// ─── Overview sub-view (real data) ─────────────────────────────────────────────
+
+const TYPE_COLORS = [
+  "var(--accent)",
+  "var(--info)",
+  "var(--success)",
+  "var(--warn)",
+  "var(--danger)",
+];
 
 function OverviewSubView({
   period,
@@ -292,33 +188,68 @@ function OverviewSubView({
   onNavigate,
   onShowModal,
 }: ViewProps & { period: number; filter: string }) {
-  const kpi = useMemo(() => deriveKpi(period, filter), [period, filter]);
-  const bars = useMemo(() => deriveBarData(period), [period]);
-  const [liveStats, setLiveStats] = useState<StatsResponse | null>(null);
+  const [stats, setStats] = useState<StatsResponse | null>(null);
+  const [daily, setDaily] = useState<DailyStatPoint[]>([]);
+  const [documents, setDocuments] = useState<DocumentResponse[]>([]);
+  const [activity, setActivity] = useState<ActivityItem[]>([]);
+  // null = still loading for the current period; number = period whose data is ready.
+  const [loadedPeriod, setLoadedPeriod] = useState<number | null>(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    const controller = new AbortController();
-    getStats()
-      .then(setLiveStats)
-      .catch(() => {
-        /* fallback to derived data */
-      });
-    return () => controller.abort();
-  }, []);
+    let cancelled = false;
+    Promise.allSettled([
+      getStats(),
+      getDailyStats(period),
+      listDocuments({ per_page: 20 }),
+      listAuditLogs({ per_page: 8 }),
+    ]).then((results) => {
+      if (cancelled) return;
+      const [statsR, dailyR, docsR, auditR] = results;
+      if (statsR.status === "fulfilled") setStats(statsR.value);
+      if (dailyR.status === "fulfilled") setDaily(dailyR.value.series);
+      if (docsR.status === "fulfilled") setDocuments(docsR.value);
+      if (auditR.status === "fulfilled")
+        setActivity(auditR.value.items.map(auditLogToActivity));
+      // Only treat as hard error when the primary KPI source failed.
+      setError(statsR.status === "rejected");
+      setLoadedPeriod(period);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [period]);
 
-  const visibleJobs = useMemo(() => {
-    if (filter === "ok") return ALL_JOBS.filter((j) => j.ngCount === 0);
-    if (filter === "ng") return ALL_JOBS.filter((j) => j.ngCount > 0);
-    return ALL_JOBS;
-  }, [filter]);
+  const loading = loadedPeriod !== period;
 
+  // ── KPI cards from real getStats() ──
+  const ngCount = stats?.by_status?.rejected ?? 0;
+  const pending = stats?.pending_approvals ?? 0;
+
+  // ── Recent documents (replaces fabricated "jobs") ──
+  const visibleDocs = useMemo(() => {
+    let rows = documents;
+    if (filter === "ok")
+      rows = rows.filter(
+        (d) => d.status === "approved" || d.status === "pending_review",
+      );
+    if (filter === "ng") rows = rows.filter((d) => d.status === "rejected");
+    return rows.slice(0, 8);
+  }, [documents, filter]);
+
+  // ── Activity from real audit logs ──
   const visibleActivity = useMemo(() => {
     if (filter === "ok")
-      return ALL_ACTIVITY.filter((a) => a.type === "ok" || a.type === "run");
+      return activity.filter((a) => a.type === "ok" || a.type === "run");
     if (filter === "ng")
-      return ALL_ACTIVITY.filter((a) => a.type === "ng" || a.type === "warn");
-    return ALL_ACTIVITY;
-  }, [filter]);
+      return activity.filter((a) => a.type === "ng" || a.type === "warn");
+    return activity;
+  }, [activity, filter]);
+
+  // ── Daily trend bars from real upload counts ──
+  const bars = useMemo(() => daily.map((d) => d.count), [daily]);
+  const maxBar = useMemo(() => Math.max(1, ...bars), [bars]);
+  const highlightFrom = Math.max(0, bars.length - 5);
 
   const handleActivityClick = useCallback(
     (item: ActivityItem) => {
@@ -330,17 +261,45 @@ function OverviewSubView({
     [onShowModal],
   );
 
-  const handleJobClick = useCallback(
-    (job: RecentJob) => {
+  const handleDocClick = useCallback(
+    (doc: DocumentResponse) => {
       onShowModal({
-        title: job.title,
-        body: `工事番号: ${job.project}\nページ数: ${job.pages}\nNG件数: ${job.ngCount}\n状態: ${job.status}\n処理時刻: ${job.time}`,
+        title: doc.title,
+        body: `種別: ${docTypeLabel(doc.document_type)}\nページ数: ${doc.page_count ?? "—"}\n状態: ${statusLabel(doc.status)}\n登録日: ${new Date(doc.created_at).toLocaleString("ja-JP")}`,
       });
     },
     [onShowModal],
   );
 
-  const highlightFrom = Math.max(0, bars.length - 5);
+  if (loading) {
+    return (
+      <div
+        style={{
+          padding: "40px",
+          textAlign: "center",
+          color: "var(--muted)",
+          fontSize: "13px",
+        }}
+      >
+        読み込み中...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        style={{
+          padding: "40px",
+          textAlign: "center",
+          color: "var(--danger)",
+          fontSize: "13px",
+        }}
+      >
+        統計データの取得に失敗しました
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -348,28 +307,30 @@ function OverviewSubView({
         <div className="ep-stat">
           <div className="lbl">総ドキュメント数</div>
           <div className="val">
-            {(liveStats?.total_documents ?? kpi.processed).toLocaleString()}
+            {(stats?.total_documents ?? 0).toLocaleString()}
           </div>
           <div className="delta up">
-            今週 +{liveStats?.uploaded_this_week ?? kpi.delta}件
+            今週 +{stats?.uploaded_this_week ?? 0}件
           </div>
         </div>
         <div className="ep-stat">
-          <div className="lbl">NG件数</div>
+          <div className="lbl">却下件数</div>
           <div
             className="val"
-            style={{ color: kpi.ng === 0 ? "var(--success)" : "var(--danger)" }}
+            style={{
+              color: ngCount === 0 ? "var(--success)" : "var(--danger)",
+            }}
           >
-            {kpi.ng.toLocaleString()}
+            {ngCount.toLocaleString()}
           </div>
-          <div className={`delta ${kpi.ng === 0 ? "up" : "down"}`}>
-            {kpi.ng === 0 ? "— 0件" : `↑ +${kpi.ngDelta} (今期)`}
+          <div className={`delta ${ngCount === 0 ? "up" : "down"}`}>
+            {ngCount === 0 ? "— 0件" : "却下ステータス"}
           </div>
         </div>
         <div className="ep-stat">
           <div className="lbl">承認済（今月）</div>
           <div className="val" style={{ color: "var(--success)" }}>
-            {liveStats?.approved_this_month ?? kpi.processed}
+            {(stats?.approved_this_month ?? 0).toLocaleString()}
           </div>
           <div className="delta up">↑ 今月実績</div>
         </div>
@@ -378,20 +339,17 @@ function OverviewSubView({
           <div
             className="val"
             style={{
-              color:
-                (liveStats?.pending_approvals ?? kpi.pending) > 0
-                  ? "var(--warn-fg)"
-                  : "var(--success)",
+              color: pending > 0 ? "var(--warn-fg)" : "var(--success)",
             }}
           >
-            {liveStats?.pending_approvals ?? kpi.pending}
+            {pending.toLocaleString()}
           </div>
           <div className="delta">件 処理中</div>
         </div>
         <div className="ep-stat">
           <div className="lbl">稼働ユーザー</div>
           <div className="val">
-            {liveStats?.active_users ?? kpi.activeUsers}
+            {(stats?.active_users ?? 0).toLocaleString()}
           </div>
           <div className="delta">アクティブ</div>
         </div>
@@ -401,61 +359,72 @@ function OverviewSubView({
         <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
           <div className="ep-panel">
             <div className="ep-panel-head">
-              <h3>処理件数推移</h3>
+              <h3>アップロード件数推移</h3>
               <span className="meta">過去 {period} 日</span>
             </div>
             <div className="ep-panel-body" style={{ height: "180px" }}>
-              <svg
-                width="100%"
-                height="160"
-                aria-label={`処理件数推移 ${period}日グラフ`}
-              >
-                {bars.map((v, i) => {
-                  const totalBars = bars.length;
-                  const barWidth = Math.max(4, Math.floor(420 / totalBars) - 2);
-                  const gap = Math.max(
-                    1,
-                    Math.floor(420 / totalBars) - barWidth,
-                  );
-                  const x = i * (barWidth + gap) + 2;
-                  const barH = Math.round((v / 100) * 140);
-                  const y = 148 - barH;
-                  const isRecent = i >= highlightFrom;
-                  const isNg = filter === "ng";
-                  return (
-                    <rect
-                      key={i}
-                      x={x}
-                      y={y}
-                      width={barWidth}
-                      height={barH}
-                      rx={1}
-                      fill={
-                        isNg
-                          ? "var(--danger)"
-                          : isRecent
-                            ? "var(--accent)"
-                            : "var(--border)"
-                      }
-                      opacity={isRecent ? 0.85 : 0.55}
-                    />
-                  );
-                })}
-                <line
-                  x1="0"
-                  y1="148"
-                  x2="100%"
-                  y2="148"
-                  stroke="var(--border)"
-                  strokeWidth="1"
-                />
-              </svg>
+              {bars.length === 0 ? (
+                <p
+                  style={{
+                    color: "var(--muted)",
+                    fontSize: "12px",
+                    textAlign: "center",
+                    paddingTop: "60px",
+                  }}
+                >
+                  該当期間のアップロードデータはありません
+                </p>
+              ) : (
+                <svg
+                  width="100%"
+                  height="160"
+                  aria-label={`アップロード件数推移 ${period}日グラフ`}
+                >
+                  {bars.map((v, i) => {
+                    const totalBars = bars.length;
+                    const barWidth = Math.max(
+                      4,
+                      Math.floor(420 / totalBars) - 2,
+                    );
+                    const gap = Math.max(
+                      1,
+                      Math.floor(420 / totalBars) - barWidth,
+                    );
+                    const x = i * (barWidth + gap) + 2;
+                    const barH = Math.round((v / maxBar) * 140);
+                    const y = 148 - barH;
+                    const isRecent = i >= highlightFrom;
+                    return (
+                      <rect
+                        key={daily[i]?.date ?? i}
+                        x={x}
+                        y={y}
+                        width={barWidth}
+                        height={barH}
+                        rx={1}
+                        fill={isRecent ? "var(--accent)" : "var(--border)"}
+                        opacity={isRecent ? 0.85 : 0.55}
+                      >
+                        <title>{`${daily[i]?.date ?? ""}: ${v}件`}</title>
+                      </rect>
+                    );
+                  })}
+                  <line
+                    x1="0"
+                    y1="148"
+                    x2="100%"
+                    y2="148"
+                    stroke="var(--border)"
+                    strokeWidth="1"
+                  />
+                </svg>
+              )}
             </div>
           </div>
 
           <div className="ep-panel" style={{ overflow: "hidden" }}>
             <div className="ep-panel-head">
-              <h3>最近の処理ジョブ</h3>
+              <h3>最近のドキュメント</h3>
               <button
                 className="ep-btn ep-btn-secondary ep-btn-sm"
                 type="button"
@@ -464,7 +433,7 @@ function OverviewSubView({
                 すべて表示
               </button>
             </div>
-            {visibleJobs.length === 0 ? (
+            {visibleDocs.length === 0 ? (
               <p
                 style={{
                   padding: "16px",
@@ -474,51 +443,35 @@ function OverviewSubView({
                 }}
               >
                 {filter === "ok"
-                  ? "処理待ち / NG案件はありません"
-                  : "NG件数のある案件はありません"}
+                  ? "承認済 / レビュー中のドキュメントはありません"
+                  : filter === "ng"
+                    ? "却下されたドキュメントはありません"
+                    : "ドキュメントがありません"}
               </p>
             ) : (
               <table className="ep-tbl">
                 <thead>
                   <tr>
                     <th>ドキュメント</th>
-                    <th>工事</th>
+                    <th>種別</th>
                     <th className="num">ページ</th>
-                    <th className="num">NG</th>
                     <th>状態</th>
-                    <th>時刻</th>
+                    <th>登録日時</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {visibleJobs.map((job) => (
+                  {visibleDocs.map((doc) => (
                     <tr
-                      key={job.id}
+                      key={doc.id}
                       style={{ cursor: "pointer" }}
-                      onClick={() => handleJobClick(job)}
+                      onClick={() => handleDocClick(doc)}
                     >
-                      <td style={{ fontWeight: 500 }}>{job.title}</td>
-                      <td className="id">{job.project}</td>
-                      <td className="num">{job.pages}</td>
-                      <td
-                        className={`ng-count${job.ngCount === 0 ? " zero" : ""} num`}
-                      >
-                        {job.ngCount}
-                      </td>
+                      <td style={{ fontWeight: 500 }}>{doc.title}</td>
+                      <td className="id">{docTypeLabel(doc.document_type)}</td>
+                      <td className="num">{doc.page_count ?? "—"}</td>
                       <td>
-                        <span
-                          className={
-                            job.status === "承認済"
-                              ? "ep-pill ep-pill-ok"
-                              : job.status === "NGあり"
-                                ? "ep-pill ep-pill-ng"
-                                : job.status === "回覧中"
-                                  ? "ep-pill ep-pill-info-2"
-                                  : job.status === "差戻し"
-                                    ? "ep-pill ep-pill-warn"
-                                    : "ep-pill ep-pill-muted"
-                          }
-                        >
-                          {job.status}
+                        <span className={statusPillClass(doc.status)}>
+                          {statusLabel(doc.status)}
                         </span>
                       </td>
                       <td
@@ -528,7 +481,7 @@ function OverviewSubView({
                           color: "var(--muted)",
                         }}
                       >
-                        {job.time}
+                        {relativeTime(doc.created_at)}
                       </td>
                     </tr>
                   ))}
@@ -540,8 +493,8 @@ function OverviewSubView({
 
         <div className="ep-panel" style={{ overflow: "hidden" }}>
           <div className="ep-panel-head">
-            <h3>アクティビティ</h3>
-            <span className="meta">{period}日間</span>
+            <h3>最近のアクティビティ</h3>
+            <span className="meta">監査ログ</span>
           </div>
           {visibleActivity.length === 0 ? (
             <p
@@ -598,63 +551,161 @@ function OverviewSubView({
   );
 }
 
-// ─── Stats sub-view ───────────────────────────────────────────────────────────
+// ─── Stats sub-view (real data) ────────────────────────────────────────────────
 
 function StatsSubView({ period, filter }: { period: number; filter: string }) {
   const [projectFilter, setProjectFilter] = useState<string>("all");
+  const [stats, setStats] = useState<StatsResponse | null>(null);
+  const [projectStats, setProjectStats] = useState<ProjectStatItem[]>([]);
+  // null = still loading for the current period; number = period whose data is ready.
+  const [loadedPeriod, setLoadedPeriod] = useState<number | null>(null);
+  const [error, setError] = useState(false);
 
-  const procStats = useMemo(() => deriveProcessingStats(period), [period]);
-  const ngList = useMemo(
-    () => deriveNgDetection(period, filter),
-    [period, filter],
-  );
-  const projRows = useMemo(
-    () =>
-      deriveProjectStats(
-        period,
-        projectFilter === "all" ? filter : projectFilter,
-      ),
-    [period, filter, projectFilter],
-  );
+  useEffect(() => {
+    let cancelled = false;
+    Promise.allSettled([getStats(), getProjectStats(period)]).then(
+      (results) => {
+        if (cancelled) return;
+        const [statsR, projR] = results;
+        if (statsR.status === "fulfilled") setStats(statsR.value);
+        if (projR.status === "fulfilled") setProjectStats(projR.value.items);
+        setError(statsR.status === "rejected" && projR.status === "rejected");
+        setLoadedPeriod(period);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [period]);
+
+  const loading = loadedPeriod !== period;
+
+  // ── Processing-type stats from real by_type breakdown ──
+  const typeStats = useMemo(() => {
+    const entries = Object.entries(stats?.by_type ?? {});
+    const max = Math.max(1, ...entries.map(([, c]) => c));
+    return entries
+      .sort((a, b) => b[1] - a[1])
+      .map(([type, count], i) => ({
+        type: docTypeLabel(type),
+        count,
+        max,
+        color: TYPE_COLORS[i % TYPE_COLORS.length],
+      }));
+  }, [stats]);
+
+  // ── Status breakdown from real by_status (replaces fabricated NG Top5) ──
+  const statusList = useMemo(() => {
+    const entries = Object.entries(stats?.by_status ?? {});
+    const total = entries.reduce((a, [, c]) => a + c, 0);
+    let rows = entries.sort((a, b) => b[1] - a[1]);
+    if (filter === "ng") rows = rows.filter(([s]) => s === "rejected");
+    if (filter === "ok")
+      rows = rows.filter(
+        (r) => r[0] === "approved" || r[0] === "pending_review",
+      );
+    return rows.map(([status, count], i) => ({
+      rank: i + 1,
+      status,
+      category: statusLabel(status),
+      count,
+      rate: total > 0 ? ((count / total) * 100).toFixed(1) + "%" : "0.0%",
+    }));
+  }, [stats, filter]);
+
+  // ── Per-project stats from real /stats/projects ──
+  const projRows = useMemo(() => {
+    const effective = projectFilter === "all" ? filter : projectFilter;
+    let rows = projectStats;
+    if (effective === "ok")
+      rows = rows.filter((p) => p.ng === 0 && p.total > 0);
+    if (effective === "ng") rows = rows.filter((p) => p.ng > 0);
+    return rows;
+  }, [projectStats, filter, projectFilter]);
+
+  if (loading) {
+    return (
+      <div
+        style={{
+          padding: "40px",
+          textAlign: "center",
+          color: "var(--muted)",
+          fontSize: "13px",
+        }}
+      >
+        読み込み中...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div
+        style={{
+          padding: "40px",
+          textAlign: "center",
+          color: "var(--danger)",
+          fontSize: "13px",
+        }}
+      >
+        統計データの取得に失敗しました
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
       <div className="ep-panel">
         <div className="ep-panel-head">
-          <h3>処理タイプ別統計</h3>
-          <span className="meta">過去 {period} 日</span>
+          <h3>種別別ドキュメント統計</h3>
+          <span className="meta">全期間</span>
         </div>
         <div
           className="ep-panel-body"
           style={{ display: "flex", flexDirection: "column", gap: "14px" }}
         >
-          {procStats.map((stat) => (
-            <div key={stat.type}>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginBottom: "5px",
-                  fontSize: "12.5px",
-                }}
-              >
-                <span style={{ color: "var(--fg-2)" }}>{stat.type}</span>
-                <span
-                  style={{ fontFamily: "var(--font-mono)", color: "var(--fg)" }}
-                >
-                  {stat.count.toLocaleString()}
-                </span>
-              </div>
-              <div className="ep-progress done" style={{ height: "6px" }}>
+          {typeStats.length === 0 ? (
+            <p
+              style={{
+                color: "var(--muted)",
+                fontSize: "12px",
+                textAlign: "center",
+              }}
+            >
+              ドキュメントがありません
+            </p>
+          ) : (
+            typeStats.map((stat) => (
+              <div key={stat.type}>
                 <div
                   style={{
-                    width: `${(stat.count / stat.max) * 100}%`,
-                    background: stat.color,
+                    display: "flex",
+                    justifyContent: "space-between",
+                    marginBottom: "5px",
+                    fontSize: "12.5px",
                   }}
-                />
+                >
+                  <span style={{ color: "var(--fg-2)" }}>{stat.type}</span>
+                  <span
+                    style={{
+                      fontFamily: "var(--font-mono)",
+                      color: "var(--fg)",
+                    }}
+                  >
+                    {stat.count.toLocaleString()}
+                  </span>
+                </div>
+                <div className="ep-progress done" style={{ height: "6px" }}>
+                  <div
+                    style={{
+                      width: `${(stat.count / stat.max) * 100}%`,
+                      background: stat.color,
+                    }}
+                  />
+                </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
@@ -663,10 +714,10 @@ function StatsSubView({ period, filter }: { period: number; filter: string }) {
       >
         <div className="ep-panel" style={{ overflow: "hidden" }}>
           <div className="ep-panel-head">
-            <h3>NG検出 Top 5</h3>
-            <span className="meta">過去 {period} 日</span>
+            <h3>ステータス別内訳</h3>
+            <span className="meta">全期間</span>
           </div>
-          {ngList.length === 0 ? (
+          {statusList.length === 0 ? (
             <p
               style={{
                 padding: "16px",
@@ -675,21 +726,21 @@ function StatsSubView({ period, filter }: { period: number; filter: string }) {
                 textAlign: "center",
               }}
             >
-              NG検出なし ✓
+              該当ステータスなし
             </p>
           ) : (
             <table className="ep-tbl">
               <thead>
                 <tr>
                   <th>#</th>
-                  <th>カテゴリー</th>
+                  <th>ステータス</th>
                   <th className="num">件数</th>
                   <th className="num">比率</th>
                 </tr>
               </thead>
               <tbody>
-                {ngList.map((item) => (
-                  <tr key={item.rank}>
+                {statusList.map((item) => (
+                  <tr key={item.status}>
                     <td
                       style={{
                         fontFamily: "var(--font-mono)",
@@ -699,8 +750,16 @@ function StatsSubView({ period, filter }: { period: number; filter: string }) {
                     >
                       {item.rank}
                     </td>
-                    <td style={{ fontSize: "12px" }}>{item.category}</td>
-                    <td className="ng-count num">{item.count}</td>
+                    <td style={{ fontSize: "12px" }}>
+                      <span className={statusPillClass(item.status)}>
+                        {item.category}
+                      </span>
+                    </td>
+                    <td
+                      className={`num${item.status === "rejected" ? " ng-count" : ""}`}
+                    >
+                      {item.count}
+                    </td>
                     <td
                       className="num"
                       style={{
@@ -751,9 +810,9 @@ function StatsSubView({ period, filter }: { period: number; filter: string }) {
                 <tr>
                   <th>工事</th>
                   <th className="num">合計</th>
-                  <th className="num">OK</th>
-                  <th className="num">NG</th>
-                  <th className="num">警告</th>
+                  <th className="num">承認</th>
+                  <th className="num">却下</th>
+                  <th className="num">処理中</th>
                 </tr>
               </thead>
               <tbody>
@@ -795,229 +854,53 @@ function StatsSubView({ period, filter }: { period: number; filter: string }) {
   );
 }
 
-// ─── Distribution sub-view ────────────────────────────────────────────────────
+// ─── Distribution sub-view ─────────────────────────────────────────────────────
+// App distribution metrics (version adoption / site rollout) are not yet exposed
+// by a real backend endpoint. Rather than fabricate data we honestly surface a
+// "not provided" state and point the user at the related view.
 
-const APP_VERSIONS_BASE = [
-  { version: "v2.4.1", baseCount: 232, total: 248, variant: "stable" as const },
-  { version: "v2.4.0", baseCount: 12, total: 248, variant: "beta" as const },
-  {
-    version: "v2.2.x (旧版)",
-    baseCount: 4,
-    total: 248,
-    variant: "danger" as const,
-  },
-];
-
-const SITE_ADOPTION_BASE = [
-  { site: "本社", installed: 48, total: 48 },
-  { site: "現場事務所", installed: 124, total: 142 },
-  { site: "協力会社", installed: 58, total: 64 },
-  { site: "iPad (現場)", installed: 22, total: 34 },
-];
-
-const UPDATE_EVENTS_BASE = [
-  { date: "2024-06-10", version: "v2.4.1", type: "stable", count: 224 },
-  { date: "2024-06-05", version: "v2.4.0", type: "beta", count: 18 },
-  { date: "2024-05-20", version: "v2.3.2", type: "stable", count: 248 },
-  { date: "2024-04-15", version: "v2.3.0", type: "stable", count: 241 },
-  { date: "2024-03-01", version: "v2.2.5", type: "stable", count: 230 },
-];
-
-function DistSubView({ period }: { period: number }) {
-  // Show more update history entries for longer periods
-  const visibleEvents =
-    period >= 90
-      ? UPDATE_EVENTS_BASE
-      : period >= 30
-        ? UPDATE_EVENTS_BASE.slice(0, 3)
-        : UPDATE_EVENTS_BASE.slice(0, 2);
-
-  // Adjust installed counts slightly based on period (longer period = more stable adoption)
-  const adoptionRows = SITE_ADOPTION_BASE.map((s) => {
-    const adj = Math.min(
-      s.installed + Math.round((period / 90) * (s.total - s.installed) * 0.3),
-      s.total,
-    );
-    const rate = ((adj / s.total) * 100).toFixed(1) + "%";
-    return { ...s, installed: adj, rate };
-  });
-
-  const totalInstalled = adoptionRows.reduce((a, b) => a + b.installed, 0);
-
+function DistSubView({ onNavigate }: { onNavigate: (view: string) => void }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-      <div
-        style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}
-      >
-        <div className="ep-panel">
-          <div className="ep-panel-head">
-            <h3>バージョン分布</h3>
-            <span className="meta">{totalInstalled} インストール済み</span>
-          </div>
-          <div
-            className="ep-panel-body"
-            style={{ display: "flex", flexDirection: "column", gap: "14px" }}
-          >
-            {APP_VERSIONS_BASE.map((v) => (
-              <div key={v.version}>
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    marginBottom: "5px",
-                    fontSize: "12.5px",
-                  }}
-                >
-                  <span
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                    }}
-                  >
-                    <span style={{ fontWeight: 500 }}>{v.version}</span>
-                    <span
-                      className={
-                        v.variant === "stable"
-                          ? "ep-pill ep-pill-ok"
-                          : v.variant === "beta"
-                            ? "ep-pill ep-pill-warn"
-                            : "ep-pill ep-pill-ng"
-                      }
-                    >
-                      {v.variant === "stable"
-                        ? "最新"
-                        : v.variant === "beta"
-                          ? "beta"
-                          : "旧版"}
-                    </span>
-                  </span>
-                  <span
-                    style={{
-                      fontFamily: "var(--font-mono)",
-                      color:
-                        v.variant === "danger" ? "var(--danger)" : "var(--fg)",
-                    }}
-                  >
-                    {v.baseCount}
-                  </span>
-                </div>
-                <div className="ep-progress done" style={{ height: "6px" }}>
-                  <div
-                    style={{
-                      width: `${(v.baseCount / v.total) * 100}%`,
-                      background:
-                        v.variant === "stable"
-                          ? "var(--success)"
-                          : v.variant === "beta"
-                            ? "var(--warn)"
-                            : "var(--danger)",
-                    }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="ep-panel" style={{ overflow: "hidden" }}>
-          <div className="ep-panel-head">
-            <h3>拠点別導入状況</h3>
-            <span className="meta">{period}日間</span>
-          </div>
-          <table className="ep-tbl">
-            <thead>
-              <tr>
-                <th>拠点</th>
-                <th className="num">導入</th>
-                <th className="num">合計</th>
-                <th className="num">率</th>
-              </tr>
-            </thead>
-            <tbody>
-              {adoptionRows.map((s) => (
-                <tr key={s.site}>
-                  <td>{s.site}</td>
-                  <td className="num">{s.installed}</td>
-                  <td
-                    className="num"
-                    style={{
-                      color: "var(--muted)",
-                      fontFamily: "var(--font-mono)",
-                      fontSize: "12px",
-                    }}
-                  >
-                    {s.total}
-                  </td>
-                  <td className="num">
-                    <span
-                      className={
-                        parseFloat(s.rate) >= 90
-                          ? "ep-pill ep-pill-ok"
-                          : parseFloat(s.rate) >= 70
-                            ? "ep-pill ep-pill-warn"
-                            : "ep-pill ep-pill-ng"
-                      }
-                    >
-                      {s.rate}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div className="ep-panel" style={{ overflow: "hidden" }}>
+      <div className="ep-panel">
         <div className="ep-panel-head">
-          <h3>更新イベント履歴</h3>
-          <span className="meta">過去 {period} 日</span>
+          <h3>アプリ配信状況</h3>
+          <span className="meta">配信メトリクス</span>
         </div>
-        <table className="ep-tbl">
-          <thead>
-            <tr>
-              <th>日付</th>
-              <th>バージョン</th>
-              <th>チャンネル</th>
-              <th className="num">配布数</th>
-            </tr>
-          </thead>
-          <tbody>
-            {visibleEvents.map((ev, i) => (
-              <tr key={i}>
-                <td
-                  style={{
-                    fontFamily: "var(--font-mono)",
-                    fontSize: "12px",
-                    color: "var(--muted)",
-                  }}
-                >
-                  {ev.date}
-                </td>
-                <td style={{ fontWeight: 500 }}>{ev.version}</td>
-                <td>
-                  <span
-                    className={
-                      ev.type === "stable"
-                        ? "ep-pill ep-pill-stable"
-                        : "ep-pill ep-pill-beta"
-                    }
-                  >
-                    {ev.type}
-                  </span>
-                </td>
-                <td className="num">{ev.count}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div
+          className="ep-panel-body"
+          style={{
+            padding: "32px 16px",
+            textAlign: "center",
+            color: "var(--muted)",
+            fontSize: "13px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "12px",
+            alignItems: "center",
+          }}
+        >
+          <p>
+            バージョン分布・拠点別導入状況・更新イベントの集計データは 現在 API
+            で提供されていません。
+          </p>
+          <p style={{ fontSize: "12px" }}>
+            利用可能なリリース情報は「アプリ配信」画面でご確認ください。
+          </p>
+          <button
+            className="ep-btn ep-btn-secondary ep-btn-sm"
+            type="button"
+            onClick={() => onNavigate("apps")}
+          >
+            アプリ配信を開く
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-// ─── Users sub-view ───────────────────────────────────────────────────────────
+// ─── Users sub-view (real data) ────────────────────────────────────────────────
 
 function UsersSubView({
   filter,
@@ -1050,6 +933,24 @@ function UsersSubView({
       : filter === "ok"
         ? liveUsers.filter((u) => u.status === "active").length
         : liveUsers.length;
+
+  // ── Login method distribution from real user records ──
+  const loginCounts = useMemo(() => {
+    const recent = liveUsers.filter((u) => u.last_login).length;
+    const never = liveUsers.length - recent;
+    return [
+      {
+        method: "ログイン実績あり",
+        count: recent,
+        total: Math.max(liveUsers.length, 1),
+      },
+      {
+        method: "未ログイン",
+        count: never,
+        total: Math.max(liveUsers.length, 1),
+      },
+    ];
+  }, [liveUsers]);
 
   const roleDist = (
     ["admin", "manager", "engineer", "viewer"] as UserRole[]
@@ -1141,14 +1042,14 @@ function UsersSubView({
 
         <div className="ep-panel">
           <div className="ep-panel-head">
-            <h3>認証方法</h3>
+            <h3>ログイン状況</h3>
             <span className="meta">{activeCount} ユーザー</span>
           </div>
           <div
             className="ep-panel-body"
             style={{ display: "flex", flexDirection: "column", gap: "12px" }}
           >
-            {AUTH_STATS.map((a) => (
+            {loginCounts.map((a) => (
               <div key={a.method}>
                 <div
                   style={{
@@ -1316,7 +1217,7 @@ function UsersSubView({
   );
 }
 
-// ─── Main export ──────────────────────────────────────────────────────────────
+// ─── Main export ───────────────────────────────────────────────────────────────
 
 export function DashboardView({
   subView,
@@ -1334,7 +1235,7 @@ export function DashboardView({
         <OverviewSubView {...viewProps} period={period} filter={filter} />
       )}
       {subView === "stats" && <StatsSubView period={period} filter={filter} />}
-      {subView === "dist" && <DistSubView period={period} />}
+      {subView === "dist" && <DistSubView onNavigate={onNavigate} />}
       {subView === "users" && (
         <UsersSubView filter={filter} onShowModal={onShowModal} />
       )}

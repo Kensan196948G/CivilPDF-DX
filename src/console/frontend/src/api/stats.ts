@@ -52,3 +52,44 @@ export async function getSecurityConfig(): Promise<SecurityConfigResponse> {
   const res = await api.get<SecurityConfigResponse>("/stats/security-config");
   return res.data;
 }
+
+export interface ProjectStatItem {
+  id: string;
+  name: string;
+  code: string;
+  total: number;
+  ok: number;
+  ng: number;
+  warn: number;
+}
+
+export interface ProjectStatsResponse {
+  period: number;
+  items: ProjectStatItem[];
+}
+
+export async function getProjectStats(
+  period = 30,
+): Promise<ProjectStatsResponse> {
+  const res = await api.get<ProjectStatsResponse>("/stats/projects", {
+    params: { period },
+  });
+  return res.data;
+}
+
+export interface DailyStatPoint {
+  date: string;
+  count: number;
+}
+
+export interface DailyStatsResponse {
+  period: number;
+  series: DailyStatPoint[];
+}
+
+export async function getDailyStats(period = 30): Promise<DailyStatsResponse> {
+  const res = await api.get<DailyStatsResponse>("/stats/daily", {
+    params: { period },
+  });
+  return res.data;
+}
