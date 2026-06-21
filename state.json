@@ -14,10 +14,10 @@
   "kpi": {
     "ci_success_rate": 1,
     "test_pass_rate": 1,
-    "test_count": 522,
+    "test_count": 539,
     "backend_unit_test_count": 287,
     "backend_e2e_test_count": 20,
-    "frontend_test_count": 212,
+    "frontend_test_count": 229,
     "frontend_e2e_test_count": 3,
     "coverage_percent": 98,
     "review_blocker_count": 0,
@@ -33,10 +33,10 @@
     "ci_retry_limit": 15,
     "same_error_limit": 3,
     "session_start": "2026-05-11T00:00:00+09:00",
-    "current_session_start_at": "2026-06-21T05:32:23.051Z",
+    "current_session_start_at": "2026-06-21T06:19:24.014Z",
     "last_trigger": "manual",
     "last_cron_session_id": "20260618-010001-CivilPDF-DX",
-    "last_stop_at": "2026-06-21T03:09:36.128Z",
+    "last_stop_at": "2026-06-21T06:07:46.383Z",
     "last_claude_session_id": "4fea8d38-647c-4028-aaef-3c069d7a952e"
   },
   "status": {
@@ -44,9 +44,9 @@
     "stable": true,
     "deploy_ready": true,
     "deploy_ready_note": "2026-06-20 CTO 再評価: 本番認証フローは完備（Login.tsx パスワード+M365 / api/auth login+getMe / axios Bearer+401 refresh / EnterpriseLayout ログアウト / PR #60 で本番ゲート有効）。テスト: Login 4 + ProtectedRoute redirect 2 + getInitialAuthState PROD/DEV 3 + authStore 4。当初の『ログイン UI 未実装』判断は誤りで、ログイン UI は最初から存在し #55/#56 がそれを意図的にバイパスしていた。PR #60 でバイパスを DEV 限定化し本番は完成済みログインフローを使用。残る本番化作業は人間タスク（管理者ユーザー作成 scripts/create_admin.py・docker compose・secrets 設定）のみ。",
-    "last_pr": 77,
-    "last_pr_status": "merged (2026-06-21) — PR #75 dead views 4件削除（DocumentsView/WorkflowView/AuditView/SettingsView・2258行）+ PR #77 UploadView デモ初期ファイル空配列化。両 PR 人間承認 squash merge 済み。",
-    "last_merged_pr": 77,
+    "last_pr": 79,
+    "last_pr_status": "merged (2026-06-21T06:01:35Z) — PR #79 lp/upload/privacy 3 view テスト整備(+17件)。main 宛・人間承認 squash merge 済み。production code 不変・frontend vitest 212→229。",
+    "last_merged_pr": 79,
     "verify_2026_06_20T23Z": "CTO Verify 独立検証（cycle 10）: backend pytest 278 passed・frontend vitest 174 passed・frontend lint exit0・npm audit 0 vulnerabilities(prod/all)・直近 main CI 8run 全 success。Release Ready を実証で確定。Verify 中に deprecated HTTP status 定数 6箇所を検出 → PR #69 で挙動不変リネーム（DeprecationWarning 3件消滅）。",
     "apps_distribution": "2026-06-20 Scope A 完了: アプリ配信ページ本番grade化（PR #63 backend release-notes/build-info/sha256/macOS .pkg + test14 / #64 frontend 実API化・デモ明示・mock対応 + test6 / #65 docs）。全 PR 人間承認 squash merge。Scope B（PDF Editor 本体 Electron/Tauri）は Issue #62 で別管理・着手前に再確認。",
     "auth_gate_finding": "2026-06-20 解決: state stale 中に #53〜#58 マージ（実 API 連携スプリント）。#55/#56 が既存ログイン UI を意図的にバイパスし本番ビルドにも漏れていた → Issue #59 起票 → PR #60 で DEV 限定ゲート化（人間承認 merge）→ Issue #59 closed。本番認証フローは検証済みで完備。",
@@ -57,10 +57,11 @@
     "frontend_lan_url": "http://192.168.0.185:5181/",
     "frontend_systemd_unit": "civilpdf-frontend.service (dev:lan @ 5181)",
     "frontend_pid": 922295,
-    "frontend_app_architecture": "App.tsx → EnterpriseLayout(shell) → documents/projects/workflow/audit/users/settings は API 接続済み pages/ をレンダリング。apps/security/m365/dashboard/viewer も実 API 接続済み（PR #70-#72・#46）。lp/upload/privacy は現状 mockup views/。dead views 4件（DocumentsView/WorkflowView/AuditView/SettingsView）は PR #75 で削除済み（2026-06-21 merge）。",
+    "frontend_app_architecture": "App.tsx → EnterpriseLayout(shell)。EnterpriseLayout は nav ごとに描画を切替: documents/projects/workflow/audit/users/settings は API 接続済み pages/ をレンダリング。apps/security/m365/dashboard/viewer も実 API 接続済み(PR #70-#72・#46)。lp/upload/privacy は components/enterprise/views/ をレンダリングし、いずれも適切なデータソースへ結線済み: PrivacyView=GDPR API 5本(consent/export/deletion)・UploadView=uploadDocument/listProjects・LandingView=設計上の静的ランディングページ(API 不要)。2026-06-21(dev cycle11): 3 view は接続済みだが専用テスト皆無だったため PR #79 で vitest 17件追加(212→229)。dead views 4件(DocumentsView/WorkflowView/AuditView/SettingsView)は PR #75 で削除済み。",
     "cto_production_ready_at": "2026-06-03T12:31:55Z",
     "cto_declaration": "Phase 8 全完了。Phase 9 で Phase 8 機能のシェル統合・到達性を E2E 検証。全テスト397件・CI 全8ジョブ pass・本番依存脆弱性0・blocker 0。Production Ready 維持。",
-    "mock_webui_url": "http://192.168.0.143:5180/ (dev:mock セッション内プロセス・任意資格情報でログイン可)"
+    "mock_webui_url": "http://192.168.0.143:5180/ (dev:mock セッション内プロセス・任意資格情報でログイン可)",
+    "dev_cycle11_2026_06_21": "development フェーズ: 直前 monitor handoff の P3「lp/upload/privacy 実API接続」を調査 → 3 view は既に結線済み(privacy=GDPR API・upload=uploadDocument/listProjects・lp=静的)で、真のギャップは『接続済みだが未検証』と判定。過剰実装を回避し PrivacyView 7件/UploadView 6件/LandingView 4件=計17件のテストを追加(PR #79)。test 229pass/lint0/build0・max chunk 366KB不変。Release Ready 維持。"
   },
   "completed": [
     "FastAPI バックエンド基盤",
@@ -139,7 +140,7 @@
     "[必須/人間作業] 初回管理者ユーザー作成・デフォルトパスワード変更（docs/deployment/docker-production-deployment.md §5 参照）",
     "[必須/人間作業] Windows 11 展開当日は docs/deployment/windows11-precheck-network-m365.md を参照して作業",
     "[P3] dev 依存脆弱性（esbuild<=0.24.2 経由 vite/vitest）解消 — vite/vitest メジャー更新の影響評価込みで別 Issue 化",
-    "[P3] lp/upload/privacy の実 API 接続検討（現状 mockup views/ のみ）"
+    "[P3] test_workflows.py fixture isolation 修正（ローカル SQLite UNIQUE constraint 5件 — CI は green・pre-existing PR #8）"
   ],
   "learning": {
     "failure_patterns": [
@@ -207,7 +208,7 @@
     }
   },
   "compact": {
-    "last_pre_compact_at": "2026-06-21T05:31:00.106Z"
+    "last_pre_compact_at": "2026-06-21T06:18:00.430Z"
   },
   "dreaming": {
     "patterns": [],
@@ -221,28 +222,50 @@
       "at": "2026-06-21T05:35:00Z",
       "kind": "cleanup",
       "message": "旧 warnings 95件（tdd_required + goal_rotation_forced_advance）を一括クリーンアップ。テスト 522件全通過・CI 8/8 success で全て解消済み（2026-06-21）。"
+    },
+    {
+      "at": "2026-06-21T06:19:00Z",
+      "kind": "tdd_required",
+      "message": "[P3] stats.py / stats.ts の専用テスト未追加（UploadView.tsx・SecurityView.tsx は PR #79/#71 で解消済み）。4件重複を1件に集約。",
+      "files": [
+        "src/console/backend/api/stats.py",
+        "src/console/frontend/src/api/stats.ts"
+      ],
+      "truncated": false,
+      "dedup_note": "元 4件(05:58/06:04/06:06/06:07)を集約。UploadView/SecurityView は PR #79/#71 でテスト追加済みのため除外"
     }
   ],
   "goal_rotation": {
     "mode": "phase",
-    "current": "development",
-    "sequence": [
-      "monitor",
-      "development",
-      "verify",
-      "improvement"
-    ],
-    "phase_done": false,
-    "phase_done_at": null,
+    "current": "verify",
+    "sequence": ["monitor", "development", "verify", "improvement"],
+    "phase_done": true,
+    "phase_done_at": "2026-06-21T06:19:00Z",
     "retry_count": 0,
     "max_retries": 2,
     "on_retry_exhausted": "advance",
     "blocked": false,
     "cycle_count": 11,
-    "last_advanced_at": "2026-06-21T05:35:00Z",
-    "last_outcome": "in-progress",
-    "last_finalized_session": "20260621T0325Z-monitor",
+    "last_advanced_at": "2026-06-21T06:19:00Z",
+    "last_outcome": "completed",
+    "last_finalized_session": "20260621T0616Z-verify",
     "history": [
+      {
+        "at": "2026-06-21T06:19:00Z",
+        "from": "verify",
+        "to": "improvement",
+        "outcome": "completed",
+        "via": "manual",
+        "note": "verify cycle 11 完了 — main CI 全 8+ job pass (2026-06-21T06:05:47Z)。frontend vitest 229/229 pass・backend 287 CI pass・integration 20 pass・security critical 0・README 539件更新済み。handoff: 20260621T0616Z-verify.md。STABLE 達成。"
+      },
+      {
+        "at": "2026-06-21T05:57:00Z",
+        "from": "development",
+        "to": "verify",
+        "outcome": "completed",
+        "via": "manual",
+        "note": "development cycle 11 完了 — P3 調査(lp/upload/privacy は既結線・未検証と判明) → 3 view テスト 17件追加(PR #79 main宛・人間ゲート)。frontend vitest 212→229。production code 不変。stale な frontend_app_architecture 注記を是正。"
+      },
       {
         "at": "2026-06-21T05:35:00Z",
         "from": "monitor",
