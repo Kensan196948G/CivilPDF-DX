@@ -1,3 +1,4 @@
+import io
 import uuid
 from pathlib import Path
 from fastapi import (
@@ -10,7 +11,7 @@ from fastapi import (
     Query,
     status,
 )
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import aiofiles
@@ -205,11 +206,33 @@ def download_document(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="File not found on disk"
         )
-    return FileResponse(
-        path=doc.file_path,
-        filename=doc.filename,
-        media_type="application/pdf",
-    )
+    # Embed the DX document id into the PDF Info dict (/CivilPdfDxDocId) so the
+    # CivilPDF-Editor can read it back and target the right document when syncing
+    # a ReviewSidecar. Existing metadata is preserved; falls back to the raw file
+    # if embedding fails (e.g. encrypted/corrupt PDF).
+    try:
+        from pypdf import PdfReader, PdfWriter
+
+        reader = PdfReader(doc.file_path)
+        writer = PdfWriter()
+        writer.append(reader)
+        metadata = dict(reader.metadata or {})
+        metadata["/CivilPdfDxDocId"] = doc.id
+        writer.add_metadata(metadata)
+        buf = io.BytesIO()
+        writer.write(buf)
+        buf.seek(0)
+        return StreamingResponse(
+            buf,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f'attachment; filename="{doc.filename}"'},
+        )
+    except Exception:
+        return FileResponse(
+            path=doc.file_path,
+            filename=doc.filename,
+            media_type="application/pdf",
+        )
 
 
 @router.post("/{doc_id}/timestamp", response_model=TimestampResponse)
