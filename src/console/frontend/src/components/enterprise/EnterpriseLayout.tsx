@@ -5,6 +5,7 @@ import { DashboardView } from './views/DashboardView'
 import { UploadView } from './views/UploadView'
 import { ViewerView } from './views/ViewerView'
 import { AppsView } from './views/AppsView'
+import { EditorSyncView } from './views/EditorSyncView'
 import { SecurityView } from './views/SecurityView'
 import { M365View } from './views/M365View'
 import { PrivacyView } from './views/PrivacyView'
@@ -20,7 +21,7 @@ import { Users } from '../../pages/Users'
 import { useAuthStore } from '../../store/auth'
 import type { UserResponse } from '../../api/auth'
 
-type ViewId = 'lp' | 'dashboard' | 'documents' | 'projects' | 'upload' | 'viewer' | 'workflow' | 'apps' | 'security' | 'audit' | 'm365' | 'settings' | 'privacy' | 'users'
+type ViewId = 'lp' | 'dashboard' | 'documents' | 'projects' | 'upload' | 'viewer' | 'workflow' | 'apps' | 'editor' | 'security' | 'audit' | 'm365' | 'settings' | 'privacy' | 'users'
 type DashSubView = 'overview' | 'stats' | 'dist' | 'users'
 type Role = 'op' | 'rev' | 'adm'
 type ToastType = 'ok' | 'warn' | 'error'
@@ -66,6 +67,7 @@ const NAV_GROUPS = [
     label: 'Platform',
     items: [
       { id: 'apps', label: 'アプリ配布' },
+      { id: 'editor', label: 'Editor連携' },
       { id: 'security', label: 'セキュリティ' },
       { id: 'audit', label: '監査' },
       { id: 'm365', label: 'Microsoft365' },
@@ -438,6 +440,8 @@ export const EnterpriseLayout: FC = () => {
         return <Workflows />
       case 'apps':
         return <AppsView {...viewProps} />
+      case 'editor':
+        return <EditorSyncView {...viewProps} />
       case 'security':
         return <SecurityView {...viewProps} />
       case 'audit':
