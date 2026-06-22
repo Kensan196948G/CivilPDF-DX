@@ -1,21 +1,21 @@
 """Tests for the app distribution API (releases, release notes, build info, downloads).
 
 These assert that responses reflect the real CivilPDF-Editor GitHub Release
-v1.2.2 (Tauri v2, unsigned stable, text edit mode + Phase A/B/C features included).
+v1.2.3 (Tauri v2, unsigned stable, text edit mode + Phase A/B/C features included).
 """
 
-# Real asset filenames as attached to GitHub Release v1.2.2. Filenames contain
-# "1.2.2" matching the version set in package.json / tauri.conf.json for this
+# Real asset filenames as attached to GitHub Release v1.2.3. Filenames contain
+# "1.2.3" matching the version set in package.json / tauri.conf.json for this
 # release. GitHub replaces spaces with dots in asset names.
 # Download URLs are `{base}/{filename}`.
-_BASE = "https://github.com/Kensan196948G/CivilPDF-Editor/releases/download/v1.2.2"
+_BASE = "https://github.com/Kensan196948G/CivilPDF-Editor/releases/download/v1.2.3"
 _REAL_FILENAMES = {
-    "win-exe": "CivilPDF.Editor_1.2.2_x64-setup.exe",
-    "win-msi": "CivilPDF.Editor_1.2.2_x64_en-US.msi",
-    "mac-dmg": "CivilPDF.Editor_1.2.2_universal.dmg",
-    "linux-deb": "CivilPDF.Editor_1.2.2_amd64.deb",
-    "linux-appimage": "CivilPDF.Editor_1.2.2_amd64.AppImage",
-    "linux-rpm": "CivilPDF.Editor-1.2.2-1.x86_64.rpm",
+    "win-exe": "CivilPDF.Editor_1.2.3_x64-setup.exe",
+    "win-msi": "CivilPDF.Editor_1.2.3_x64_en-US.msi",
+    "mac-dmg": "CivilPDF.Editor_1.2.3_universal.dmg",
+    "linux-deb": "CivilPDF.Editor_1.2.3_amd64.deb",
+    "linux-appimage": "CivilPDF.Editor_1.2.3_amd64.AppImage",
+    "linux-rpm": "CivilPDF.Editor-1.2.3-1.x86_64.rpm",
 }
 
 
@@ -28,13 +28,13 @@ class TestReleases:
         resp = client.get("/api/v1/apps/releases", headers=_auth(admin_token))
         assert resp.status_code == 200
         data = resp.json()
-        assert data["stable_version"] == "v1.2.2"
+        assert data["stable_version"] == "v1.2.3"
         assert isinstance(data["packages"], list)
         assert isinstance(data["channels"], list)
-        # Only the stable channel exists for v1.2.2.
+        # Only the stable channel exists for v1.2.3.
         assert len(data["channels"]) == 1
         assert data["channels"][0]["id"] == "stable"
-        assert data["channels"][0]["version"] == "v1.2.2"
+        assert data["channels"][0]["version"] == "v1.2.3"
         # user_count is not measured, so it is reported as 0 (no fabrication).
         assert data["channels"][0]["user_count"] == 0
 
@@ -62,8 +62,8 @@ class TestReleases:
         by_id = {p["id"]: p for p in resp.json()["packages"]}
         for pkg_id, filename in _REAL_FILENAMES.items():
             assert by_id[pkg_id]["filename"] == filename
-            # version field reports the release version (1.2.2), not the filename fragment.
-            assert by_id[pkg_id]["version"] == "1.2.2"
+            # version field reports the release version (1.2.3), not the filename fragment.
+            assert by_id[pkg_id]["version"] == "1.2.3"
 
     def test_macos_dmg_metadata(self, client, admin_token):
         resp = client.get("/api/v1/apps/releases", headers=_auth(admin_token))
@@ -110,7 +110,7 @@ class TestReleaseNotes:
         notes = resp.json()["notes"]
         assert len(notes) == 1
         first = notes[0]
-        assert first["version"] == "1.2.2"
+        assert first["version"] == "1.2.3"
         assert first["channel"] == "stable"
         assert all("type" in i and "text" in i for i in first["items"])
 
@@ -120,7 +120,7 @@ class TestReleaseNotes:
         # Real features: PDF viewing (M1) and electronic seal (M2).
         assert "PDF 表示" in texts
         assert "電子印鑑" in texts
-        # v1.2.2 headline feature: text edit mode.
+        # v1.2.3 headline feature: text edit mode.
         assert "テキスト編集" in texts
         # Honest disclosure of the unsigned build limitation.
         assert "未署名" in texts
@@ -163,7 +163,7 @@ class TestBuildInfo:
         assert resp.status_code == 200
         data = resp.json()
         assert data["product"] == "CivilPDF Editor Client"
-        assert data["stable_version"] == "v1.2.2"
+        assert data["stable_version"] == "v1.2.3"
         assert data["channel"] == "stable"
         assert "Tauri" in data["runtime"]
         assert isinstance(data["supported_os"], list) and data["supported_os"]
@@ -177,13 +177,13 @@ class TestBuildInfo:
         # Env is read at request time, so monkeypatch alone takes effect.
         monkeypatch.setenv("APPS_BUILD_COMMIT", "abc1234")
         monkeypatch.setenv("APPS_BUILD_DATE", "2026-06-22")
-        monkeypatch.setenv("APPS_BUILD_NUMBER", "1.2.2+build.42")
+        monkeypatch.setenv("APPS_BUILD_NUMBER", "1.2.3+build.42")
         resp = client.get("/api/v1/apps/build-info", headers=_auth(admin_token))
         assert resp.status_code == 200
         data = resp.json()
         assert data["git_commit"] == "abc1234"
         assert data["build_date"] == "2026-06-22"
-        assert data["build_number"] == "1.2.2+build.42"
+        assert data["build_number"] == "1.2.3+build.42"
 
     def test_requires_auth(self, client):
         resp = client.get("/api/v1/apps/build-info")
