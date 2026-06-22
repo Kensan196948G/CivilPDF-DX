@@ -35,10 +35,7 @@ interface DeployTarget {
 
 const CHANNELS_MODAL: Record<string, string> = {
   stable:
-    "Stable チャンネル\n\nバージョン: v2.4.1\nリリース日: 2026-04-28\n\n対象: 全ユーザー（デフォルト）\n更新頻度: 月1回程度\n検証期間: Beta → 4週間テスト後リリース",
-  beta: "Beta チャンネル\n\nバージョン: v2.5.0-beta.3\nリリース日: 2026-05-07\n\n対象: 技術担当者・検証チーム\n更新頻度: 2週間に1回程度\n\nBugReport 先: GitHub Issues",
-  insider:
-    "Insider チャンネル\n\nバージョン: v2.5.0-alpha.9\nリリース日: 2026-05-10\n\n対象: 開発者・社内QAチームのみ\n更新頻度: 随時（CI通過時）\n\n警告: 本番業務には使用しないこと。",
+    "Stable チャンネル\n\nバージョン: v1.1.0\nリリース日: 2026-06-21\n\n対象: 全ユーザー（デフォルト）\n更新頻度: 随時\n\n搭載機能: 注釈（Phase A）・検索/しおり/透かし/メタデータ（Phase B）・画像→PDF/比較/フォーム（Phase C）\n注意: 未署名ビルドのため OS のセキュリティ警告が表示される場合があります",
 };
 
 const CHANNEL_PILL: Record<string, string> = {
@@ -49,26 +46,26 @@ const CHANNEL_PILL: Record<string, string> = {
 
 const DL_MODAL: Record<string, string> = {
   "win-exe":
-    "PDF Editor Client — Windows インストーラー (.exe)\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-Setup-2.4.1.exe\nサイズ: 87.4 MB\n\n対応OS: Windows 10 / 11 (64bit)\n必要要件: なし（ランタイム同梱）\n\n用途: 個人 PC への対話型インストール\nインストール手順:\n1. exeをダウンロード\n2. 管理者権限で実行\n3. Entra IDでサインイン",
+    "PDF Editor Client — Windows インストーラー (.exe / NSIS)\n\nバージョン: v1.1.0 (Stable)\nファイル: CivilPDF.Editor_1.1.0_x64-setup.exe\nサイズ: 約 1.9 MB\n\n対応OS: Windows 10 / 11 (64bit)\n必要要件: Webview2（Windows 11 は標準搭載）\n\n用途: 個人 PC への対話型インストール\n注意: 未署名ビルドのため SmartScreen 警告が表示される場合があります",
   "win-msi":
-    "PDF Editor Client — Windows インストーラー (.msi)\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-2.4.1.msi\nサイズ: 88.9 MB\n\n対応OS: Windows 10 / 11 (64bit)\n必要要件: なし（ランタイム同梱）\n\n用途: グループポリシー (GPO) / SCCM によるサイレント一括展開向け\nサイレントインストール例:\n  msiexec /i CivilPDF-Editor-2.4.1.msi /qn",
-  "win-zip":
-    "PDF Editor Client — ポータブル版\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-Portable-2.4.1.zip\nサイズ: 94.1 MB\n\nインストール不要で使用可能。\nUSBメモリや持ち出し端末向け。\n\n注意: 透かし・DLPポリシーは適用されます。",
+    "PDF Editor Client — Windows インストーラー (.msi)\n\nバージョン: v1.1.0 (Stable)\nファイル: CivilPDF.Editor_1.1.0_x64_en-US.msi\nサイズ: 約 2.4 MB\n\n対応OS: Windows 10 / 11 (64bit)\n必要要件: Webview2（Windows 11 は標準搭載）\n\n用途: グループポリシー (GPO) / SCCM によるサイレント一括展開向け\nサイレントインストール例:\n  msiexec /i CivilPDF.Editor_1.1.0_x64_en-US.msi /qn",
   "mac-dmg":
-    "PDF Editor Client — macOS 版\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-2.4.1.dmg\nサイズ: 82.6 MB\n\n対応OS: macOS 13 Ventura 以降\nApple Silicon / Intel 両対応 (Universal Binary)",
-  "mac-pkg":
-    "PDF Editor Client — macOS インストーラー (.pkg)\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-2.4.1.pkg\nサイズ: 84.0 MB\n\n対応OS: macOS 13 Ventura 以降 (Universal Binary)\n\nMDM (Jamf / Intune for macOS) による\n一括展開向けのインストーラーパッケージです。",
-  "ent-intune":
-    "PDF Editor Client — Intune 展開パッケージ\n\nバージョン: v2.4.1 (Stable)\nファイル: CivilPDF-Editor-2.4.1.intunewin\nサイズ: 91.2 MB\n\nMicrosoft Endpoint Manager (Intune) 経由で\n一括展開が可能です。\n\n検出ルール・要件・依存関係は\nIntuneDeployGuide.pdf を参照してください。",
+    "PDF Editor Client — macOS ディスクイメージ (.dmg / Universal)\n\nバージョン: v1.1.0 (Stable)\nファイル: CivilPDF.Editor_1.1.0_universal.dmg\nサイズ: 約 4.5 MB\n\n対応OS: macOS 13 Ventura 以降\nApple Silicon / Intel 両対応 (Universal Binary)\n注意: 未署名ビルドのため Gatekeeper 警告が表示される場合があります",
+  "linux-deb":
+    "PDF Editor Client — Debian / Ubuntu (.deb)\n\nバージョン: v1.1.0 (Stable)\nファイル: CivilPDF.Editor_1.1.0_amd64.deb\nサイズ: 約 2.3 MB\n\n対応OS: Ubuntu 22.04+ / Debian 12+\nアーキテクチャ: x86_64\n\nインストール:\n  sudo dpkg -i CivilPDF.Editor_1.1.0_amd64.deb",
+  "linux-appimage":
+    "PDF Editor Client — AppImage\n\nバージョン: v1.1.0 (Stable)\nファイル: CivilPDF.Editor_1.1.0_amd64.AppImage\nサイズ: 約 80 MB\n\nインストール不要。実行権限を付与して起動可能。\n  chmod +x CivilPDF.Editor_1.1.0_amd64.AppImage\n  ./CivilPDF.Editor_1.1.0_amd64.AppImage\n\n対応OS: glibc 2.31+ の Linux ディストリビューション (x86_64)",
+  "linux-rpm":
+    "PDF Editor Client — Fedora / RHEL (.rpm)\n\nバージョン: v1.1.0 (Stable)\nファイル: CivilPDF.Editor-1.1.0-1.x86_64.rpm\nサイズ: 約 2.3 MB\n\n対応OS: Fedora 38+ / RHEL 9+ / AlmaLinux 9+\nアーキテクチャ: x86_64\n\nインストール:\n  sudo rpm -i CivilPDF.Editor-1.1.0-1.x86_64.rpm",
 };
 
 const DL_OS: Record<string, string> = {
   "win-exe": "Windows",
   "win-msi": "Windows",
-  "win-zip": "Windows",
   "mac-dmg": "macOS",
-  "mac-pkg": "macOS",
-  "ent-intune": "Enterprise",
+  "linux-deb": "Linux",
+  "linux-appimage": "Linux",
+  "linux-rpm": "Linux",
 };
 
 const TOGGLES: ToggleItem[] = [
@@ -98,7 +95,7 @@ const DEPLOY_TARGETS: DeployTarget[] = [
     count: "98 / 98",
     status: "完了",
     modalBody:
-      "本社ビル (東京)\n\n対象台数: 98台\nOS: Windows 11\nインストール方式: Intune\nバージョン: v2.4.1\nステータス: 全台展開済み\n最終更新: 2026-04-29",
+      "本社ビル (東京)\n\n対象台数: 98台\nOS: Windows 11\nインストール方式: Intune\nバージョン: v1.1.0\nステータス: 全台展開済み\n最終更新: 2026-04-29",
   },
   {
     id: "DT-002",
@@ -108,7 +105,7 @@ const DEPLOY_TARGETS: DeployTarget[] = [
     count: "52 / 54",
     status: "展開中",
     modalBody:
-      "大阪支店\n\n対象台数: 54台\nOS: Windows 10 / 11\nインストール方式: Intune\nバージョン: v2.4.1\nステータス: 展開中 (52/54)\n残り2台: オフライン端末",
+      "大阪支店\n\n対象台数: 54台\nOS: Windows 10 / 11\nインストール方式: Intune\nバージョン: v1.1.0\nステータス: 展開中 (52/54)\n残り2台: オフライン端末",
   },
   {
     id: "DT-003",
@@ -118,7 +115,7 @@ const DEPLOY_TARGETS: DeployTarget[] = [
     count: "27 / 31",
     status: "展開中",
     modalBody:
-      "名古屋支店\n\n対象台数: 31台\nOS: Windows 10\nインストール方式: グループポリシー\nバージョン: v2.4.1\nステータス: 展開中 (27/31)",
+      "名古屋支店\n\n対象台数: 31台\nOS: Windows 10\nインストール方式: グループポリシー\nバージョン: v1.1.0\nステータス: 展開中 (27/31)",
   },
   {
     id: "DT-004",
@@ -128,7 +125,7 @@ const DEPLOY_TARGETS: DeployTarget[] = [
     count: "6 / 8",
     status: "展開中",
     modalBody:
-      "第3工区現場事務所\n\n対象台数: 8台\nOS: Windows 10\nインストール方式: 手動（USB）\nバージョン: v2.4.1\nステータス: 展開中 (6/8)\n残り2台: 次回訪問時に対応予定",
+      "第3工区現場事務所\n\n対象台数: 8台\nOS: Windows 10\nインストール方式: 手動（USB）\nバージョン: v1.1.0\nステータス: 展開中 (6/8)\n残り2台: 次回訪問時に対応予定",
   },
   {
     id: "DT-005",
@@ -138,7 +135,7 @@ const DEPLOY_TARGETS: DeployTarget[] = [
     count: "12 / 12",
     status: "完了",
     modalBody:
-      "協力会社A (外部)\n\n対象台数: 12台\nOS: Windows 11\nインストール方式: ポータブル版配布\nバージョン: v2.4.1\nステータス: 全台展開済み\n有効期限: 2026-08-31",
+      "協力会社A (外部)\n\n対象台数: 12台\nOS: Windows 11\nインストール方式: 手動（インストーラー配布）\nバージョン: v1.1.0\nステータス: 全台展開済み\n有効期限: 2026-08-31",
   },
   {
     id: "DT-006",
@@ -148,7 +145,7 @@ const DEPLOY_TARGETS: DeployTarget[] = [
     count: "0 / 22",
     status: "未開始",
     modalBody:
-      "福岡支店\n\n対象台数: 22台\nOS: Windows 10 / 11\nインストール方式: Intune（予定）\nバージョン: v2.4.1\nステータス: 未開始\n予定日: 2026-05-20",
+      "福岡支店\n\n対象台数: 22台\nOS: Windows 10 / 11\nインストール方式: Intune（予定）\nバージョン: v1.1.0\nステータス: 未開始\n予定日: 2026-05-20",
   },
 ];
 
@@ -297,8 +294,8 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
                 建設・土木業向け高機能PDFエディター。電子印鑑・OCR・大判図面対応。
               </p>
               <div className="ep-app-meta">
-                <span>バージョン {releases?.stable_version ?? "v2.4.1"}</span>
-                <span>Windows / macOS</span>
+                <span>バージョン {releases?.stable_version ?? "v1.1.0"}</span>
+                <span>Windows / macOS / Linux</span>
                 <span>248 ライセンス</span>
               </div>
             </div>
@@ -546,7 +543,7 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
         <div className="ep-stat">
           <div className="lbl">バージョン統一率</div>
           <div className="val">94.4%</div>
-          <div className="delta up">v2.4.1</div>
+          <div className="delta up">v1.1.0</div>
         </div>
         <div className="ep-stat">
           <div className="lbl">旧バージョン数</div>
