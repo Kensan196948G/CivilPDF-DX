@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, model_validator
 from typing import Optional, List, Any
 from datetime import datetime
 from models.organization import OrgType
@@ -259,11 +259,30 @@ class PaginatedResponse(BaseModel):
 
 # ─── Editor Integration ───
 class ReviewSidecarPayload(BaseModel):
-    version: Optional[str] = None
+    # Matches the CivilPDF-Editor `civilpdf.review/v1` contract (lib/review/schema.ts).
+    # A mode="before" validator folds the Editor keys (schema/savedAt) and the
+    # legacy keys (version/exported_at) onto canonical snake_case fields so the
+    # non-destructive review round-trip is loss-free and backward compatible.
+    # extra="allow" preserves any forward-compatible keys the Editor may add.
+    review_schema: Optional[str] = None
+    generator: Optional[str] = None
+    saved_at: Optional[str] = None
     stamps: List[Any] = []
     annotations: List[Any] = []
-    exported_at: Optional[str] = None
     model_config = {"extra": "allow"}
+
+    @model_validator(mode="before")
+    @classmethod
+    def _fold_editor_keys(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            data = dict(data)
+            schema_val = data.pop("schema", None)
+            version_val = data.pop("version", None)
+            saved_val = data.pop("savedAt", None)
+            exported_val = data.pop("exported_at", None)
+            data.setdefault("review_schema", schema_val or version_val)
+            data.setdefault("saved_at", saved_val or exported_val)
+        return data
 
 
 class ReviewSidecarImportResponse(BaseModel):
