@@ -35,7 +35,7 @@ interface DeployTarget {
 
 const CHANNELS_MODAL: Record<string, string> = {
   stable:
-    "Stable チャンネル\n\nバージョン: v1.1.0\nリリース日: 2026-06-21\n\n対象: 全ユーザー（デフォルト）\n更新頻度: 随時\n\n搭載機能: 注釈（Phase A）・検索/しおり/透かし/メタデータ（Phase B）・画像→PDF/比較/フォーム（Phase C）\n注意: 未署名ビルドのため OS のセキュリティ警告が表示される場合があります",
+    "Stable チャンネル\n\nバージョン: v1.2.0\nリリース日: 2026-06-22\n\n対象: 全ユーザー（デフォルト）\n更新頻度: 随時\n\n搭載機能: テキスト編集モード（v1.2.0）・注釈（Phase A）・検索/しおり/透かし/メタデータ（Phase B）・画像→PDF/比較/フォーム（Phase C）\n注意: 未署名ビルドのため OS のセキュリティ警告が表示される場合があります",
 };
 
 const CHANNEL_PILL: Record<string, string> = {
@@ -46,17 +46,17 @@ const CHANNEL_PILL: Record<string, string> = {
 
 const DL_MODAL: Record<string, string> = {
   "win-exe":
-    "PDF Editor Client — Windows インストーラー (.exe / NSIS)\n\nバージョン: v1.1.0 (Stable)\nファイル: CivilPDF.Editor_1.1.0_x64-setup.exe\nサイズ: 約 1.9 MB\n\n対応OS: Windows 10 / 11 (64bit)\n必要要件: Webview2（Windows 11 は標準搭載）\n\n用途: 個人 PC への対話型インストール\n注意: 未署名ビルドのため SmartScreen 警告が表示される場合があります",
+    "PDF Editor Client — Windows インストーラー (.exe / NSIS)\n\nバージョン: v1.2.0 (Stable)\nファイル: CivilPDF.Editor_1.2.0_x64-setup.exe\nサイズ: 約 1.9 MB\n\n対応OS: Windows 10 / 11 (64bit)\n必要要件: Webview2（Windows 11 は標準搭載）\n\n用途: 個人 PC への対話型インストール\n注意: 未署名ビルドのため SmartScreen 警告が表示される場合があります",
   "win-msi":
-    "PDF Editor Client — Windows インストーラー (.msi)\n\nバージョン: v1.1.0 (Stable)\nファイル: CivilPDF.Editor_1.1.0_x64_en-US.msi\nサイズ: 約 2.4 MB\n\n対応OS: Windows 10 / 11 (64bit)\n必要要件: Webview2（Windows 11 は標準搭載）\n\n用途: グループポリシー (GPO) / SCCM によるサイレント一括展開向け\nサイレントインストール例:\n  msiexec /i CivilPDF.Editor_1.1.0_x64_en-US.msi /qn",
+    "PDF Editor Client — Windows インストーラー (.msi)\n\nバージョン: v1.2.0 (Stable)\nファイル: CivilPDF.Editor_1.2.0_x64_en-US.msi\nサイズ: 約 2.4 MB\n\n対応OS: Windows 10 / 11 (64bit)\n必要要件: Webview2（Windows 11 は標準搭載）\n\n用途: グループポリシー (GPO) / SCCM によるサイレント一括展開向け\nサイレントインストール例:\n  msiexec /i CivilPDF.Editor_1.2.0_x64_en-US.msi /qn",
   "mac-dmg":
-    "PDF Editor Client — macOS ディスクイメージ (.dmg / Universal)\n\nバージョン: v1.1.0 (Stable)\nファイル: CivilPDF.Editor_1.1.0_universal.dmg\nサイズ: 約 4.5 MB\n\n対応OS: macOS 13 Ventura 以降\nApple Silicon / Intel 両対応 (Universal Binary)\n注意: 未署名ビルドのため Gatekeeper 警告が表示される場合があります",
+    "PDF Editor Client — macOS ディスクイメージ (.dmg / Universal)\n\nバージョン: v1.2.0 (Stable)\nファイル: CivilPDF.Editor_1.2.0_universal.dmg\nサイズ: 約 4.5 MB\n\n対応OS: macOS 13 Ventura 以降\nApple Silicon / Intel 両対応 (Universal Binary)\n注意: 未署名ビルドのため Gatekeeper 警告が表示される場合があります",
   "linux-deb":
-    "PDF Editor Client — Debian / Ubuntu (.deb)\n\nバージョン: v1.1.0 (Stable)\nファイル: CivilPDF.Editor_1.1.0_amd64.deb\nサイズ: 約 2.3 MB\n\n対応OS: Ubuntu 22.04+ / Debian 12+\nアーキテクチャ: x86_64\n\nインストール:\n  sudo dpkg -i CivilPDF.Editor_1.1.0_amd64.deb",
+    "PDF Editor Client — Debian / Ubuntu (.deb)\n\nバージョン: v1.2.0 (Stable)\nファイル: CivilPDF.Editor_1.2.0_amd64.deb\nサイズ: 約 2.3 MB\n\n対応OS: Ubuntu 22.04+ / Debian 12+\nアーキテクチャ: x86_64\n\nインストール:\n  sudo dpkg -i CivilPDF.Editor_1.2.0_amd64.deb",
   "linux-appimage":
-    "PDF Editor Client — AppImage\n\nバージョン: v1.1.0 (Stable)\nファイル: CivilPDF.Editor_1.1.0_amd64.AppImage\nサイズ: 約 80 MB\n\nインストール不要。実行権限を付与して起動可能。\n  chmod +x CivilPDF.Editor_1.1.0_amd64.AppImage\n  ./CivilPDF.Editor_1.1.0_amd64.AppImage\n\n対応OS: glibc 2.31+ の Linux ディストリビューション (x86_64)",
+    "PDF Editor Client — AppImage\n\nバージョン: v1.2.0 (Stable)\nファイル: CivilPDF.Editor_1.2.0_amd64.AppImage\nサイズ: 約 80 MB\n\nインストール不要。実行権限を付与して起動可能。\n  chmod +x CivilPDF.Editor_1.2.0_amd64.AppImage\n  ./CivilPDF.Editor_1.2.0_amd64.AppImage\n\n対応OS: glibc 2.31+ の Linux ディストリビューション (x86_64)",
   "linux-rpm":
-    "PDF Editor Client — Fedora / RHEL (.rpm)\n\nバージョン: v1.1.0 (Stable)\nファイル: CivilPDF.Editor-1.1.0-1.x86_64.rpm\nサイズ: 約 2.3 MB\n\n対応OS: Fedora 38+ / RHEL 9+ / AlmaLinux 9+\nアーキテクチャ: x86_64\n\nインストール:\n  sudo rpm -i CivilPDF.Editor-1.1.0-1.x86_64.rpm",
+    "PDF Editor Client — Fedora / RHEL (.rpm)\n\nバージョン: v1.2.0 (Stable)\nファイル: CivilPDF.Editor-1.2.0-1.x86_64.rpm\nサイズ: 約 2.3 MB\n\n対応OS: Fedora 38+ / RHEL 9+ / AlmaLinux 9+\nアーキテクチャ: x86_64\n\nインストール:\n  sudo rpm -i CivilPDF.Editor-1.2.0-1.x86_64.rpm",
 };
 
 const DL_OS: Record<string, string> = {
@@ -294,7 +294,7 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
                 建設・土木業向け高機能PDFエディター。電子印鑑・OCR・大判図面対応。
               </p>
               <div className="ep-app-meta">
-                <span>バージョン {releases?.stable_version ?? "v1.1.0"}</span>
+                <span>バージョン {releases?.stable_version ?? "v1.2.0"}</span>
                 <span>Windows / macOS / Linux</span>
                 <span>248 ライセンス</span>
               </div>
