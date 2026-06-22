@@ -60,7 +60,7 @@ def import_review_sidecar(
         action="review_sidecar.imported",
         resource_type="document",
         resource_id=doc_id,
-        detail=json.dumps({"version": sidecar_dict.get("version")}),
+        detail=json.dumps({"schema": sidecar_dict.get("review_schema")}),
         ip_address=None,
     )
     db.refresh(doc)

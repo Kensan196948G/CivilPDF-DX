@@ -36,22 +36,25 @@ def _make_document(db, owner_id, project_id, status=DocumentStatus.DRAFT):
     return doc
 
 
+# Mirrors the real CivilPDF-Editor `civilpdf.review/v1` sidecar (lib/review/schema.ts):
+# schema/generator/savedAt keys + stamps carrying review metadata.
 SIDECAR_PAYLOAD = {
-    "version": "1",
+    "schema": "civilpdf.review/v1",
+    "generator": "CivilPDF-Editor",
+    "savedAt": "2026-06-21T10:05:00Z",
     "stamps": [
         {
             "id": "stamp-1",
             "page": 1,
             "x": 100.0,
             "y": 200.0,
-            "stamp_type": "approval",
-            "user_id": "u1",
-            "placed_at": "2026-06-21T10:00:00Z",
+            "w": 80.0,
+            "ratio": 1.0,
+            "src": "data:image/png;base64,AAAA",
             "status": "approved",
         }
     ],
     "annotations": [],
-    "exported_at": "2026-06-21T10:05:00Z",
 }
 
 
@@ -136,6 +139,32 @@ class TestImportReviewSidecar:
         )
         assert resp.status_code == 404
 
+    def test_import_accepts_legacy_version_exported_at(
+        self, client, manager_token, admin_user, db_session
+    ):
+        """Back-compat: the pre-alignment keys (version/exported_at) still map
+        onto review_schema/saved_at via AliasChoices."""
+        proj = _make_project(db_session, "PROJ-006")
+        doc = _make_document(db_session, admin_user.id, proj.id)
+
+        legacy = {
+            "version": "1",
+            "exported_at": "2026-06-21T10:05:00Z",
+            "stamps": [{"id": "s1", "page": 1, "status": "approved"}],
+            "annotations": [],
+        }
+        resp = client.post(
+            f"/api/v1/documents/{doc.id}/review-sidecar",
+            json=legacy,
+            headers={"Authorization": f"Bearer {manager_token}"},
+        )
+        assert resp.status_code == 200
+        # Legacy "version" normalizes onto review_schema; status still derives
+        # from stamps (all approved → EDITOR_REVIEWED).
+        body = resp.json()
+        assert body["review_sidecar"]["review_schema"] == "1"
+        assert body["status"] == DocumentStatus.EDITOR_REVIEWED.value
+
 
 class TestGetReviewSidecar:
     def test_get_returns_sidecar_data(
@@ -156,7 +185,10 @@ class TestGetReviewSidecar:
         assert resp.status_code == 200
         data = resp.json()
         assert "review_sidecar" in data
-        assert data["review_sidecar"]["version"] == "1"
+        # Editor's "schema"/"savedAt"/"generator" keys are normalized loss-free.
+        assert data["review_sidecar"]["review_schema"] == "civilpdf.review/v1"
+        assert data["review_sidecar"]["saved_at"] == "2026-06-21T10:05:00Z"
+        assert data["review_sidecar"]["generator"] == "CivilPDF-Editor"
         assert "review_sidecar_imported_at" in data
 
     def test_get_returns_null_when_no_sidecar(
