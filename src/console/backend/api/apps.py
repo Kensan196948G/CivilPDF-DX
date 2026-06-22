@@ -2,7 +2,7 @@
 
 Source of truth: the public GitHub Release of CivilPDF-Editor (Tauri v2 desktop app).
 
-    https://github.com/Kensan196948G/CivilPDF-Editor/releases/tag/v1.1.0
+    https://github.com/Kensan196948G/CivilPDF-Editor/releases/tag/v1.2.0
 
 This module intentionally avoids fabricated metadata. Values that are not measured
 (e.g. active user counts) are reported honestly (0 / None) rather than guessed.
@@ -19,10 +19,10 @@ from models.user import User
 
 router = APIRouter(prefix="/apps", tags=["App Distribution"])
 
-# Current published stable release. Matches the GitHub Release tag v1.1.0.
-_VERSION = "1.1.0"
-# Public release date of v1.1.0 (GitHub Release publication date).
-_RELEASE_DATE = "2026-06-21"
+# Current published stable release. Matches the GitHub Release tag v1.2.0.
+_VERSION = "1.2.0"
+# Public release date of v1.2.0 (GitHub Release publication date).
+_RELEASE_DATE = "2026-06-22"
 
 Channel = Literal["stable"]
 NoteType = Literal["FEAT", "FIX", "SEC", "IMP", "NOTE"]
@@ -34,7 +34,7 @@ def _base_url() -> str:
     """Base URL of the GitHub Releases asset path (empty when unconfigured).
 
     Set in deployment to:
-        https://github.com/Kensan196948G/CivilPDF-Editor/releases/download/v1.1.0
+        https://github.com/Kensan196948G/CivilPDF-Editor/releases/download/v1.2.0
     """
     return os.getenv("APPS_RELEASE_BASE_URL", "").rstrip("/")
 
@@ -134,10 +134,10 @@ def _pkg(
 def _build_packages() -> list[ReleasePackage]:
     """Build the package list fresh so env-driven checksums/availability stay current.
 
-    Filenames MUST match the real assets attached to the GitHub Release v1.1.0
+    Filenames MUST match the real assets attached to the GitHub Release v1.2.0
     (GitHub replaces spaces in asset names with dots). Asset filenames contain
-    "1.1.0" because package.json / tauri.conf.json version was correctly bumped
-    to 1.1.0 before the CI build. The download URL is then
+    "1.2.0" because package.json / tauri.conf.json version was correctly bumped
+    to 1.2.0 before the CI build. The download URL is then
     `{APPS_RELEASE_BASE_URL}/{filename}`.
     """
     return [
@@ -146,7 +146,7 @@ def _build_packages() -> list[ReleasePackage]:
             "windows",
             "exe",
             "インストーラー (.exe / NSIS)",
-            "CivilPDF.Editor_1.1.0_x64-setup.exe",
+            "CivilPDF.Editor_1.2.0_x64-setup.exe",
             "約 1.9 MB",
         ),
         _pkg(
@@ -154,7 +154,7 @@ def _build_packages() -> list[ReleasePackage]:
             "windows",
             "msi",
             "インストーラー (.msi)",
-            "CivilPDF.Editor_1.1.0_x64_en-US.msi",
+            "CivilPDF.Editor_1.2.0_x64_en-US.msi",
             "約 2.4 MB",
         ),
         _pkg(
@@ -162,7 +162,7 @@ def _build_packages() -> list[ReleasePackage]:
             "macos",
             "dmg",
             "ディスクイメージ (.dmg / Universal)",
-            "CivilPDF.Editor_1.1.0_universal.dmg",
+            "CivilPDF.Editor_1.2.0_universal.dmg",
             "約 4.5 MB",
         ),
         _pkg(
@@ -170,7 +170,7 @@ def _build_packages() -> list[ReleasePackage]:
             "linux",
             "deb",
             "Debian / Ubuntu (.deb)",
-            "CivilPDF.Editor_1.1.0_amd64.deb",
+            "CivilPDF.Editor_1.2.0_amd64.deb",
             "約 2.3 MB",
         ),
         _pkg(
@@ -178,7 +178,7 @@ def _build_packages() -> list[ReleasePackage]:
             "linux",
             "appimage",
             "AppImage (.AppImage)",
-            "CivilPDF.Editor_1.1.0_amd64.AppImage",
+            "CivilPDF.Editor_1.2.0_amd64.AppImage",
             "約 80 MB",
         ),
         _pkg(
@@ -186,7 +186,7 @@ def _build_packages() -> list[ReleasePackage]:
             "linux",
             "rpm",
             "Fedora / RHEL (.rpm)",
-            "CivilPDF.Editor-1.1.0-1.x86_64.rpm",
+            "CivilPDF.Editor-1.2.0-1.x86_64.rpm",
             "約 2.3 MB",
         ),
     ]
@@ -199,7 +199,8 @@ _CHANNELS: list[ChannelInfo] = [
         version=f"v{_VERSION}",
         release_date=_RELEASE_DATE,
         description=(
-            "安定版。注釈（Phase A）・検索/しおり/透かし/メタデータ（Phase B）・"
+            "安定版。テキスト編集モード（v1.2.0 新機能）・注釈（Phase A）・"
+            "検索/しおり/透かし/メタデータ（Phase B）・"
             "画像→PDF/比較/フォーム（Phase C）を搭載。"
             "未署名ビルドのため OS のセキュリティ警告が表示される場合があります。"
         ),
@@ -213,8 +214,12 @@ _RELEASE_NOTES: list[ReleaseNote] = [
         version=_VERSION,
         channel="stable",
         release_date=_RELEASE_DATE,
-        summary="v1.1.0 安定版 — 注釈・検索・文書加工・変換機能を追加",
+        summary="v1.2.0 安定版 — テキスト編集モードを追加（注釈・検索・文書加工・変換機能を継続搭載）",
         items=[
+            ReleaseNoteItem(
+                type="FEAT",
+                text="テキスト編集モード（v1.2.0: PDF 上のテキストを直接編集・PDF 焼き込み）",
+            ),
             ReleaseNoteItem(type="FEAT", text="PDF 表示（M1: ページ閲覧・ズーム）"),
             ReleaseNoteItem(
                 type="FEAT",
@@ -268,9 +273,11 @@ _RELEASE_NOTES: list[ReleaseNote] = [
             ),
         ],
         highlights=(
-            "v1.1.0 — リリースノート\n\n"
+            "v1.2.0 — リリースノート\n\n"
             f"リリース日: {_RELEASE_DATE}\nチャンネル: Stable（安定版）\n\n"
-            "新機能（v1.1.0）:\n"
+            "新機能（v1.2.0）:\n"
+            "- テキスト編集モード: PDF 上のテキストを直接編集し、PDF へ焼き込み\n\n"
+            "継続機能（v1.1.0 から）:\n"
             "- 注釈（Phase A）: ハイライト・下線・取消線・付箋・手書き・消去 + 6色カラーピッカー\n"
             "- テキスト検索（Phase B）: 全ページ横断検索・前後ナビゲーション・コンテキスト表示\n"
             "- しおり/目次（Phase B）: PDF アウトライン階層表示・クリックでページ移動\n"
