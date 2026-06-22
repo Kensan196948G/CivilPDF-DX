@@ -77,7 +77,7 @@ const TOGGLES: ToggleItem[] = [
   {
     id: "forceMin",
     label: "最低バージョン強制",
-    sub: "v2.3.0未満はアクセスをブロック",
+    sub: "v1.1.0未満はアクセスをブロック",
   },
   {
     id: "telemetry",
@@ -95,7 +95,7 @@ const DEPLOY_TARGETS: DeployTarget[] = [
     count: "98 / 98",
     status: "完了",
     modalBody:
-      "本社ビル (東京)\n\n対象台数: 98台\nOS: Windows 11\nインストール方式: Intune\nバージョン: v1.1.0\nステータス: 全台展開済み\n最終更新: 2026-04-29",
+      "本社ビル (東京)\n\n対象台数: 98台\nOS: Windows 11\nインストール方式: Intune\nバージョン: v1.2.0\nステータス: 全台展開済み\n最終更新: 2026-04-29",
   },
   {
     id: "DT-002",
@@ -105,7 +105,7 @@ const DEPLOY_TARGETS: DeployTarget[] = [
     count: "52 / 54",
     status: "展開中",
     modalBody:
-      "大阪支店\n\n対象台数: 54台\nOS: Windows 10 / 11\nインストール方式: Intune\nバージョン: v1.1.0\nステータス: 展開中 (52/54)\n残り2台: オフライン端末",
+      "大阪支店\n\n対象台数: 54台\nOS: Windows 10 / 11\nインストール方式: Intune\nバージョン: v1.2.0\nステータス: 展開中 (52/54)\n残り2台: オフライン端末",
   },
   {
     id: "DT-003",
@@ -115,7 +115,7 @@ const DEPLOY_TARGETS: DeployTarget[] = [
     count: "27 / 31",
     status: "展開中",
     modalBody:
-      "名古屋支店\n\n対象台数: 31台\nOS: Windows 10\nインストール方式: グループポリシー\nバージョン: v1.1.0\nステータス: 展開中 (27/31)",
+      "名古屋支店\n\n対象台数: 31台\nOS: Windows 10\nインストール方式: グループポリシー\nバージョン: v1.2.0\nステータス: 展開中 (27/31)",
   },
   {
     id: "DT-004",
@@ -125,7 +125,7 @@ const DEPLOY_TARGETS: DeployTarget[] = [
     count: "6 / 8",
     status: "展開中",
     modalBody:
-      "第3工区現場事務所\n\n対象台数: 8台\nOS: Windows 10\nインストール方式: 手動（USB）\nバージョン: v1.1.0\nステータス: 展開中 (6/8)\n残り2台: 次回訪問時に対応予定",
+      "第3工区現場事務所\n\n対象台数: 8台\nOS: Windows 10\nインストール方式: 手動（USB）\nバージョン: v1.2.0\nステータス: 展開中 (6/8)\n残り2台: 次回訪問時に対応予定",
   },
   {
     id: "DT-005",
@@ -135,7 +135,7 @@ const DEPLOY_TARGETS: DeployTarget[] = [
     count: "12 / 12",
     status: "完了",
     modalBody:
-      "協力会社A (外部)\n\n対象台数: 12台\nOS: Windows 11\nインストール方式: 手動（インストーラー配布）\nバージョン: v1.1.0\nステータス: 全台展開済み\n有効期限: 2026-08-31",
+      "協力会社A (外部)\n\n対象台数: 12台\nOS: Windows 11\nインストール方式: 手動（インストーラー配布）\nバージョン: v1.2.0\nステータス: 全台展開済み\n有効期限: 2026-08-31",
   },
   {
     id: "DT-006",
@@ -145,7 +145,7 @@ const DEPLOY_TARGETS: DeployTarget[] = [
     count: "0 / 22",
     status: "未開始",
     modalBody:
-      "福岡支店\n\n対象台数: 22台\nOS: Windows 10 / 11\nインストール方式: Intune（予定）\nバージョン: v1.1.0\nステータス: 未開始\n予定日: 2026-05-20",
+      "福岡支店\n\n対象台数: 22台\nOS: Windows 10 / 11\nインストール方式: Intune（予定）\nバージョン: v1.2.0\nステータス: 未開始\n予定日: 2026-05-20",
   },
 ];
 
@@ -543,12 +543,12 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
         <div className="ep-stat">
           <div className="lbl">バージョン統一率</div>
           <div className="val">94.4%</div>
-          <div className="delta up">v1.1.0</div>
+          <div className="delta up">v1.2.0</div>
         </div>
         <div className="ep-stat">
           <div className="lbl">旧バージョン数</div>
           <div className="val">11</div>
-          <div className="delta down">v2.3.x: 11台</div>
+          <div className="delta down">v1.1.x: 11台</div>
         </div>
       </div>
 
