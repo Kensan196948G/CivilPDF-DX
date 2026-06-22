@@ -6,7 +6,6 @@ import {
   getReleaseNotes,
   getBuildInfo,
   type ReleasePackage,
-  type ReleaseChannel,
 } from "../../../api/apps";
 
 interface ViewProps {
@@ -14,8 +13,6 @@ interface ViewProps {
   onShowModal: (content: { title: string; body: string }) => void;
   onShowToast: (message: string, type?: "ok" | "warn" | "error") => void;
 }
-
-type RnFilter = "All" | "Stable" | "Beta" | "Insider";
 
 interface ToggleItem {
   id: string;
@@ -40,8 +37,6 @@ const CHANNELS_MODAL: Record<string, string> = {
 
 const CHANNEL_PILL: Record<string, string> = {
   stable: "ep-pill ep-pill-stable",
-  beta: "ep-pill ep-pill-beta",
-  insider: "ep-pill ep-pill-insider",
 };
 
 const DL_MODAL: Record<string, string> = {
@@ -149,28 +144,12 @@ const DEPLOY_TARGETS: DeployTarget[] = [
   },
 ];
 
-const CHANNEL_LABEL: Record<ReleaseChannel, RnFilter> = {
-  stable: "Stable",
-  beta: "Beta",
-  insider: "Insider",
-};
-
-const RN_FILTER_OPTIONS: RnFilter[] = ["All", "Stable", "Beta", "Insider"];
-
-const rnChannelPill: Record<RnFilter, string> = {
-  All: "",
-  Stable: "ep-pill ep-pill-stable",
-  Beta: "ep-pill ep-pill-beta",
-  Insider: "ep-pill ep-pill-insider",
-};
-
 export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
   const [toggles, setToggles] = useState<Record<string, boolean>>({
     autoUpdate: true,
     forceMin: true,
     telemetry: false,
   });
-  const [rnFilter, setRnFilter] = useState<RnFilter>("All");
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const [buildInfoLoading, setBuildInfoLoading] = useState(false);
   const releaseNotesRef = useRef<HTMLDivElement | null>(null);
@@ -257,10 +236,6 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
   };
 
   const notes = releaseNotes?.notes ?? [];
-  const filteredRn =
-    rnFilter === "All"
-      ? notes
-      : notes.filter((n) => CHANNEL_LABEL[n.channel] === rnFilter);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -556,17 +531,6 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
       <div className="ep-panel" ref={releaseNotesRef}>
         <div className="ep-panel-head">
           <h3>リリースノート</h3>
-          <div style={{ display: "flex", gap: "4px" }}>
-            {RN_FILTER_OPTIONS.map((f) => (
-              <button
-                key={f}
-                className={`ep-filter-pill${rnFilter === f ? " active" : ""}`}
-                onClick={() => setRnFilter(f)}
-              >
-                {f}
-              </button>
-            ))}
-          </div>
         </div>
         <div>
           {notesLoading ? (
@@ -575,18 +539,17 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
                 <h5>読み込み中...</h5>
               </div>
             </div>
-          ) : filteredRn.length === 0 ? (
+          ) : notes.length === 0 ? (
             <div className="ep-rn-item">
               <div className="ep-rn-body">
                 <h5>該当するリリースノートはありません</h5>
               </div>
             </div>
           ) : (
-            filteredRn.map((rn) => {
-              const label = CHANNEL_LABEL[rn.channel];
+            notes.map((rn) => {
               const body =
                 rn.highlights ??
-                `v${rn.version} — リリースノート\n\nリリース日: ${rn.release_date}\nチャンネル: ${label}\n\n${rn.summary}`;
+                `v${rn.version} — リリースノート\n\nリリース日: ${rn.release_date}\nチャンネル: Stable\n\n${rn.summary}`;
               return (
                 <div
                   key={rn.version}
@@ -612,9 +575,9 @@ export const AppsView: FC<ViewProps> = ({ onShowModal, onShowToast }) => {
                     <div className="v">v{rn.version}</div>
                     <div className="d">{rn.release_date}</div>
                     <div style={{ marginTop: "4px" }}>
-                      <span className={rnChannelPill[label]}>
+                      <span className="ep-pill ep-pill-stable">
                         <span className="dot" />
-                        {label}
+                        Stable
                       </span>
                     </div>
                   </div>

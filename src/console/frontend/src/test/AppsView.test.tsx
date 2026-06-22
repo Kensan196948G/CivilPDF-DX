@@ -19,30 +19,45 @@ import {
   getDownloadUrl,
 } from "../api/apps";
 
+// Fixtures mirror the real CivilPDF-Editor v1.2.0 GitHub Release (Tauri v2,
+// unsigned stable, real Tauri-generated packages — no fabricated zip/pkg/intune,
+// and only the "stable" channel exists).
 const releases = {
-  stable_version: "v2.4.1",
+  stable_version: "v1.2.0",
   packages: [
     {
-      id: "mac-pkg",
-      platform: "macos",
-      format: "pkg",
-      label: "インストーラー (.pkg)",
-      filename: "CivilPDF-Editor-2.4.1.pkg",
-      version: "2.4.1",
-      size_label: "84.0 MB",
+      id: "win-exe",
+      platform: "windows",
+      format: "exe",
+      label: "インストーラー (.exe / NSIS)",
+      filename: "CivilPDF.Editor_1.2.0_x64-setup.exe",
+      version: "1.2.0",
+      size_label: "約 1.9 MB",
       sha256: null,
-      download_path: "/api/v1/apps/download/mac-pkg",
+      download_path: "/api/v1/apps/download/win-exe",
       available: false,
+    },
+    {
+      id: "linux-deb",
+      platform: "linux",
+      format: "deb",
+      label: "Debian / Ubuntu (.deb)",
+      filename: "CivilPDF.Editor_1.2.0_amd64.deb",
+      version: "1.2.0",
+      size_label: "約 2.3 MB",
+      sha256: null,
+      download_path: "/api/v1/apps/download/linux-deb",
+      available: true,
     },
   ],
   channels: [
     {
       id: "stable",
       label: "Stable",
-      version: "v2.4.1",
-      release_date: "2026-04-28",
-      description: "本番推奨",
-      user_count: 211,
+      version: "v1.2.0",
+      release_date: "2026-06-22",
+      description: "安定版",
+      user_count: 0,
     },
   ],
 };
@@ -50,34 +65,33 @@ const releases = {
 const notes = {
   notes: [
     {
-      version: "2.4.1",
+      version: "1.2.0",
       channel: "stable" as const,
-      release_date: "2026-04-28",
-      summary: "PDF/A変換精度向上・セキュリティ修正",
-      items: [{ type: "FIX" as const, text: "フォント埋め込みエラーを修正" }],
-      highlights: "v2.4.1 highlights",
-    },
-    {
-      version: "2.5.0-beta.3",
-      channel: "beta" as const,
-      release_date: "2026-05-07",
-      summary: "Teams連携・新承認フロー",
-      items: [{ type: "FEAT" as const, text: "Teams通知連携を追加" }],
-      highlights: "beta highlights",
+      release_date: "2026-06-22",
+      summary: "v1.2.0 安定版 — テキスト編集モードを追加",
+      items: [
+        { type: "FEAT" as const, text: "テキスト編集モード" },
+        { type: "NOTE" as const, text: "未署名ビルド" },
+      ],
+      highlights: "v1.2.0 highlights",
     },
   ],
 };
 
 const buildInfo = {
   product: "CivilPDF Editor Client",
-  stable_version: "v2.4.1",
-  build_number: "2.4.1+build.1287",
+  stable_version: "v1.2.0",
+  build_number: "1.2.0+build.1",
   git_commit: "abc1234",
-  build_date: "2026-04-28",
+  build_date: "2026-06-22",
   channel: "stable",
-  runtime: "ランタイム同梱（外部依存なし）",
-  supported_os: ["Windows 10 / 11 (64bit)", "macOS 13 Ventura+ (Universal)"],
-  min_supported_version: "2.3.0",
+  runtime: "Tauri v2（システムの WebView を利用）",
+  supported_os: [
+    "Windows 10 / 11 (64bit)",
+    "macOS 13 Ventura+ (Universal)",
+    "Linux (.deb / .AppImage / .rpm, x86_64)",
+  ],
+  min_supported_version: "1.2.0",
 };
 
 function makeProps() {
@@ -108,34 +122,24 @@ describe("AppsView", () => {
     vi.mocked(getBuildInfo).mockResolvedValue(buildInfo);
   });
 
-  it("renders the macOS .pkg package from the releases API", async () => {
+  it("renders real Tauri packages from the releases API", async () => {
     renderView();
     await waitFor(() => {
-      expect(screen.getByText("インストーラー (.pkg)")).toBeInTheDocument();
+      expect(
+        screen.getByText("インストーラー (.exe / NSIS)"),
+      ).toBeInTheDocument();
     });
+    // A Linux package is present too (Tauri produces .deb/.AppImage/.rpm).
+    expect(screen.getByText("Debian / Ubuntu (.deb)")).toBeInTheDocument();
   });
 
   it("renders release notes from the API", async () => {
     renderView();
     await waitFor(() => {
       expect(
-        screen.getByText("PDF/A変換精度向上・セキュリティ修正"),
+        screen.getByText("v1.2.0 安定版 — テキスト編集モードを追加"),
       ).toBeInTheDocument();
     });
-    expect(screen.getByText("Teams連携・新承認フロー")).toBeInTheDocument();
-  });
-
-  it("filters release notes by channel", async () => {
-    const user = userEvent.setup();
-    renderView();
-    await waitFor(() => {
-      expect(screen.getByText("Teams連携・新承認フロー")).toBeInTheDocument();
-    });
-    await user.click(screen.getByRole("button", { name: "Beta" }));
-    expect(screen.getByText("Teams連携・新承認フロー")).toBeInTheDocument();
-    expect(
-      screen.queryByText("PDF/A変換精度向上・セキュリティ修正"),
-    ).not.toBeInTheDocument();
   });
 
   it("loads build info into a modal", async () => {
@@ -157,9 +161,13 @@ describe("AppsView", () => {
     const user = userEvent.setup();
     const props = renderView();
     await waitFor(() => {
-      expect(screen.getByText("インストーラー (.pkg)")).toBeInTheDocument();
+      expect(
+        screen.getByText("インストーラー (.exe / NSIS)"),
+      ).toBeInTheDocument();
     });
-    await user.click(screen.getByText("インストーラー (.pkg)"));
+    // win-exe is available:false → clicking shows the coming-soon modal and
+    // must NOT call the download URL endpoint.
+    await user.click(screen.getByText("インストーラー (.exe / NSIS)"));
     expect(props.onShowModal).toHaveBeenCalled();
     expect(getDownloadUrl).not.toHaveBeenCalled();
   });

@@ -34,8 +34,10 @@ export interface DownloadUrlResponse {
   message?: string;
 }
 
-export type ReleaseChannel = "stable" | "beta" | "insider";
-export type ReleaseNoteType = "FEAT" | "FIX" | "SEC" | "IMP";
+// Matches backend Channel = Literal["stable"] — only the stable channel exists.
+export type ReleaseChannel = "stable";
+// Matches backend NoteType = Literal["FEAT", "FIX", "SEC", "IMP", "NOTE"].
+export type ReleaseNoteType = "FEAT" | "FIX" | "SEC" | "IMP" | "NOTE";
 
 export interface ReleaseNoteItem {
   type: ReleaseNoteType;

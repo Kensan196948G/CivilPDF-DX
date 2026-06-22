@@ -100,7 +100,7 @@ const ROLE_BADGE_LABELS: Record<UserResponse['role'], string> = {
 const INITIAL_NOTIFICATIONS: Notification[] = [
   { id: 1, text: '特記仕様書 R6-04rev2 が承認されました', time: '3分前', read: false, targetView: 'workflow' },
   { id: 2, text: '数量計算書 R6-04 でNGを検出', time: '12分前', read: false, targetView: 'documents' },
-  { id: 3, text: 'v2.4.1 アップデートが配布されました', time: '2時間前', read: true, targetView: 'apps' },
+  { id: 3, text: 'v1.2.0 アップデートが配布されました', time: '2時間前', read: true, targetView: 'apps' },
   { id: 4, text: '山田 直人 がログイン', time: '1時間前', read: true, targetView: 'audit' },
 ]
 
