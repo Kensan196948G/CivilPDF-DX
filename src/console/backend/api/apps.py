@@ -2,7 +2,7 @@
 
 Source of truth: the public GitHub Release of CivilPDF-Editor (Tauri v2 desktop app).
 
-    https://github.com/Kensan196948G/CivilPDF-Editor/releases/tag/v1.2.3
+    https://github.com/Kensan196948G/CivilPDF-Editor/releases/tag/v1.2.4
 
 This module intentionally avoids fabricated metadata. Values that are not measured
 (e.g. active user counts) are reported honestly (0 / None) rather than guessed.
@@ -19,9 +19,9 @@ from models.user import User
 
 router = APIRouter(prefix="/apps", tags=["App Distribution"])
 
-# Current published stable release. Matches the GitHub Release tag v1.2.3.
-_VERSION = "1.2.3"
-# Public release date of v1.2.3 (GitHub Release publication date).
+# Current published stable release. Matches the GitHub Release tag v1.2.4.
+_VERSION = "1.2.4"
+# Public release date of v1.2.4 (GitHub Release publication date).
 _RELEASE_DATE = "2026-06-22"
 
 Channel = Literal["stable"]
@@ -34,7 +34,7 @@ def _base_url() -> str:
     """Base URL of the GitHub Releases asset path (empty when unconfigured).
 
     Set in deployment to:
-        https://github.com/Kensan196948G/CivilPDF-Editor/releases/download/v1.2.3
+        https://github.com/Kensan196948G/CivilPDF-Editor/releases/download/v1.2.4
     """
     return os.getenv("APPS_RELEASE_BASE_URL", "").rstrip("/")
 
@@ -134,10 +134,10 @@ def _pkg(
 def _build_packages() -> list[ReleasePackage]:
     """Build the package list fresh so env-driven checksums/availability stay current.
 
-    Filenames MUST match the real assets attached to the GitHub Release v1.2.3
+    Filenames MUST match the real assets attached to the GitHub Release v1.2.4
     (GitHub replaces spaces in asset names with dots). Asset filenames contain
-    "1.2.3" because package.json / tauri.conf.json version was correctly bumped
-    to 1.2.3 before the CI build. The download URL is then
+    "1.2.4" because package.json / tauri.conf.json version was correctly bumped
+    to 1.2.4 before the CI build. The download URL is then
     `{APPS_RELEASE_BASE_URL}/{filename}`.
     """
     return [
@@ -146,7 +146,7 @@ def _build_packages() -> list[ReleasePackage]:
             "windows",
             "exe",
             "インストーラー (.exe / NSIS)",
-            "CivilPDF.Editor_1.2.3_x64-setup.exe",
+            "CivilPDF.Editor_1.2.4_x64-setup.exe",
             "約 1.9 MB",
         ),
         _pkg(
@@ -154,7 +154,7 @@ def _build_packages() -> list[ReleasePackage]:
             "windows",
             "msi",
             "インストーラー (.msi)",
-            "CivilPDF.Editor_1.2.3_x64_en-US.msi",
+            "CivilPDF.Editor_1.2.4_x64_en-US.msi",
             "約 2.4 MB",
         ),
         _pkg(
@@ -162,7 +162,7 @@ def _build_packages() -> list[ReleasePackage]:
             "macos",
             "dmg",
             "ディスクイメージ (.dmg / Universal)",
-            "CivilPDF.Editor_1.2.3_universal.dmg",
+            "CivilPDF.Editor_1.2.4_universal.dmg",
             "約 4.5 MB",
         ),
         _pkg(
@@ -170,7 +170,7 @@ def _build_packages() -> list[ReleasePackage]:
             "linux",
             "deb",
             "Debian / Ubuntu (.deb)",
-            "CivilPDF.Editor_1.2.3_amd64.deb",
+            "CivilPDF.Editor_1.2.4_amd64.deb",
             "約 2.3 MB",
         ),
         _pkg(
@@ -178,7 +178,7 @@ def _build_packages() -> list[ReleasePackage]:
             "linux",
             "appimage",
             "AppImage (.AppImage)",
-            "CivilPDF.Editor_1.2.3_amd64.AppImage",
+            "CivilPDF.Editor_1.2.4_amd64.AppImage",
             "約 80 MB",
         ),
         _pkg(
@@ -186,7 +186,7 @@ def _build_packages() -> list[ReleasePackage]:
             "linux",
             "rpm",
             "Fedora / RHEL (.rpm)",
-            "CivilPDF.Editor-1.2.3-1.x86_64.rpm",
+            "CivilPDF.Editor-1.2.4-1.x86_64.rpm",
             "約 2.3 MB",
         ),
     ]
@@ -199,7 +199,7 @@ _CHANNELS: list[ChannelInfo] = [
         version=f"v{_VERSION}",
         release_date=_RELEASE_DATE,
         description=(
-            "安定版。テキスト編集モード（v1.2.3 新機能）・注釈（Phase A）・"
+            "安定版。テキスト編集モード（v1.2.4 新機能）・注釈（Phase A）・"
             "検索/しおり/透かし/メタデータ（Phase B）・"
             "画像→PDF/比較/フォーム（Phase C）を搭載。"
             "未署名ビルドのため OS のセキュリティ警告が表示される場合があります。"
@@ -214,11 +214,15 @@ _RELEASE_NOTES: list[ReleaseNote] = [
         version=_VERSION,
         channel="stable",
         release_date=_RELEASE_DATE,
-        summary="v1.2.3 安定版 — テキスト編集の位置ずれを修正（v1.2.0 の全機能を継続搭載）",
+        summary="v1.2.4 安定版 — テキスト編集の左右の位置ずれを修正（v1.2.0 の全機能を継続搭載）",
         items=[
             ReleaseNoteItem(
                 type="FIX",
-                text="テキスト編集の置換テキストが元の位置（ベースライン）に正確に配置されるよう修正（上下のずれを解消）",
+                text="テキスト編集の置換テキストが画面で左にずれる不具合を修正（左右の位置を元の文字に一致）",
+            ),
+            ReleaseNoteItem(
+                type="FIX",
+                text="テキスト編集の置換テキストが元のベースラインに正確に配置されるよう修正（上下のずれを解消）",
             ),
             ReleaseNoteItem(
                 type="FIX",
@@ -285,11 +289,12 @@ _RELEASE_NOTES: list[ReleaseNote] = [
             ),
         ],
         highlights=(
-            "v1.2.3 — リリースノート\n\n"
+            "v1.2.4 — リリースノート\n\n"
             f"リリース日: {_RELEASE_DATE}\nチャンネル: Stable（安定版）\n\n"
-            "修正（v1.2.3）:\n"
-            "- テキスト編集の位置ずれ: 置換テキストを元のベースラインに正確に配置するよう修正"
-            "（上下のずれを解消）\n"
+            "修正（v1.2.4）:\n"
+            "- テキスト編集の左右ずれ: 置換テキストが画面で左にずれる不具合を修正"
+            "（左右の位置を元の文字に一致）\n"
+            "- テキスト編集の上下ずれ: 元のベースラインに正確に配置するよう修正（v1.2.3）\n"
             "- テキスト編集の画面反映: 確定した編集が画面に即時表示されるよう修正（v1.2.2）\n"
             "- テキスト編集の日本語対応: NotoSansJP 同梱で日本語が PDF に焼き込まれるよう修正（v1.2.1）\n\n"
             "v1.2.0 の新機能:\n"
