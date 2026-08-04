@@ -170,6 +170,27 @@ describe("AppsView", () => {
     await user.click(screen.getByText("インストーラー (.exe / NSIS)"));
     expect(props.onShowModal).toHaveBeenCalled();
     expect(getDownloadUrl).not.toHaveBeenCalled();
+    // Modal body must be built from API data (v1.2.0 fixtures), not hardcoded text.
+    const dlBody = props.onShowModal.mock.calls.at(-1)?.[0]?.body ?? "";
+    expect(dlBody).toContain("バージョン: v1.2.0");
+    expect(dlBody).toContain("CivilPDF.Editor_1.2.0_x64-setup.exe");
+    expect(dlBody).toContain("ダウンロードリンクは近日公開予定です");
+  });
+
+  it("builds the channel modal from API data (no hardcoded version)", async () => {
+    const user = userEvent.setup();
+    const props = renderView();
+    await waitFor(() => {
+      expect(screen.getByText("安定版")).toBeInTheDocument();
+    });
+    await user.click(screen.getByText("安定版"));
+    expect(props.onShowModal).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Stable チャンネル" }),
+    );
+    const chBody = props.onShowModal.mock.calls.at(-1)?.[0]?.body ?? "";
+    expect(chBody).toContain("バージョン: v1.2.0");
+    expect(chBody).toContain("リリース日: 2026-06-22");
+    expect(chBody).toContain("参加ユーザー数: 0");
   });
 
   it("marks deploy targets and KPI as demo data", async () => {
