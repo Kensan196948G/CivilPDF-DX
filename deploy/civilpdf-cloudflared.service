@@ -1,0 +1,13 @@
+[Unit]
+Description=CivilPDF-DX Console Cloudflare Tunnel (civilpdf.mirai-dx-platform.com)
+Documentation=https://github.com/Kensan196948G/CivilPDF-DX
+After=civilpdf-frontend.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/cloudflared --no-autoupdate --config %h/.cloudflared/civilpdf-config.yml tunnel run
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

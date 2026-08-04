@@ -1,0 +1,20 @@
+# CivilPDF-DX Console — Cloudflare Tunnel config
+# 実体の配置先: ~/.cloudflared/civilpdf-config.yml
+# credentials JSON (~/.cloudflared/<TUNNEL_ID>.json) は秘密情報 — git 管理しない。
+#
+# 経路: https://civilpdf.mirai-dx-platform.com
+#         -> cloudflared tunnel -> vite preview :5182
+#         -> (/api は preview の proxy が uvicorn :8180 へ中継)
+#
+# 作成手順: docs/deployment/webui-cloudflare-tunnel.md 参照
+tunnel: a4e4326f-1c8e-4713-8e4d-8d60909d40bf
+credentials-file: /home/kensan/.cloudflared/a4e4326f-1c8e-4713-8e4d-8d60909d40bf.json
+
+originRequest:
+  connectTimeout: 30s
+  noHappyEyeballs: false
+
+ingress:
+  - hostname: civilpdf.mirai-dx-platform.com
+    service: http://localhost:5182
+  - service: http_status:404
