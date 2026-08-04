@@ -1,32 +1,23 @@
 [Unit]
-Description=CivilPDF-DX Backend (FastAPI / uvicorn)
-Documentation=https://github.com/kensan/CivilPDF-DX
-After=network.target postgresql.service
-Wants=postgresql.service
+Description=CivilPDF-DX Console Backend (uvicorn 127.0.0.1:8180)
+Documentation=https://github.com/Kensan196948G/CivilPDF-DX
 
 [Service]
 Type=simple
-WorkingDirectory=/home/kensan/Projects/CivilPDF-DX/src/console/backend
+WorkingDirectory=/home/kensan/Projects/Mirai-DX-Project/CivilPDF-DX/src/console/backend
 
 # Load secrets from the env file (not checked into git)
-EnvironmentFile=/home/kensan/Projects/CivilPDF-DX/deploy/civilpdf.env
+EnvironmentFile=%h/.config/civilpdf/civilpdf.env
 
-# Run DB migration then start the server
-ExecStartPre=/bin/bash -c '/home/kensan/.local/bin/alembic upgrade head'
-ExecStart=/home/kensan/.local/bin/uvicorn main:app \
-    --host 0.0.0.0 \
-    --port 8000 \
-    --workers 2 \
-    --log-level info
+# NOTE: スキーマは起動時の create_all が作成する (CI と同じ経路)。
+# `alembic upgrade head` は新規 DB に対して壊れているため (audit_logs 参照順の
+# マイグレーションチェーン不整合 — Issue 参照)、修理されるまで ExecStartPre に
+# 追加しないこと。
+ExecStart=/home/kensan/.local/bin/uvicorn main:app --host 127.0.0.1 --port 8180
 
 Restart=on-failure
 RestartSec=5s
 
-# Upload directory must exist
-RuntimeDirectory=civildx
-RuntimeDirectoryMode=0755
-
-# Security hardening
 NoNewPrivileges=true
 PrivateTmp=true
 

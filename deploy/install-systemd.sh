@@ -1,48 +1,47 @@
 #!/usr/bin/env bash
 # deploy/install-systemd.sh
-# Register CivilPDF-DX backend + frontend as systemd user services.
+# Register CivilPDF-DX backend + frontend + Cloudflare Tunnel as systemd user services.
 # Run as the kensan user (NOT root) — uses systemd --user mode.
 
 set -euo pipefail
 
 DEPLOY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UNIT_DIR="$HOME/.config/systemd/user"
+ENV_DIR="$HOME/.config/civilpdf"
 
-echo "==> Creating systemd user unit directory: $UNIT_DIR"
-mkdir -p "$UNIT_DIR"
+echo "==> Creating directories"
+mkdir -p "$UNIT_DIR" "$ENV_DIR"
 
 echo "==> Copying service files"
 cp "$DEPLOY_DIR/civilpdf-backend.service" "$UNIT_DIR/"
 cp "$DEPLOY_DIR/civilpdf-frontend.service" "$UNIT_DIR/"
+cp "$DEPLOY_DIR/civilpdf-cloudflared.service" "$UNIT_DIR/"
 
 # Create env file from example if it doesn't exist
-ENV_FILE="$DEPLOY_DIR/civilpdf.env"
+ENV_FILE="$ENV_DIR/civilpdf.env"
 if [[ ! -f "$ENV_FILE" ]]; then
     echo "==> Creating env file from example (edit it before starting the services)"
-    cp "$DEPLOY_DIR/civilpdf.env.example" "$ENV_FILE"
-    echo "    >> Edit $ENV_FILE with real secrets <<"
+    install -m 600 "$DEPLOY_DIR/civilpdf.env.example" "$ENV_FILE"
+    echo "    >> Edit $ENV_FILE with real secrets (SECRET_KEY etc.) <<"
 fi
 
-# Create upload dir
-UPLOAD_DIR="/var/lib/civildx/uploads"
-if [[ ! -d "$UPLOAD_DIR" ]]; then
-    echo "==> Creating upload directory (requires sudo)"
-    sudo mkdir -p "$UPLOAD_DIR"
-    sudo chown "$(id -un):$(id -gn)" "$UPLOAD_DIR"
+# Tunnel config — credentials JSON は `cloudflared tunnel create` が生成する秘密情報
+if [[ ! -f "$HOME/.cloudflared/civilpdf-config.yml" ]]; then
+    echo "==> NOTE: ~/.cloudflared/civilpdf-config.yml がありません"
+    echo "    docs/deployment/webui-cloudflare-tunnel.md の手順でトンネルを作成してください"
 fi
 
 echo "==> Reloading systemd user daemon"
 systemctl --user daemon-reload
 
-echo "==> Enabling services (start on login)"
-systemctl --user enable civilpdf-backend.service civilpdf-frontend.service
+echo "==> Enabling services (start on login / linger)"
+systemctl --user enable civilpdf-backend civilpdf-frontend civilpdf-cloudflared
 
 echo ""
 echo "Done. To start now:"
-echo "  systemctl --user start civilpdf-backend civilpdf-frontend"
+echo "  systemctl --user start civilpdf-backend civilpdf-frontend civilpdf-cloudflared"
 echo ""
 echo "To enable lingering (run without being logged in):"
-echo "  sudo loginctl enable-linger kensan"
+echo "  sudo loginctl enable-linger $(id -un)"
 echo ""
-echo "Status:"
-echo "  systemctl --user status civilpdf-backend civilpdf-frontend"
+echo "URL: https://civilpdf.mirai-dx-platform.com"

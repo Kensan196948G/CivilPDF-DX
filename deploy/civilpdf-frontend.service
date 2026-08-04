@@ -1,20 +1,19 @@
 [Unit]
-Description=CivilPDF-DX Frontend (Vite preview / static)
-Documentation=https://github.com/kensan/CivilPDF-DX
-After=network.target civilpdf-backend.service
+Description=CivilPDF-DX Console Frontend (vite preview 127.0.0.1:5182)
+Documentation=https://github.com/Kensan196948G/CivilPDF-DX
+After=civilpdf-backend.service
 Wants=civilpdf-backend.service
 
 [Service]
 Type=simple
-WorkingDirectory=/home/kensan/Projects/CivilPDF-DX/src/console/frontend
+WorkingDirectory=/home/kensan/Projects/Mirai-DX-Project/CivilPDF-DX/src/console/frontend
 
 # nvm-managed Node — expose the active version to systemd
 Environment=PATH=/home/kensan/.nvm/versions/node/v25.2.1/bin:/usr/local/bin:/usr/bin:/bin
-Environment=NODE_ENV=production
+Environment=VITE_API_URL=http://localhost:8180
 
-ExecStart=/home/kensan/.nvm/versions/node/v25.2.1/bin/npm run preview -- \
-    --host 0.0.0.0 \
-    --port 3000
+# 127.0.0.1 bind — 外部公開は Cloudflare Tunnel (civilpdf-cloudflared.service) 経由のみ
+ExecStart=/home/kensan/.nvm/versions/node/v25.2.1/bin/npm run preview -- --port 5182 --strictPort --host 127.0.0.1
 
 Restart=on-failure
 RestartSec=5s
