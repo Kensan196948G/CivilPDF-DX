@@ -23,10 +23,23 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+// /login に居るときに再度 /login へ代入するとページ全体がリロードされ、
+// 入力中のフォームが消える (401 が続くと無限リロードループになる) — 必ずガードする。
+function redirectToLogin() {
+  if (window.location.pathname !== '/login') window.location.href = '/login'
+}
+
 api.interceptors.response.use(
   (res) => res,
   async (error) => {
-    if (error.response?.status === 401) {
+    const url: string = error.config?.url ?? ''
+    // ログイン/リフレッシュ等の認証エンドポイント自身の 401 は呼び出し元
+    // (ログインフォーム) がエラー表示を担う。ここでリダイレクトしない。
+    const isAuthCall =
+      url.includes('/auth/token') ||
+      url.includes('/auth/refresh') ||
+      url.includes('/auth/m365')
+    if (error.response?.status === 401 && !isAuthCall) {
       const refresh = localStorage.getItem('refresh_token')
       if (refresh) {
         try {
@@ -35,11 +48,14 @@ api.interceptors.response.use(
           error.config.headers.Authorization = `Bearer ${res.data.access_token}`
           return api.request(error.config)
         } catch {
-          localStorage.clear()
-          window.location.href = '/login'
+          localStorage.removeItem('access_token')
+          localStorage.removeItem('refresh_token')
+          redirectToLogin()
         }
       } else {
-        window.location.href = '/login'
+        // 失効 token を破棄してからリダイレクト (残すと再マウント→401→リロードが循環する)
+        localStorage.removeItem('access_token')
+        redirectToLogin()
       }
     }
     return Promise.reject(error)

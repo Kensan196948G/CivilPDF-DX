@@ -23,7 +23,6 @@
     "deny": ["Bash(rm -rf /)", "Bash(git push --force *)", "Bash(git merge *)"]
   },
   "env": {
-    "NODE_ENV": "development",
     "PYTHONDONTWRITEBYTECODE": "1",
     "ENABLE_TOOL_SEARCH": "true",
     "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",

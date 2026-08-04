@@ -6,44 +6,55 @@ const apiTarget = (process.env.VITE_API_URL || "http://localhost:8000")
   .replace(/\/+$/, "")
   .replace(/\/api\/v1$/, "");
 
-export default defineConfig({
-  plugins: [react(), tailwindcss()],
-  server: {
-    proxy: {
-      "/api": {
-        target: apiTarget,
-        changeOrigin: true,
-      },
-    },
-  },
-  preview: {
-    port: 4173,
-    host: true,
-    // Cloudflare Tunnel 経由の公開ホスト名 (deploy/civilpdf-cloudflared.service)
-    allowedHosts: ["civilpdf.mirai-dx-platform.com"],
-    proxy: {
-      "/api": {
-        target: apiTarget,
-        changeOrigin: true,
-      },
-    },
-  },
-  build: {
-    chunkSizeWarningLimit: 400,
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (id.includes("node_modules")) {
-            if (id.includes("react-dom") || id.includes("react/"))
-              return "vendor";
-            if (id.includes("react-router")) return "router";
-            if (id.includes("@tanstack")) return "query";
-            if (id.includes("zustand")) return "state";
-            if (id.includes("axios")) return "http";
-            if (id.includes("jose") || id.includes("jwt")) return "auth";
-          }
+export default defineConfig(({ command }) => {
+  // 外部 shell の NODE_ENV=development が vite build に漏れると DEV バンドル
+  // (jsxDEV / import.meta.env.DEV=true → 認証スキップ) が本番配信される。
+  // build 時は必ず production へ固定する (2026-08-04 の本番 DEV バンドル事故の再発防止)。
+  if (command === "build") process.env.NODE_ENV = "production";
+  // index.html の %VITE_APP_TITLE% / %VITE_FAVICON% を注入する。
+  // favicon は本番 (build) = アンバー / dev サーバー = 紫でタブを見分ける。
+  process.env.VITE_APP_TITLE ??= "CivilPDF DX";
+  process.env.VITE_FAVICON ??=
+    command === "build" ? "/favicon-prod.svg" : "/favicon.svg";
+  return {
+    plugins: [react(), tailwindcss()],
+    server: {
+      proxy: {
+        "/api": {
+          target: apiTarget,
+          changeOrigin: true,
         },
       },
     },
-  },
+    preview: {
+      port: 4173,
+      host: true,
+      // Cloudflare Tunnel 経由の公開ホスト名 (deploy/civilpdf-cloudflared.service)
+      allowedHosts: ["civilpdf.mirai-dx-platform.com"],
+      proxy: {
+        "/api": {
+          target: apiTarget,
+          changeOrigin: true,
+        },
+      },
+    },
+    build: {
+      chunkSizeWarningLimit: 400,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes("node_modules")) {
+              if (id.includes("react-dom") || id.includes("react/"))
+                return "vendor";
+              if (id.includes("react-router")) return "router";
+              if (id.includes("@tanstack")) return "query";
+              if (id.includes("zustand")) return "state";
+              if (id.includes("axios")) return "http";
+              if (id.includes("jose") || id.includes("jwt")) return "auth";
+            }
+          },
+        },
+      },
+    },
+  };
 });
