@@ -6,7 +6,12 @@ const apiTarget = (process.env.VITE_API_URL || "http://localhost:8000")
   .replace(/\/+$/, "")
   .replace(/\/api\/v1$/, "");
 
-export default defineConfig({
+export default defineConfig(({ command }) => {
+  // 外部 shell の NODE_ENV=development が vite build に漏れると DEV バンドル
+  // (jsxDEV / import.meta.env.DEV=true → 認証スキップ) が本番配信される。
+  // build 時は必ず production へ固定する (2026-08-04 の本番 DEV バンドル事故の再発防止)。
+  if (command === "build") process.env.NODE_ENV = "production";
+  return {
   plugins: [react(), tailwindcss()],
   server: {
     proxy: {
@@ -46,4 +51,5 @@ export default defineConfig({
       },
     },
   },
+  };
 });
