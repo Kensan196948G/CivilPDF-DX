@@ -47,6 +47,8 @@ logs/
 CLAUDE.local.md
 .claude/settings.local.json
 .claude/claude_startup_bridge.sh
+# ~/.claude/CLAUDE.md の重複コピー退避先 (二重ロード防止のためリネーム済み)
+.claude/CLAUDE.md.bak-*
 
 # Fonts (downloaded by scripts/download-fonts.sh)
 assets/fonts/**/*.ttf
