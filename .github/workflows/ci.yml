@@ -14,8 +14,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-          cache: 'pip'
+          python-version: "3.12"
+          cache: "pip"
           cache-dependency-path: src/console/backend/requirements-dev.txt
       - run: pip install ruff==0.8.6
       - run: ruff check src/console/backend/
@@ -28,8 +28,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-          cache: 'pip'
+          python-version: "3.12"
+          cache: "pip"
           cache-dependency-path: src/console/backend/requirements.txt
       - name: Install dependencies
         run: |
@@ -56,10 +56,11 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
+          python-version: "3.12"
       - run: pip install pip-audit
       - name: Audit dependencies
-        run: pip-audit -r src/console/backend/requirements.txt
+        # ecdsa PYSEC-2026-1325 は upstream fix 未リリースのため明示 ignore (Issue #106)
+        run: pip-audit -r src/console/backend/requirements.txt --ignore-vuln PYSEC-2026-1325
 
   frontend-lint-test:
     name: Frontend Lint & Test
@@ -71,8 +72,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
-          cache: 'npm'
+          node-version: "24"
+          cache: "npm"
           cache-dependency-path: src/console/frontend/package-lock.json
       - run: npm ci
       - run: npm run lint
@@ -89,8 +90,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
-          cache: 'npm'
+          node-version: "24"
+          cache: "npm"
           cache-dependency-path: src/console/frontend/package-lock.json
       - run: npm ci
       - name: Install Playwright browser (chromium)
@@ -112,8 +113,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-          cache: 'pip'
+          python-version: "3.12"
+          cache: "pip"
           cache-dependency-path: src/console/backend/requirements.txt
       - name: Install dependencies
         run: |
@@ -134,8 +135,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.12'
-          cache: 'pip'
+          python-version: "3.12"
+          cache: "pip"
           cache-dependency-path: src/console/backend/requirements.txt
       - name: Install dependencies
         run: |
@@ -158,8 +159,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
-          cache: 'npm'
+          node-version: "24"
+          cache: "npm"
           cache-dependency-path: src/console/frontend/package-lock.json
       - run: npm ci
         shell: pwsh
