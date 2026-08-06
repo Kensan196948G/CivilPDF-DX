@@ -143,7 +143,7 @@ https://civilpdf.mirai-dx-platform.com/
 | 項目                        | 状態                                                                                   |
 | --------------------------- | -------------------------------------------------------------------------------------- |
 | 🟢 **本番稼働**             | デプロイ準備完了（Release Ready）                                                      |
-| 🧪 **テスト網羅率**         | 546 件のテストで品質検証済み（backend 287・e2e 20・frontend vitest 236・playwright 3） |
+| 🧪 **テスト網羅率**         | 633 件のテストで品質検証済み（backend 351・e2e 20・frontend vitest 259・playwright 3） |
 | 🔒 **セキュリティスキャン** | CI で毎回自動脆弱性チェック実施中                                                      |
 | 📋 **CI/CD**                | GitHub Actions で自動テスト・ビルド検証                                                |
 
@@ -180,4 +180,4 @@ https://civilpdf.mirai-dx-platform.com/
 
 ---
 
-_最終更新: 2026-06-21 | Cycle 11 完成・Release Ready 状態（テスト 546 件体制）_
+_最終更新: 2026-08-06 | Phase 1 リリース直前整備（Issue #109 migration 修理・依存セキュリティ更新・テスト 633 件体制）_

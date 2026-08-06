@@ -53,7 +53,7 @@ API トークンが read-only のため、Access アプリはダッシュボー�
 ## ⚠️ 既知の注意点
 
 - **vite preview の allowedHosts**: FQDN は `vite.config.ts` の `preview.allowedHosts` に列挙が必要（無いと vite 自身が 403 を返す）。
-- **alembic**: `alembic upgrade head` は新規 DB で失敗する（後続マイグレーションが `audit_logs` を作成前に参照）。スキーマは起動時 `create_all` が作成する。チェーン修理までユニットの ExecStartPre に追加しない。
+- **alembic**: `alembic upgrade head` は新規 DB・既存 DB（create_all 由来・部分適用状態含む）で冪等に実行できる（Issue #109 修理済み）。バックエンドは起動前に Alembic を適用する（systemd の ExecStartPre / docker compose の command）。`create_all` は補助経路として残る。
 - **DEV AUTH BYPASS**: `DEBUG=true` で全リクエストが dev-admin になる。公開環境の env は必ず `DEBUG=false`。
 
 ## ↩️ ロールバック（完全撤去）

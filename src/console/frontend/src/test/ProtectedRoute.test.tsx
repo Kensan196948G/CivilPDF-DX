@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { render, screen } from '@testing-library/react'
-import { MemoryRouter, Routes, Route } from 'react-router-dom'
+import { MemoryRouter, Routes, Route } from 'react-router'
 import { describe, it, expect, afterEach } from 'vitest'
 import { ProtectedRoute } from '../components/ProtectedRoute'
 import { useAuthStore } from '../store/auth'

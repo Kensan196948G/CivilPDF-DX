@@ -28,12 +28,13 @@ def upgrade() -> None:
 
     if dialect == "postgresql":
         # ADD VALUE must run outside a transaction block.
-        # Alembic wraps migrations in a transaction by default, so we use
-        # COMMIT / BEGIN around each statement to escape it.
-        for val in _NEW_VALUES:
-            op.execute(
-                sa.text(f"ALTER TYPE documentstatus ADD VALUE IF NOT EXISTS '{val}'")
-            )
+        with op.get_context().autocommit_block():
+            for val in _NEW_VALUES:
+                op.execute(
+                    sa.text(
+                        f"ALTER TYPE documentstatus ADD VALUE IF NOT EXISTS '{val}'"
+                    )
+                )
 
 
 def downgrade() -> None:
