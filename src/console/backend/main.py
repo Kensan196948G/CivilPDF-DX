@@ -26,6 +26,7 @@ from api import (
     revisions_router,
 )
 from middleware import AuditMiddleware
+from middleware.security import SecurityHeadersMiddleware
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -64,6 +65,7 @@ app = FastAPI(
 )
 
 # Security headers middleware
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins_list,

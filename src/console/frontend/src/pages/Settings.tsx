@@ -86,7 +86,6 @@ export function Settings() {
     if (aiConfig) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setAiModelName(aiConfig.model_name);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setAiEnabled(aiConfig.enabled);
     }
   }, [aiConfig]);

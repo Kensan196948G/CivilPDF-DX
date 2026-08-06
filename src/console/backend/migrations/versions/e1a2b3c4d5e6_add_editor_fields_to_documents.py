@@ -17,53 +17,90 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _missing_columns(bind, table: str) -> set[str]:
+    import sqlalchemy as sa
+
+    inspector = sa.inspect(bind)
+    if not inspector.has_table(table):
+        return set()
+    return {c["name"] for c in inspector.get_columns(table)}
+
+
 def upgrade() -> None:
+    bind = op.get_bind()
+    doc_cols = _missing_columns(bind, "documents")
+    version_cols = _missing_columns(bind, "document_versions")
+
     # Document: ReviewSidecar fields (feature #1)
-    op.add_column("documents", sa.Column("review_sidecar", sa.JSON(), nullable=True))
-    op.add_column(
-        "documents",
-        sa.Column(
-            "review_sidecar_imported_at", sa.DateTime(timezone=True), nullable=True
-        ),
-    )
+    if "review_sidecar" not in doc_cols:
+        op.add_column(
+            "documents", sa.Column("review_sidecar", sa.JSON(), nullable=True)
+        )
+    if "review_sidecar_imported_at" not in doc_cols:
+        op.add_column(
+            "documents",
+            sa.Column(
+                "review_sidecar_imported_at",
+                sa.DateTime(timezone=True),
+                nullable=True,
+            ),
+        )
 
     # Document: revision management (feature #2)
-    op.add_column("documents", sa.Column("revision", sa.String(), nullable=True))
-    op.add_column("documents", sa.Column("revision_note", sa.String(), nullable=True))
+    if "revision" not in doc_cols:
+        op.add_column("documents", sa.Column("revision", sa.String(), nullable=True))
+    if "revision_note" not in doc_cols:
+        op.add_column(
+            "documents", sa.Column("revision_note", sa.String(), nullable=True)
+        )
 
     # Document: flatten gate (feature #3)
-    op.add_column(
-        "documents",
-        sa.Column(
-            "is_flattened", sa.Boolean(), nullable=True, server_default=sa.text("false")
-        ),
-    )
-    op.add_column(
-        "documents",
-        sa.Column("flattened_verified_at", sa.DateTime(timezone=True), nullable=True),
-    )
-    op.add_column("documents", sa.Column("flattened_hash", sa.String(), nullable=True))
+    if "is_flattened" not in doc_cols:
+        op.add_column(
+            "documents",
+            sa.Column(
+                "is_flattened",
+                sa.Boolean(),
+                nullable=True,
+                server_default=sa.text("false"),
+            ),
+        )
+    if "flattened_verified_at" not in doc_cols:
+        op.add_column(
+            "documents",
+            sa.Column(
+                "flattened_verified_at", sa.DateTime(timezone=True), nullable=True
+            ),
+        )
+    if "flattened_hash" not in doc_cols:
+        op.add_column(
+            "documents", sa.Column("flattened_hash", sa.String(), nullable=True)
+        )
 
     # DocumentVersion: editor integration fields (feature #2)
-    op.add_column(
-        "document_versions", sa.Column("revision", sa.String(), nullable=True)
-    )
-    op.add_column(
-        "document_versions", sa.Column("revision_note", sa.String(), nullable=True)
-    )
-    op.add_column(
-        "document_versions",
-        sa.Column(
-            "is_from_editor",
-            sa.Boolean(),
-            nullable=True,
-            server_default=sa.text("false"),
-        ),
-    )
-    op.add_column(
-        "document_versions",
-        sa.Column("editor_session_id", sa.String(), nullable=True),
-    )
+    if "revision" not in version_cols:
+        op.add_column(
+            "document_versions", sa.Column("revision", sa.String(), nullable=True)
+        )
+    if "revision_note" not in version_cols:
+        op.add_column(
+            "document_versions", sa.Column("revision_note", sa.String(), nullable=True)
+        )
+    if "is_from_editor" not in version_cols:
+        op.add_column(
+            "document_versions",
+            sa.Column(
+                "is_from_editor",
+                sa.Boolean(),
+                nullable=True,
+                server_default=sa.text("false"),
+            ),
+        )
+    if "editor_session_id" not in version_cols:
+        op.add_column(
+            "document_versions",
+            sa.Column("editor_session_id", sa.String(), nullable=True),
+        )
 
 
 def downgrade() -> None:

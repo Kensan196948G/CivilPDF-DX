@@ -21,6 +21,10 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema — create singleton m365_settings table."""
+    bind = op.get_bind()
+    if sa.inspect(bind).has_table("m365_settings"):
+        # Idempotent for legacy create_all databases.
+        return
     op.create_table(
         "m365_settings",
         sa.Column("id", sa.Integer(), nullable=False),

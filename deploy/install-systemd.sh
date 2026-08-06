@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # deploy/install-systemd.sh
-# Register CivilPDF-DX backend + frontend + Cloudflare Tunnel as systemd user services.
+# Register CivilPDF-DX backend + frontend + Cloudflare Tunnel + backup timer
+# as systemd user services.
 # Run as the kensan user (NOT root) — uses systemd --user mode.
 
 set -euo pipefail
@@ -16,6 +17,8 @@ echo "==> Copying service files"
 cp "$DEPLOY_DIR/civilpdf-backend.service" "$UNIT_DIR/"
 cp "$DEPLOY_DIR/civilpdf-frontend.service" "$UNIT_DIR/"
 cp "$DEPLOY_DIR/civilpdf-cloudflared.service" "$UNIT_DIR/"
+cp "$DEPLOY_DIR/civilpdf-backup.service" "$UNIT_DIR/"
+cp "$DEPLOY_DIR/civilpdf-backup.timer" "$UNIT_DIR/"
 
 # Create env file from example if it doesn't exist
 ENV_FILE="$ENV_DIR/civilpdf.env"
@@ -35,11 +38,11 @@ echo "==> Reloading systemd user daemon"
 systemctl --user daemon-reload
 
 echo "==> Enabling services (start on login / linger)"
-systemctl --user enable civilpdf-backend civilpdf-frontend civilpdf-cloudflared
+systemctl --user enable civilpdf-backend civilpdf-frontend civilpdf-cloudflared civilpdf-backup.timer
 
 echo ""
 echo "Done. To start now:"
-echo "  systemctl --user start civilpdf-backend civilpdf-frontend civilpdf-cloudflared"
+echo "  systemctl --user start civilpdf-backend civilpdf-frontend civilpdf-cloudflared civilpdf-backup.timer"
 echo ""
 echo "To enable lingering (run without being logged in):"
 echo "  sudo loginctl enable-linger $(id -un)"

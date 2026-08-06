@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { login, getMe } from '../api/auth'
 import { loginWithM365, getMe as getM365Me } from '../api/m365Auth'
 import { useAuthStore } from '../store/auth'

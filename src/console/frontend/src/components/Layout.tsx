@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, useNavigate } from 'react-router'
 import { useAuthStore } from '../store/auth'
 
 const navItems = [
