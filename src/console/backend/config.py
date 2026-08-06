@@ -25,7 +25,10 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60
     refresh_token_expire_days: int = 7
 
-    cors_origins: str = '["http://localhost:5173","http://localhost:3000"]'
+    cors_origins: str = (
+        '["http://localhost:5173","http://localhost:3000",'
+        '"tauri://localhost","http://tauri.localhost"]'
+    )
 
     @property
     def cors_origins_list(self) -> List[str]:
