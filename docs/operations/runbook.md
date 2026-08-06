@@ -18,6 +18,7 @@
 | DB | SQLite `src/console/backend/civilpdf_dev.db`（スキーマは Alembic 管理、起動前 `alembic upgrade head`） |
 | アップロード | `~/civildx/uploads/` |
 | 環境設定 | `~/.config/civilpdf/civilpdf.env`（git 管理外・0600） |
+| バージョン | `APP_VERSION`（`~/.config/civilpdf/civilpdf.env`、現在 0.8.0） |
 
 ## 2. デプロイ手順（新リリース）
 

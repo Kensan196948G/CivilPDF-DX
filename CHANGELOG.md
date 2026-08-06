@@ -8,6 +8,16 @@
 
 ## [Unreleased]
 
+### 2026-08-06 — Production Hardening（本番運用可能化）
+
+- **マイグレーション修理（Issue #109）**: `alembic upgrade head` を新規 DB・既存 DB（create_all 由来）・部分適用状態で冪等化。`audit_logs` の正規作成、`ai_settings` の migration 追加、PostgreSQL `ALTER TYPE` の `autocommit_block` 化
+- **CI**: SQLite + PostgreSQL の fresh upgrade とモデル完全一致検証ジョブ（`backend-migrations`）を追加
+- **デプロイ**: systemd `ExecStartPre=alembic upgrade head` を復活し本番適用済み
+- **セキュリティ**: API と HTML（vite dev/preview）双方に CSP / HSTS / nosniff / X-Frame-Options / Referrer-Policy / Permissions-Policy を付与。AuditMiddleware が Bearer トークンから user_id を記録
+- **依存関係**: `react-router@8.3.0` / `axios@1.19.0` へ更新し npm audit 0 を再達成
+- **運用**: 日次バックアップ（SQLite online backup + uploads + env、14 日保持・systemd timer）、ヘルスチェックスクリプト、運用 Runbook（`docs/operations/runbook.md`）を追加
+- **テスト**: 633 件体制（backend 351・integration 20・frontend 259・playwright 3）
+
 ### 追加 (アプリ配信ページ本番化 — PDF Editor Client 配布窓口)
 
 - **リリースノート API** `GET /api/v1/apps/release-notes`（`?channel=stable|beta|insider`）
