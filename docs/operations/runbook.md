@@ -92,6 +92,7 @@
 
 ## 8. 既知の制約・残課題
 
+- **共有 checkout の制約**: 本番サービス（systemd units）と監視/訓練スクリプトはリポジトリの作業ツリー（`~/Projects/Mirai-DX-Project/CivilPDF-DX`）から起動する。別セッションが feature branch へ checkout を切り替えると、その間スクリプト/コードが一時的に不在になり、monitor timer 等が `203/EXEC` で失敗しうる（2026-08-06 に実測）。運用中は main を checkout した状態を維持し、複数セッションで並行作業する場合は `git worktree` を利用すること。恒久対策は専用リリースディレクトリへの分離（要設計判断）
 - Issue #62: PDF Editor デスクトップ本体は別リポジトリ（CivilPDF-Editor）で開発継続
 - Issue #94: 配布同期の完了報告（管理タスク）
 - Issue #106: ecdsa advisory（upstream 修正待ち・CI 明示 ignore）
