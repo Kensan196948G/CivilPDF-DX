@@ -1,10 +1,41 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 
 const apiTarget = (process.env.VITE_API_URL || "http://localhost:8000")
   .replace(/\/+$/, "")
   .replace(/\/api\/v1$/, "");
+
+const securityHeaders = {
+  "Content-Security-Policy":
+    "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "no-referrer",
+  "Permissions-Policy": "camera=(), microphone=(), geolocation=(), interest-cohort=()",
+};
+
+function securityHeadersPlugin(): Plugin {
+  return {
+    name: "security-headers",
+    configureServer(server) {
+      server.middlewares.use((_req, res, next) => {
+        for (const [key, value] of Object.entries(securityHeaders)) {
+          res.setHeader(key, value);
+        }
+        next();
+      });
+    },
+    configurePreviewServer(server) {
+      server.middlewares.use((_req, res, next) => {
+        for (const [key, value] of Object.entries(securityHeaders)) {
+          res.setHeader(key, value);
+        }
+        next();
+      });
+    },
+  };
+}
 
 export default defineConfig(({ command }) => {
   // 外部 shell の NODE_ENV=development が vite build に漏れると DEV バンドル
@@ -17,7 +48,7 @@ export default defineConfig(({ command }) => {
   process.env.VITE_FAVICON ??=
     command === "build" ? "/favicon-prod.svg" : "/favicon.svg";
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), securityHeadersPlugin()],
     server: {
       proxy: {
         "/api": {
