@@ -19,6 +19,10 @@ cp "$DEPLOY_DIR/civilpdf-frontend.service" "$UNIT_DIR/"
 cp "$DEPLOY_DIR/civilpdf-cloudflared.service" "$UNIT_DIR/"
 cp "$DEPLOY_DIR/civilpdf-backup.service" "$UNIT_DIR/"
 cp "$DEPLOY_DIR/civilpdf-backup.timer" "$UNIT_DIR/"
+cp "$DEPLOY_DIR/civilpdf-monitor.service" "$UNIT_DIR/"
+cp "$DEPLOY_DIR/civilpdf-monitor.timer" "$UNIT_DIR/"
+cp "$DEPLOY_DIR/civilpdf-restore-drill.service" "$UNIT_DIR/"
+cp "$DEPLOY_DIR/civilpdf-restore-drill.timer" "$UNIT_DIR/"
 
 # Create env file from example if it doesn't exist
 ENV_FILE="$ENV_DIR/civilpdf.env"
@@ -38,11 +42,13 @@ echo "==> Reloading systemd user daemon"
 systemctl --user daemon-reload
 
 echo "==> Enabling services (start on login / linger)"
-systemctl --user enable civilpdf-backend civilpdf-frontend civilpdf-cloudflared civilpdf-backup.timer
+systemctl --user enable civilpdf-backend civilpdf-frontend civilpdf-cloudflared \
+  civilpdf-backup.timer civilpdf-monitor.timer civilpdf-restore-drill.timer
 
 echo ""
 echo "Done. To start now:"
-echo "  systemctl --user start civilpdf-backend civilpdf-frontend civilpdf-cloudflared civilpdf-backup.timer"
+echo "  systemctl --user start civilpdf-backend civilpdf-frontend civilpdf-cloudflared"
+echo "  systemctl --user start civilpdf-backup.timer civilpdf-monitor.timer civilpdf-restore-drill.timer"
 echo ""
 echo "To enable lingering (run without being logged in):"
 echo "  sudo loginctl enable-linger $(id -un)"

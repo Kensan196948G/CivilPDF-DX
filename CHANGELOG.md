@@ -16,6 +16,7 @@
 - **セキュリティ**: API と HTML（vite dev/preview）双方に CSP / HSTS / nosniff / X-Frame-Options / Referrer-Policy / Permissions-Policy を付与。AuditMiddleware が Bearer トークンから user_id を記録
 - **依存関係**: `react-router@8.3.0` / `axios@1.19.0` へ更新し npm audit 0 を再達成
 - **運用**: 日次バックアップ（SQLite online backup + uploads + env、14 日保持・systemd timer）、ヘルスチェックスクリプト、運用 Runbook（`docs/operations/runbook.md`）を追加
+- **監視/アラート**: 5 分毎ヘルスチェック（systemd timer）＋障害/復旧のメール通知（msmtp・30 分スロットル）。四半期毎のバックアップ復元訓練（`scripts/restore-drill.sh`）を追加し、初回訓練 PASS
 - **テスト**: 633 件体制（backend 351・integration 20・frontend 259・playwright 3）
 
 ### 追加 (アプリ配信ページ本番化 — PDF Editor Client 配布窓口)
