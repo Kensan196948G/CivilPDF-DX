@@ -1,0 +1,10 @@
+[Unit]
+Description=Daily CivilPDF-DX production backup (02:30 JST = 17:30 UTC)
+
+[Timer]
+OnCalendar=*-*-* 17:30:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
