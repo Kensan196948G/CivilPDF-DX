@@ -56,7 +56,11 @@
       "backup_timer": "daily 02:30 JST / 14 days retention",
       "healthcheck": "OK (backend/frontend/public/auth gate)",
       "security_headers": "API + HTML both applied",
-      "test_count": 633
+      "test_count": 633,
+      "monitor_timer": "every 5 min + email alert (msmtp/Gmail, 30min throttle)",
+      "alert_test_sent": "2026-08-06T01:05Z to kensan1969@gmail.com",
+      "restore_drill_timer": "quarterly (Jan/Apr/Jul/Oct 1 10:00 JST)",
+      "restore_drill_first_run": "PASS 2026-08-06T01:06Z (backup 20260806T001743Z)"
     },
     "verify_2026_06_20T23Z": "CTO Verify 独立検証（cycle 10）: backend pytest 278 passed・frontend vitest 174 passed・frontend lint exit0・npm audit 0 vulnerabilities(prod/all)・直近 main CI 8run 全 success。Release Ready を実証で確定。Verify 中に deprecated HTTP status 定数 6箇所を検出 → PR #69 で挙動不変リネーム（DeprecationWarning 3件消滅）。",
     "apps_distribution": "2026-06-20 Scope A 完了: アプリ配信ページ本番grade化（PR #63 backend release-notes/build-info/sha256/macOS .pkg + test14 / #64 frontend 実API化・デモ明示・mock対応 + test6 / #65 docs）。全 PR 人間承認 squash merge。Scope B（PDF Editor 本体 Electron/Tauri）は Issue #62 で別管理・着手前に再確認。",

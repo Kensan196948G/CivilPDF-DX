@@ -1,0 +1,13 @@
+[Unit]
+Description=CivilPDF-DX production monitor (healthcheck + email alert)
+Documentation=https://github.com/Kensan196948G/CivilPDF-DX
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/Projects/Mirai-DX-Project/CivilPDF-DX
+ExecStart=%h/Projects/Mirai-DX-Project/CivilPDF-DX/scripts/monitor-civilpdf.sh
+
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target

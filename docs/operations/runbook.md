@@ -55,10 +55,20 @@
 
 ## 4. 監視
 
-- 手動/定期ヘルスチェック: `./scripts/healthcheck-civilpdf.sh`（backend /health・frontend・公開 URL・認証ゲートを確認）
+- 定期監視: `deploy/civilpdf-monitor.timer` が 5 分毎に `deploy/civilpdf-monitor.service` を起動し、`scripts/healthcheck-civilpdf.sh`（backend /health・frontend・公開 URL・認証ゲート）を実行
+- 外部アラート: 障害検知時に `scripts/alert-notify.sh` が msmtp（Gmail）でメール通知（既定 30 分間隔のスロットリング付き）。復旧時にも 1 回通知
+  - 通知先は `CIVILPDF_ALERT_TO`（`~/.config/civilpdf/civilpdf.env`）で変更可
+  - 手動テスト: `./scripts/alert-notify.sh --test`
 - ログ: `journalctl --user -u civilpdf-backend.service` / `-u civilpdf-frontend.service` / `-u civilpdf-cloudflared.service`
 - 監査ログ: WebUI 監査ページ（`/api/v1/audit-logs`）＋ DB `audit_logs` の SHA-256 ハッシュチェーン（`/api/v1/audit-logs/verify`）
-- アラート: 現状は外部アラート通知なし。最低限、毎日 1 回 healthcheck を cron / systemd timer で実行し、失敗時にメール等へ通知する仕組みを導入推奨（担当: 運用管理者）
+- 監視ログ: `~/.local/state/civildx-monitor/monitor.log`
+
+## 4.1 バックアップ復元訓練（四半期）
+
+- `deploy/civilpdf-restore-drill.timer` が四半期毎（1/4/7/10 月 1 日 10:00 JST）に復元訓練を自動実行
+- `scripts/restore-drill.sh` は最新バックアップを一時領域へ復元し、① DB 整合性 ② `alembic upgrade head` 適用 ③ uploads 件数 ④ backend 起動 ⑤ ログイン→`/auth/me`→`/projects` を検証（本番データには触れない）
+- 失敗時はアラートメール送信＋`~/.local/state/civildx-drill/drill.log` に記録
+- 手動実行: `./scripts/restore-drill.sh`
 
 ## 5. ロールバック
 
@@ -85,5 +95,5 @@
 - Issue #62: PDF Editor デスクトップ本体は別リポジトリ（CivilPDF-Editor）で開発継続
 - Issue #94: 配布同期の完了報告（管理タスク）
 - Issue #106: ecdsa advisory（upstream 修正待ち・CI 明示 ignore）
-- 外部アラート通知は未導入（§4 参照）
-- 定期のバックアップ復元試験は未実施（本番前・四半期ごとに実施推奨）
+- 外部アラートはメール（msmtp/Gmail）のみ。Slack/Teams 等へ拡張する場合は `scripts/alert-notify.sh` を拡張
+- 復元訓練は四半期 timer で自動化済み。訓練ログは `~/.local/state/civildx-drill/drill.log`

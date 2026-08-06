@@ -146,6 +146,7 @@ https://civilpdf.mirai-dx-platform.com/
 | 🧪 **テスト網羅率**         | 633 件のテストで品質検証済み（backend 351・e2e 20・frontend vitest 259・playwright 3） |
 | 🔒 **セキュリティスキャン** | CI で毎回自動脆弱性チェック実施中                                                      |
 | 📋 **CI/CD**                | GitHub Actions で自動テスト・ビルド検証                                                |
+| 🔔 **監視**                 | 5 分毎ヘルスチェック＋障害/復旧メール通知、四半期毎バックアップ復元訓練                |
 
 ---
 

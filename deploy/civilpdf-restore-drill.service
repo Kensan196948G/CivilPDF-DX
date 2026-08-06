@@ -1,0 +1,13 @@
+[Unit]
+Description=CivilPDF-DX quarterly backup restore drill (non-destructive)
+Documentation=https://github.com/Kensan196948G/CivilPDF-DX
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/Projects/Mirai-DX-Project/CivilPDF-DX
+ExecStart=%h/Projects/Mirai-DX-Project/CivilPDF-DX/scripts/restore-drill.sh
+
+NoNewPrivileges=true
+
+[Install]
+WantedBy=default.target
