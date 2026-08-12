@@ -8,6 +8,15 @@
 
 ## [Unreleased]
 
+### 2026-08-12 — 本番適用（systemd / SQLite）
+
+- `alembic upgrade head` を本番DBへ適用（h4x5y6z7a8b9 → **k1l2m3n4o5p6**）:
+  login lockout・password reset・notifications・**dx_sync_metrics**
+- 本番env に `TIMESTAMP_HMAC_KEY` を追加（production fail-fast 対応）
+- backend / frontend を再起動し、`GET /api/v1/stats/dx-sync`（401）・
+  frontend（HTTP 200）・`dx_sync_metrics` テーブル作成を確認
+- バックアップ: `~/civildx-backups/pre-dx-metrics-20260812/`
+
 ### 2026-08-12 — DX 同期監視基盤と sidecar 上限拡大（Editor v1.12.3 連携）
 
 - **`dx_sync_metrics` テーブル新設**（migration `k1l2m3n4o5p6`）— review-sidecar 送信の
