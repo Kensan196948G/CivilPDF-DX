@@ -4,7 +4,7 @@
 #
 # Restores the latest production backup into a temporary directory, starts a
 # backend instance against the restored copy, and verifies:
-#   1. SQLite integrity + alembic version == head
+#   1. DB integrity (SQLite PRAGMA / PostgreSQL pg_restore --list) + alembic version == head
 #   2. uploads file count matches the backup
 #   3. /health responds
 #   4. login -> /auth/me -> /projects work on the restored data
@@ -15,6 +15,7 @@
 #   ./scripts/restore-drill.sh                      # latest backup, port 8199
 #   ./scripts/restore-drill.sh --backup ~/civildx-backups/<stamp>
 #   ./scripts/restore-drill.sh --port 8299 --keep   # keep temp dir for debugging
+#   ./scripts/restore-drill.sh --database-url "$DRILL_DATABASE_URL"  # PostgreSQL (Neon) バックアップ用
 #
 set -euo pipefail
 
@@ -22,12 +23,14 @@ PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKEND_DIR="$PROJECT_DIR/src/console/backend"
 BACKUP_ROOT="${CIVILPDF_BACKUP_ROOT:-$HOME/civildx-backups}"
 PORT="${CIVILPDF_DRILL_PORT:-8199}"
+DRILL_DATABASE_URL="${DRILL_DATABASE_URL:-}"
 KEEP=0
 LOGFILE="${CIVILPDF_DRILL_LOG:-$HOME/.local/state/civildx-drill/drill.log}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --backup) BACKUP_DIR="$2"; shift 2 ;;
+    --database-url) DRILL_DATABASE_URL="$2"; shift 2 ;;
     --port) PORT="$2"; shift 2 ;;
     --keep) KEEP=1; shift ;;
     *) echo "unknown option: $1" >&2; exit 2 ;;
@@ -46,17 +49,39 @@ log() { printf '%s %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$*" | tee -a "$LOGFIL
 if [[ -z "${BACKUP_DIR:-}" ]]; then
   BACKUP_DIR="$(find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d -name '[0-9]*' -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)"
 fi
-if [[ -z "${BACKUP_DIR:-}" || ! -f "$BACKUP_DIR/civilpdf_dev.db" ]]; then
+PG_MODE=0
+if [[ -f "$BACKUP_DIR/civilpdf.dump" ]]; then
+  PG_MODE=1
+elif [[ ! -f "$BACKUP_DIR/civilpdf_dev.db" ]]; then
   log "ERROR: no valid backup found under $BACKUP_ROOT"
   exit 2
 fi
 log "drill start: backup=$BACKUP_DIR port=$PORT"
 
 WORK="$(mktemp -d /tmp/civildx-restore-drill.XXXXXX)"
-cp "$BACKUP_DIR/civilpdf_dev.db" "$WORK/restored.db"
 mkdir -p "$WORK/uploads"
 if [[ -d "$BACKUP_DIR/uploads" ]]; then
   cp -a "$BACKUP_DIR/uploads"/. "$WORK/uploads/"
+fi
+
+if [[ $PG_MODE -eq 1 ]]; then
+  if [[ -z "$DRILL_DATABASE_URL" ]]; then
+    log "ERROR: PostgreSQL backup requires --database-url または DRILL_DATABASE_URL"
+    exit 2
+  fi
+  PG_BIN=""
+  for d in /usr/lib/postgresql/*/bin; do
+    if [[ -x "$d/pg_restore" ]]; then PG_BIN="$d"; fi
+  done
+  if [[ -z "$PG_BIN" ]] && command -v pg_restore >/dev/null 2>&1; then
+    PG_BIN="$(dirname "$(command -v pg_restore)")"
+  fi
+  if [[ -z "$PG_BIN" ]]; then
+    log "ERROR: pg_restore がインストールされていません"
+    exit 2
+  fi
+  "$PG_BIN/pg_restore" --list "$BACKUP_DIR/civilpdf.dump" >/dev/null
+  log "OK  PostgreSQL dump readable"
 fi
 
 cleanup() {
@@ -76,7 +101,20 @@ FAIL=0
 fail() { log "FAIL: $*"; FAIL=1; }
 
 # --- 1. integrity + alembic version ------------------------------------------
-python3 - "$WORK/restored.db" <<'PY'
+if [[ $PG_MODE -eq 1 ]]; then
+  "$PG_BIN/pg_restore" --clean --if-exists --no-owner --no-acl \
+    --dbname "$DRILL_DATABASE_URL" "$BACKUP_DIR/civilpdf.dump" >/dev/null
+  log "OK  restored DB (pg_restore)"
+  if ! (
+    cd "$BACKEND_DIR"
+    DATABASE_URL="$DRILL_DATABASE_URL" PYTHONPATH=. alembic upgrade head >/dev/null 2>&1
+  ); then
+    fail "alembic upgrade head on restored PostgreSQL copy failed"
+  fi
+  DB_VERSION="$(cd "$BACKEND_DIR" && DATABASE_URL="$DRILL_DATABASE_URL" PYTHONPATH=. alembic current 2>/dev/null | tail -1 | awk '{print $1}')"
+else
+  cp "$BACKUP_DIR/civilpdf_dev.db" "$WORK/restored.db"
+  python3 - "$WORK/restored.db" <<'PY'
 import sqlite3, sys
 
 con = sqlite3.connect(sys.argv[1])
@@ -84,18 +122,18 @@ rows = con.execute("PRAGMA integrity_check").fetchall()
 con.close()
 assert rows == [("ok",)], f"integrity check failed: {rows}"
 PY
-log "OK  restored DB integrity"
+  log "OK  restored DB integrity"
 
-# Production boot runs `alembic upgrade head` (systemd ExecStartPre) — replicate
-# it on the restored copy so pre-migration backups are also validated.
-if ! (
-  cd "$BACKEND_DIR"
-  DATABASE_URL="sqlite:///$WORK/restored.db" PYTHONPATH=. alembic upgrade head >/dev/null 2>&1
-); then
-  fail "alembic upgrade head on restored copy failed"
-fi
+  # Production boot runs `alembic upgrade head` (systemd ExecStartPre) — replicate
+  # it on the restored copy so pre-migration backups are also validated.
+  if ! (
+    cd "$BACKEND_DIR"
+    DATABASE_URL="sqlite:///$WORK/restored.db" PYTHONPATH=. alembic upgrade head >/dev/null 2>&1
+  ); then
+    fail "alembic upgrade head on restored copy failed"
+  fi
 
-DB_VERSION="$(python3 - "$WORK/restored.db" <<'PY'
+  DB_VERSION="$(python3 - "$WORK/restored.db" <<'PY'
 import sqlite3, sys
 con = sqlite3.connect(sys.argv[1])
 row = con.execute("select version_num from alembic_version").fetchone()
@@ -103,6 +141,7 @@ print(row[0] if row else "MISSING")
 con.close()
 PY
 )"
+fi
 HEAD_VERSION="$(cd "$BACKEND_DIR" && alembic heads 2>/dev/null | awk '{print $1}' | head -1)"
 if [[ "$DB_VERSION" == "$HEAD_VERSION" ]]; then
   log "OK  alembic upgrade head on restored copy -> $DB_VERSION"
@@ -120,7 +159,24 @@ else
 fi
 
 # --- 3. start restored backend ------------------------------------------------
-python3 - "$PORT" "$WORK" "$BACKEND_DIR" <<'PY' >"$WORK/uvicorn.log" 2>&1 &
+if [[ $PG_MODE -eq 1 ]]; then
+  python3 - "$PORT" "$WORK" "$BACKEND_DIR" "$DRILL_DATABASE_URL" <<'PY' >"$WORK/uvicorn.log" 2>&1 &
+import os, sys
+from dotenv import dotenv_values
+
+port, work, backend_dir, db_url = sys.argv[1], sys.argv[2], sys.argv[3], sys.argv[4]
+os.chdir(backend_dir)
+vals = dotenv_values(os.path.expanduser("~/.config/civilpdf/civilpdf.env"))
+for k, v in vals.items():
+    if v is not None:
+        os.environ.setdefault(k, v)
+os.environ["DATABASE_URL"] = db_url
+os.environ["DEBUG"] = "false"
+from uvicorn import run
+run("main:app", host="127.0.0.1", port=int(port))
+PY
+else
+  python3 - "$PORT" "$WORK" "$BACKEND_DIR" <<'PY' >"$WORK/uvicorn.log" 2>&1 &
 import os, sys
 from dotenv import dotenv_values
 
@@ -135,9 +191,11 @@ os.environ["DEBUG"] = "false"
 from uvicorn import run
 run("main:app", host="127.0.0.1", port=int(port))
 PY
+fi
 SERVER_PID=$!
 
-for _ in $(seq 1 30); do
+# Neon のコールドスタートは 30 秒超かかることがあるため 90 秒まで待機する
+for _ in $(seq 1 90); do
   if curl -sS -o /dev/null --max-time 2 "http://127.0.0.1:$PORT/health" 2>/dev/null; then
     break
   fi
@@ -152,7 +210,30 @@ fi
 
 # --- 4. auth flow on restored data ---------------------------------------------
 if [[ $FAIL -eq 0 ]]; then
-  python3 - "$WORK/restored.db" <<'PY'
+  if [[ $PG_MODE -eq 1 ]]; then
+    DRILL_DATABASE_URL="$DRILL_DATABASE_URL" python3 - <<'PY'
+import bcrypt, os
+from sqlalchemy import create_engine, text
+
+engine = create_engine(os.environ["DRILL_DATABASE_URL"])
+hashed = bcrypt.hashpw(b"DrillPass123!", bcrypt.gensalt()).decode()
+with engine.begin() as con:
+    con.execute(text("""
+        INSERT INTO users
+          (id,email,username,full_name,hashed_password,role,status,created_at)
+        VALUES
+          (:id,:email,:username,:full_name,:hashed,'ENGINEER','ACTIVE', now())
+        ON CONFLICT (id) DO UPDATE SET hashed_password = EXCLUDED.hashed_password
+    """), {
+        "id": "drill-user-0001",
+        "email": "drill@civildx.local",
+        "username": "drill",
+        "full_name": "Restore Drill",
+        "hashed": hashed,
+    })
+PY
+  else
+    python3 - "$WORK/restored.db" <<'PY'
 import bcrypt, sqlite3, sys
 
 con = sqlite3.connect(sys.argv[1])
@@ -167,6 +248,7 @@ con.execute(
 con.commit()
 con.close()
 PY
+  fi
   TOKEN="$(curl -sS -X POST "http://127.0.0.1:$PORT/api/v1/auth/token" \
     -H 'Content-Type: application/x-www-form-urlencoded' \
     -d 'username=drill@civildx.local&password=DrillPass123!' \

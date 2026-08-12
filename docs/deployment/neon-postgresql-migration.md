@@ -139,9 +139,14 @@ systemctl --user start civilpdf-backend.service
 
 ## 5. 移行後の監視・残課題
 
-- [ ] 全文検索 API の PostgreSQL 対応（tsvector 等）
+- [x] 全文検索 API の PostgreSQL 対応（tsvector 等・実装済み）
 - [x] `scripts/backup-production.sh` の PostgreSQL 対応（2026-08-12）
-- [ ] `restore-drill.sh` の PostgreSQL 対応（現在は SQLite 復元ドリル）
+- [x] `scripts/restore-drill.sh` の PostgreSQL 対応（2026-08-12・実ドリル合格）
+
+> 全文検索は **実装済み**（`api/search.py` の PG 分岐: `search_vector` tsvector + GIN）。
+> 本番 Neon で列・インデックスの存在を確認済み（2026-08-12）。
+> 復元訓練（PostgreSQL）は Neon 一時ブランチへ `pg_restore` → alembic → /health → 認証フローまで
+> **DRILL PASS** を確認済み（2026-08-12T23:47 JST）。
 - [ ] `docs/operations/runbook.md` の DB 行・バックアップ節を更新
 - [ ] Neon の PITR / バックアップ設定の運用確認
 - [ ] 性能・接続プール（PgBouncer 等）の評価
