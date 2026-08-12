@@ -29,6 +29,14 @@
   （pg_dump 18 自動選択・custom format・pg_restore 検証）
 - ロールバック手順を docs/deployment/neon-postgresql-migration.md に更新
 
+### 2026-08-12 — 復元訓練の PostgreSQL 対応（Issue #130）
+
+- `scripts/restore-drill.sh` が PostgreSQL バックアップ（`civilpdf.dump`）を検出すると、
+  `pg_restore --clean --if-exists --no-owner --no-acl` で復元し、alembic head・uploads 件数・
+  /health・認証フローまで検証（`--database-url` / `DRILL_DATABASE_URL` 対応）
+- Neon 一時ブランチで実ドリルを実施し **DRILL PASS**（2026-08-12T23:47 JST・訓練後ブランチ削除）
+- 全文検索（tsvector + GIN）は実装済みであることを本番 Neon で確認（search_vector 列・GIN インデックス）
+
 ### 2026-08-12 — DX 同期監視基盤と sidecar 上限拡大（Editor v1.12.3 連携）
 
 - **`dx_sync_metrics` テーブル新設**（migration `k1l2m3n4o5p6`）— review-sidecar 送信の
