@@ -69,6 +69,27 @@ describe("ElectronicDeliveryModal", () => {
     expect(screen.getByText("国道7号改良工事")).toBeInTheDocument();
   });
 
+  it("is an accessible dialog that closes on Escape", async () => {
+    vi.mocked(checkDeliveryReadiness).mockReturnValue(new Promise(() => {}));
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <ElectronicDeliveryModal
+        projectId="proj-1"
+        projectName="テスト工事"
+        projectCode="TST001"
+        onClose={onClose}
+      />,
+      { wrapper: makeWrapper() },
+    );
+
+    expect(
+      screen.getByRole("dialog", { name: /電子納品パッケージ生成/ }),
+    ).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("shows ready status with document counts", async () => {
     vi.mocked(checkDeliveryReadiness).mockResolvedValue(readyData);
     render(<ElectronicDeliveryModal {...defaultProps} />, {

@@ -11,6 +11,7 @@ import { DocumentPreviewModal } from '../components/DocumentPreviewModal'
 import { DocumentTimestampModal } from '../components/DocumentTimestampModal'
 import { classifyDocument, type ClassifyResponse } from '../api/ai'
 import { searchDocuments, type SearchResponse } from '../api/search'
+import { useModalDialog } from '../hooks/useModalDialog'
 
 const DOC_TYPE_LABELS: Record<string, string> = {
   drawing: '図面',
@@ -29,11 +30,15 @@ const STATUS_LABELS: Record<string, { label: string; cls: string }> = {
 
 export function Documents() {
   const qc = useQueryClient()
-  const { data: documents = [], isLoading } = useQuery({
+  const { data: documents = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['documents'],
     queryFn: () => listDocuments(),
   })
-  const { data: projects = [] } = useQuery({ queryKey: ['projects'], queryFn: listProjects })
+  const {
+    data: projects = [],
+    isError: projectsError,
+    refetch: refetchProjects,
+  } = useQuery({ queryKey: ['projects'], queryFn: listProjects })
 
   // Upload form state
   const [showUpload, setShowUpload] = useState(false)
@@ -42,6 +47,7 @@ export function Documents() {
   const [docType, setDocType] = useState('drawing')
   const [previewDoc, setPreviewDoc] = useState<DocumentResponse | null>(null)
   const [timestampDoc, setTimestampDoc] = useState<DocumentResponse | null>(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [aiResult, setAiResult] = useState<ClassifyResponse | null>(null)
   const [searchMode, setSearchMode] = useState<'keyword' | 'semantic'>('keyword')
   const [semanticQuery, setSemanticQuery] = useState('')
@@ -79,7 +85,10 @@ export function Documents() {
 
   const remove = useMutation({
     mutationFn: deleteDocument,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['documents'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['documents'] })
+      setConfirmDeleteId(null)
+    },
   })
 
   const classify = useMutation({
@@ -94,6 +103,8 @@ export function Documents() {
     mutationFn: () => searchDocuments(semanticQuery, searchMode),
     onSuccess: (result) => setSearchResult(result),
   })
+
+  const aiResultDialogRef = useModalDialog(aiResult !== null, () => setAiResult(null))
 
   return (
     <div className="p-8">
@@ -115,6 +126,7 @@ export function Documents() {
               <label htmlFor="doc-title" className="block text-sm text-gray-600 mb-1">タイトル</label>
               <input
                 id="doc-title"
+                required
                 className="w-full border rounded px-3 py-2 text-sm"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
@@ -124,6 +136,7 @@ export function Documents() {
               <label htmlFor="doc-project" className="block text-sm text-gray-600 mb-1">プロジェクト</label>
               <select
                 id="doc-project"
+                required
                 className="w-full border rounded px-3 py-2 text-sm"
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
@@ -151,11 +164,11 @@ export function Documents() {
             </div>
             <div>
               <label htmlFor="doc-file" className="block text-sm text-gray-600 mb-1">PDFファイル</label>
-              <input id="doc-file" type="file" accept=".pdf" ref={fileRef} className="text-sm" />
+              <input id="doc-file" type="file" accept=".pdf" required ref={fileRef} className="text-sm" />
             </div>
           </div>
           {upload.error && (
-            <p className="text-red-600 text-sm mt-2">{String(upload.error)}</p>
+            <p role="alert" className="text-red-600 text-sm mt-2">{String(upload.error)}</p>
           )}
           <div className="flex gap-3 mt-4">
             <button
@@ -239,6 +252,24 @@ export function Documents() {
         )}
       </div>
 
+      {(isError || projectsError) && (
+        <div
+          role="alert"
+          className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-700 flex items-center justify-between gap-3"
+        >
+          <span>データの読み込みに失敗しました</span>
+          <button
+            onClick={() => {
+              void refetch()
+              void refetchProjects()
+            }}
+            className="text-xs px-2 py-1 rounded border border-red-300 hover:bg-red-100"
+          >
+            再試行
+          </button>
+        </div>
+      )}
+
       {/* Search & Filter bar */}
       <div className="flex flex-wrap gap-3 mb-4">
         <input
@@ -281,7 +312,7 @@ export function Documents() {
         )}
       </div>
 
-      <div className="bg-white rounded-xl shadow">
+      <div className="bg-white rounded-xl shadow overflow-x-auto">
         {isLoading ? (
           <p className="p-6 text-gray-400 text-sm">読み込み中...</p>
         ) : filteredDocuments.length === 0 ? (
@@ -289,16 +320,16 @@ export function Documents() {
             {documents.length > 0 ? '条件に一致するドキュメントがありません' : 'ドキュメントがありません'}
           </p>
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[760px]">
             <thead className="border-b">
               <tr className="text-left text-gray-500">
-                <th className="px-4 py-3">タイトル</th>
-                <th className="px-4 py-3">種別</th>
-                <th className="px-4 py-3">ステータス</th>
-                <th className="px-4 py-3">AI タグ</th>
-                <th className="px-4 py-3">サイズ</th>
-                <th className="px-4 py-3">登録日</th>
-                <th className="px-4 py-3"></th>
+                <th scope="col" className="px-4 py-3">タイトル</th>
+                <th scope="col" className="px-4 py-3">種別</th>
+                <th scope="col" className="px-4 py-3">ステータス</th>
+                <th scope="col" className="px-4 py-3">AI タグ</th>
+                <th scope="col" className="px-4 py-3">サイズ</th>
+                <th scope="col" className="px-4 py-3">登録日</th>
+                <th scope="col" className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
@@ -361,12 +392,31 @@ export function Documents() {
                         >
                           🔏TS
                         </button>
-                        <button
-                          onClick={() => remove.mutate(doc.id)}
-                          className="text-red-500 hover:text-red-700 text-xs"
-                        >
-                          削除
-                        </button>
+                        {confirmDeleteId === doc.id ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="text-xs text-gray-500">削除しますか?</span>
+                            <button
+                              onClick={() => remove.mutate(doc.id)}
+                              disabled={remove.isPending}
+                              className="text-red-600 hover:text-red-800 text-xs font-semibold disabled:opacity-50"
+                            >
+                              削除する
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="text-gray-500 hover:text-gray-700 text-xs"
+                            >
+                              キャンセル
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmDeleteId(doc.id)}
+                            className="text-red-500 hover:text-red-700 text-xs"
+                          >
+                            削除
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>
@@ -395,6 +445,10 @@ export function Documents() {
       {/* AI Classification Result Modal */}
       {aiResult && (
         <div
+          ref={aiResultDialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ai-result-title"
           className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
           onClick={() => setAiResult(null)}
         >
@@ -403,7 +457,7 @@ export function Documents() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-gray-800">✦ AI 分類結果</h2>
+              <h2 id="ai-result-title" className="text-lg font-bold text-gray-800">✦ AI 分類結果</h2>
               <button onClick={() => setAiResult(null)} className="text-gray-400 hover:text-gray-600 text-xl">×</button>
             </div>
             <dl className="space-y-3 text-sm">

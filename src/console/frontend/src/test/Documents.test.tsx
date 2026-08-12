@@ -167,7 +167,7 @@ describe('Documents', () => {
     expect(uploadBtn).not.toBeDisabled()
   })
 
-  it('calls deleteDocument when delete button clicked', async () => {
+  it('calls deleteDocument after confirmation is clicked', async () => {
     vi.mocked(listDocuments).mockResolvedValue([mockDoc])
     vi.mocked(listProjects).mockResolvedValue([])
     vi.mocked(deleteDocument).mockResolvedValue(undefined)
@@ -177,10 +177,27 @@ describe('Documents', () => {
 
     const deleteBtn = await screen.findByRole('button', { name: '削除' })
     await user.click(deleteBtn)
+    await user.click(screen.getByRole('button', { name: '削除する' }))
 
     await waitFor(() => {
       expect(vi.mocked(deleteDocument).mock.calls[0]?.[0]).toBe('doc-1')
     }, { timeout: 3000 })
+  })
+
+  it('does not delete when confirmation is cancelled', async () => {
+    vi.mocked(listDocuments).mockResolvedValue([mockDoc])
+    vi.mocked(listProjects).mockResolvedValue([])
+    vi.mocked(deleteDocument).mockResolvedValue(undefined)
+    const user = userEvent.setup()
+
+    render(<Documents />, { wrapper: makeWrapper() })
+
+    const deleteBtn = await screen.findByRole('button', { name: '削除' })
+    await user.click(deleteBtn)
+    expect(screen.getByText('削除しますか?')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'キャンセル' }))
+
+    expect(deleteDocument).not.toHaveBeenCalled()
   })
 
   it('opens preview modal when preview button clicked', async () => {

@@ -138,13 +138,14 @@ export function Dashboard() {
         {documents.length === 0 ? (
           <p className="text-gray-400 text-sm">ドキュメントがありません</p>
         ) : (
-          <table className="w-full text-sm">
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
             <thead>
               <tr className="text-left text-gray-500 border-b">
-                <th className="pb-2">タイトル</th>
-                <th className="pb-2">種別</th>
-                <th className="pb-2">ステータス</th>
-                <th className="pb-2">登録日</th>
+                <th scope="col" className="pb-2">タイトル</th>
+                <th scope="col" className="pb-2">種別</th>
+                <th scope="col" className="pb-2">ステータス</th>
+                <th scope="col" className="pb-2">登録日</th>
               </tr>
             </thead>
             <tbody>
@@ -169,6 +170,7 @@ export function Dashboard() {
               })}
             </tbody>
           </table>
+          </div>
         )}
       </div>
     </div>

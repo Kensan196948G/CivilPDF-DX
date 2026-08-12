@@ -104,6 +104,9 @@ export function DocumentPreviewModal({
             <iframe
               src={objectUrl}
               title={title || filename || 'PDF preview'}
+              // 同一オリジンの Blob のみ表示。PDF ビューアの描画に必要な
+              // allow-scripts / allow-same-origin に限定し、トップナビゲーション等は禁止する。
+              sandbox="allow-scripts allow-same-origin"
               className="w-full h-full border-0"
             />
           ) : null}

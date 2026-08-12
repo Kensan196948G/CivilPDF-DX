@@ -49,6 +49,21 @@ describe("useAuthStore", () => {
     expect(useAuthStore.getState().isAuthenticated).toBe(false);
     expect(useAuthStore.getState().user).toBeNull();
   });
+
+  it("clearAuth removes only auth tokens and keeps other app keys", () => {
+    localStorage.setItem("access_token", "abc");
+    localStorage.setItem("refresh_token", "xyz");
+    localStorage.setItem("theme", "dark");
+    useAuthStore.setState({ isAuthenticated: true, user: { id: "1" } as never });
+
+    useAuthStore.getState().clearAuth();
+
+    expect(localStorage.getItem("access_token")).toBeNull();
+    expect(localStorage.getItem("refresh_token")).toBeNull();
+    expect(localStorage.getItem("theme")).toBe("dark");
+    expect(useAuthStore.getState().isAuthenticated).toBe(false);
+    expect(useAuthStore.getState().user).toBeNull();
+  });
 });
 
 describe("getInitialAuthState (build-mode auth gate, Issue #59)", () => {

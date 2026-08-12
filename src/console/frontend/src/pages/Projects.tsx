@@ -10,7 +10,7 @@ export function Projects() {
   const isAdmin = currentUser?.role === 'admin'
   const canDownload = isAdmin || currentUser?.role === 'manager'
 
-  const { data: projects = [], isLoading } = useQuery({
+  const { data: projects = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['projects'],
     queryFn: listProjects,
   })
@@ -20,6 +20,7 @@ export function Projects() {
   const [code, setCode] = useState('')
   const [description, setDescription] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [deliveryProject, setDeliveryProject] = useState<{
     id: string
     name: string
@@ -46,7 +47,10 @@ export function Projects() {
 
   const remove = useMutation({
     mutationFn: deleteProject,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['projects'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['projects'] })
+      setConfirmDeleteId(null)
+    },
   })
 
   return (
@@ -71,6 +75,7 @@ export function Projects() {
               <label htmlFor="proj-name" className="block text-sm text-gray-600 mb-1">プロジェクト名</label>
               <input
                 id="proj-name"
+                required
                 className="w-full border rounded px-3 py-2 text-sm"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -80,6 +85,7 @@ export function Projects() {
               <label htmlFor="proj-code" className="block text-sm text-gray-600 mb-1">コード</label>
               <input
                 id="proj-code"
+                required
                 className="w-full border rounded px-3 py-2 text-sm"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
@@ -117,6 +123,21 @@ export function Projects() {
         </div>
       )}
 
+      {isError && (
+        <div
+          role="alert"
+          className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-700 flex items-center justify-between gap-3"
+        >
+          <span>プロジェクトの読み込みに失敗しました</span>
+          <button
+            onClick={() => void refetch()}
+            className="text-xs px-2 py-1 rounded border border-red-300 hover:bg-red-100"
+          >
+            再試行
+          </button>
+        </div>
+      )}
+
       {/* Search bar */}
       <div className="flex flex-wrap gap-3 mb-4">
         <input
@@ -137,7 +158,7 @@ export function Projects() {
         )}
       </div>
 
-      <div className="bg-white rounded-xl shadow">
+      <div className="bg-white rounded-xl shadow overflow-x-auto">
         {isLoading ? (
           <p className="p-6 text-gray-400 text-sm">読み込み中...</p>
         ) : filteredProjects.length === 0 ? (
@@ -147,14 +168,14 @@ export function Projects() {
               : 'プロジェクトがありません'}
           </p>
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[640px]">
             <thead className="border-b">
               <tr className="text-left text-gray-500">
-                <th className="px-4 py-3">プロジェクト名</th>
-                <th className="px-4 py-3">コード</th>
-                <th className="px-4 py-3">ステータス</th>
-                <th className="px-4 py-3">作成日</th>
-                <th className="px-4 py-3"></th>
+                <th scope="col" className="px-4 py-3">プロジェクト名</th>
+                <th scope="col" className="px-4 py-3">コード</th>
+                <th scope="col" className="px-4 py-3">ステータス</th>
+                <th scope="col" className="px-4 py-3">作成日</th>
+                <th scope="col" className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
@@ -184,12 +205,31 @@ export function Projects() {
                         </button>
                       )}
                       {isAdmin && (
-                        <button
-                          onClick={() => remove.mutate(p.id)}
-                          className="text-red-500 hover:text-red-700 text-xs"
-                        >
-                          削除
-                        </button>
+                        confirmDeleteId === p.id ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="text-xs text-gray-500">削除しますか?</span>
+                            <button
+                              onClick={() => remove.mutate(p.id)}
+                              disabled={remove.isPending}
+                              className="text-red-600 hover:text-red-800 text-xs font-semibold disabled:opacity-50"
+                            >
+                              削除する
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteId(null)}
+                              className="text-gray-500 hover:text-gray-700 text-xs"
+                            >
+                              キャンセル
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => setConfirmDeleteId(p.id)}
+                            className="text-red-500 hover:text-red-700 text-xs"
+                          >
+                            削除
+                          </button>
+                        )
                       )}
                     </div>
                   </td>
@@ -211,4 +251,3 @@ export function Projects() {
     </div>
   )
 }
-

@@ -51,6 +51,7 @@ describe('DocumentPreviewModal', () => {
       const iframe = screen.getByTitle('月次レポート') as HTMLIFrameElement
       expect(iframe).toBeInTheDocument()
       expect(iframe.src).toContain('blob:mock-url')
+      expect(iframe.getAttribute('sandbox')).toBe('allow-scripts allow-same-origin')
     })
     expect(createUrl).toHaveBeenCalledTimes(1)
     expect(fetchDocumentBlob).toHaveBeenCalledWith('d-1')

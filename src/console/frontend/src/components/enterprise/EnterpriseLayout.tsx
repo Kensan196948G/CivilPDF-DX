@@ -99,23 +99,8 @@ const ROLE_BADGE_LABELS: Record<UserResponse['role'], string> = {
   viewer: '閲覧者',
 }
 
-const INITIAL_NOTIFICATIONS: Notification[] = [
-  { id: 1, text: '特記仕様書 R6-04rev2 が承認されました', time: '3分前', read: false, targetView: 'workflow' },
-  { id: 2, text: '数量計算書 R6-04 でNGを検出', time: '12分前', read: false, targetView: 'documents' },
-  { id: 3, text: 'v1.2.0 アップデートが配布されました', time: '2時間前', read: true, targetView: 'apps' },
-  { id: 4, text: '山田 直人 がログイン', time: '1時間前', read: true, targetView: 'audit' },
-]
-
-let _notifSeq = 10
-const PUSH_POOL: { text: string; view: ViewId }[] = [
-  { text: '橋梁設計図 R6-05 のアップロードが完了しました', view: 'documents' },
-  { text: 'PDF/A適合率が95%を下回りました', view: 'audit' },
-  { text: '承認待ちドキュメントが5件あります', view: 'workflow' },
-  { text: '現場事務所ABCの同期エージェントがオフライン', view: 'dashboard' },
-  { text: 'ストレージ使用率が85%を超えました', view: 'settings' },
-  { text: '道路改良工事 図面R6-08 の承認リクエスト', view: 'workflow' },
-  { text: 'セキュリティスキャンが完了しました（警告なし）', view: 'security' },
-]
+// 実通知 API が接続されるまで空で初期化する（デモ文言を本番 UI に残さない）。
+const INITIAL_NOTIFICATIONS: Notification[] = []
 
 const SEARCH_INDEX = [
   { label: '概要ページ', desc: 'ランディング / ビューへ移動', view: 'lp', icon: '🏠' },
@@ -280,24 +265,6 @@ export const EnterpriseLayout: FC = () => {
       navigate(n.targetView)
     }
   }
-
-  // Push a new notification every ~40 seconds (demo)
-  useEffect(() => {
-    let poolIdx = 0
-    const timer = setInterval(() => {
-      const item = PUSH_POOL[poolIdx % PUSH_POOL.length]
-      poolIdx++
-      const newNotif: Notification = {
-        id: ++_notifSeq,
-        text: item.text,
-        time: 'たった今',
-        read: false,
-        targetView: item.view,
-      }
-      setNotifications((prev) => [newNotif, ...prev].slice(0, 20))
-    }, 40000)
-    return () => clearInterval(timer)
-  }, [])
 
   // ── Palette results ──────────────────────────────────────────────────
   const paletteResults = paletteQuery
@@ -526,10 +493,12 @@ export const EnterpriseLayout: FC = () => {
               <div className="ep-notif-dropdown">
                 <div className="ep-notif-header">
                   <span>通知 {unreadCount > 0 && <span className="ep-notif-count-badge">{unreadCount}件未読</span>}</span>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    <button className="ep-notif-mark-all" onClick={markAllRead}>全既読</button>
-                    <button className="ep-notif-mark-all" onClick={clearAll}>クリア</button>
-                  </div>
+                  {notifications.length > 0 && (
+                    <div style={{ display: 'flex', gap: '6px' }}>
+                      <button className="ep-notif-mark-all" onClick={markAllRead}>全既読</button>
+                      <button className="ep-notif-mark-all" onClick={clearAll}>クリア</button>
+                    </div>
+                  )}
                 </div>
                 {notifications.length === 0 ? (
                   <div style={{ padding: '24px 16px', textAlign: 'center', color: 'var(--muted)', fontSize: '12px' }}>
@@ -541,7 +510,7 @@ export const EnterpriseLayout: FC = () => {
                       key={n.id}
                       className={`ep-notif-item${n.read ? ' read' : ''}${n.targetView ? ' clickable' : ''}`}
                       onClick={() => handleNotifClick(n)}
-                      title={n.targetView ? '클릭して移動' : undefined}
+                      title={n.targetView ? 'クリックして移動' : undefined}
                     >
                       <span className="ep-notif-dot-inline" style={{ opacity: n.read ? 0 : 1 }} />
                       <div style={{ flex: 1 }}>

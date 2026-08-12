@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { useAuthStore } from '../store/auth'
 
 export const api = axios.create({
   baseURL: '/api/v1',
@@ -23,10 +24,25 @@ api.interceptors.request.use((config) => {
   return config
 })
 
+// 複数リクエストが同時に 401 になった場合も refresh は 1 回だけ実行する
+// （同時 refresh でトークンが競合・破棄される事故を防ぐ）。
+let refreshPromise: Promise<string> | null = null
+
 // /login に居るときに再度 /login へ代入するとページ全体がリロードされ、
 // 入力中のフォームが消える (401 が続くと無限リロードループになる) — 必ずガードする。
 function redirectToLogin() {
   if (window.location.pathname !== '/login') window.location.href = '/login'
+}
+
+async function refreshAccessToken(): Promise<string> {
+  const refresh = localStorage.getItem('refresh_token')
+  if (!refresh) throw new Error('refresh_token not found')
+  const res = await axios.post('/api/v1/auth/refresh', { refresh_token: refresh })
+  localStorage.setItem('access_token', res.data.access_token)
+  if (res.data.refresh_token) {
+    localStorage.setItem('refresh_token', res.data.refresh_token)
+  }
+  return res.data.access_token as string
 }
 
 api.interceptors.response.use(
@@ -43,18 +59,19 @@ api.interceptors.response.use(
       const refresh = localStorage.getItem('refresh_token')
       if (refresh) {
         try {
-          const res = await axios.post('/api/v1/auth/refresh', { refresh_token: refresh })
-          localStorage.setItem('access_token', res.data.access_token)
-          error.config.headers.Authorization = `Bearer ${res.data.access_token}`
+          refreshPromise = refreshPromise ?? refreshAccessToken()
+          const accessToken = await refreshPromise
+          error.config.headers.Authorization = `Bearer ${accessToken}`
           return api.request(error.config)
         } catch {
-          localStorage.removeItem('access_token')
-          localStorage.removeItem('refresh_token')
+          useAuthStore.getState().clearAuth()
           redirectToLogin()
+        } finally {
+          refreshPromise = null
         }
       } else {
         // 失効 token を破棄してからリダイレクト (残すと再マウント→401→リロードが循環する)
-        localStorage.removeItem('access_token')
+        useAuthStore.getState().clearAuth()
         redirectToLogin()
       }
     }

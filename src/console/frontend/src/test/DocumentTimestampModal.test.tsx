@@ -78,6 +78,28 @@ describe("DocumentTimestampModal", () => {
     expect(screen.getByText("平面図")).toBeInTheDocument();
   });
 
+  it("is an accessible dialog that focuses the close button and closes on Escape", async () => {
+    vi.mocked(verifyTimestamp).mockReturnValue(new Promise(() => {}));
+    const onClose = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <DocumentTimestampModal
+        documentId="doc-1"
+        documentTitle="図面"
+        onClose={onClose}
+      />,
+      { wrapper: makeWrapper() },
+    );
+
+    expect(
+      screen.getByRole("dialog", { name: /電子タイムスタンプ/ }),
+    ).toBeInTheDocument();
+    expect(document.activeElement).toHaveAttribute("aria-label", "閉じる");
+
+    await user.keyboard("{Escape}");
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("shows valid timestamp status with hash", async () => {
     vi.mocked(verifyTimestamp).mockResolvedValue(validVerifyData);
     render(

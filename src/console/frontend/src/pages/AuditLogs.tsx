@@ -25,7 +25,7 @@ export function AuditLogs() {
   const [actionFilter, setActionFilter] = useState('')
   const [resourceFilter, setResourceFilter] = useState('')
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['audit-logs', page, actionFilter, resourceFilter],
     queryFn: () =>
       listAuditLogs({
@@ -77,21 +77,36 @@ export function AuditLogs() {
         )}
       </div>
 
-      <div className="bg-white rounded-xl shadow">
+      {isError && (
+        <div
+          role="alert"
+          className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-700 flex items-center justify-between gap-3"
+        >
+          <span>監査ログの読み込みに失敗しました</span>
+          <button
+            onClick={() => void refetch()}
+            className="text-xs px-2 py-1 rounded border border-red-300 hover:bg-red-100"
+          >
+            再試行
+          </button>
+        </div>
+      )}
+
+      <div className="bg-white rounded-xl shadow overflow-x-auto">
         {isLoading ? (
           <p className="p-6 text-gray-400 text-sm">読み込み中...</p>
         ) : logs.length === 0 ? (
           <p className="p-6 text-gray-400 text-sm">ログがありません</p>
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[860px]">
             <thead className="border-b">
               <tr className="text-left text-gray-500">
-                <th className="px-4 py-3">日時</th>
-                <th className="px-4 py-3">ユーザー</th>
-                <th className="px-4 py-3">アクション</th>
-                <th className="px-4 py-3">リソース種別</th>
-                <th className="px-4 py-3">リソースID</th>
-                <th className="px-4 py-3">IPアドレス</th>
+                <th scope="col" className="px-4 py-3">日時</th>
+                <th scope="col" className="px-4 py-3">ユーザー</th>
+                <th scope="col" className="px-4 py-3">アクション</th>
+                <th scope="col" className="px-4 py-3">リソース種別</th>
+                <th scope="col" className="px-4 py-3">リソースID</th>
+                <th scope="col" className="px-4 py-3">IPアドレス</th>
               </tr>
             </thead>
             <tbody>
@@ -132,6 +147,7 @@ export function AuditLogs() {
       {totalPages > 1 && (
         <div className="flex justify-center gap-2 mt-4">
           <button
+            type="button"
             onClick={() => setPage((p) => Math.max(1, p - 1))}
             disabled={page === 1}
             className="px-3 py-1 rounded border text-sm disabled:opacity-40"
@@ -142,6 +158,7 @@ export function AuditLogs() {
             {page} / {totalPages}
           </span>
           <button
+            type="button"
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
             disabled={page === totalPages}
             className="px-3 py-1 rounded border text-sm disabled:opacity-40"
