@@ -26,7 +26,7 @@ from api import (
     revisions_router,
     notifications_router,
 )
-from middleware import AuditMiddleware
+from middleware import AuditMiddleware, DxSyncMetricsMiddleware
 from middleware.security import SecurityHeadersMiddleware
 
 logging.basicConfig(level=logging.INFO)
@@ -77,6 +77,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
 )
+app.add_middleware(DxSyncMetricsMiddleware)
 app.add_middleware(AuditMiddleware)
 
 # API routes

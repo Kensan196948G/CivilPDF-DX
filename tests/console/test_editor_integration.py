@@ -7,7 +7,10 @@ Features:
   #5  Workflow-status polling (Editor side)
 """
 
+from unittest.mock import patch
+
 from models.document import Document, DocumentStatus
+from models.dx_sync_metric import DxSyncMetric
 from models.user import Project
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -164,6 +167,75 @@ class TestImportReviewSidecar:
         body = resp.json()
         assert body["review_sidecar"]["review_schema"] == "1"
         assert body["status"] == DocumentStatus.EDITOR_REVIEWED.value
+
+    def test_import_rejects_oversized_sidecar(
+        self, client, manager_token, admin_user, db_session
+    ):
+        proj = _make_project(db_session, "PROJ-007")
+        doc = _make_document(db_session, admin_user.id, proj.id)
+
+        with patch("api.editor._MAX_SIDECAR_BYTES", 64):
+            oversized = {
+                **SIDECAR_PAYLOAD,
+                "annotations": [{"id": "a1", "kind": "note", "text": "x" * 200}],
+            }
+            resp = client.post(
+                f"/api/v1/documents/{doc.id}/review-sidecar",
+                json=oversized,
+                headers={"Authorization": f"Bearer {manager_token}"},
+            )
+        assert resp.status_code == 413
+
+
+class TestDxSyncMetrics:
+    """Server-side DX sync SLI metrics (dx_sync_metrics table)."""
+
+    def test_success_and_error_are_recorded(
+        self, client, manager_token, viewer_token, admin_user, db_session
+    ):
+        proj = _make_project(db_session, "PROJ-030")
+        doc = _make_document(db_session, admin_user.id, proj.id)
+
+        ok = client.post(
+            f"/api/v1/documents/{doc.id}/review-sidecar",
+            json=SIDECAR_PAYLOAD,
+            headers={"Authorization": f"Bearer {manager_token}"},
+        )
+        assert ok.status_code == 200
+
+        forbidden = client.post(
+            f"/api/v1/documents/{doc.id}/review-sidecar",
+            json=SIDECAR_PAYLOAD,
+            headers={"Authorization": f"Bearer {viewer_token}"},
+        )
+        assert forbidden.status_code == 403
+
+        rows = (
+            db_session.query(DxSyncMetric)
+            .order_by(DxSyncMetric.created_at)
+            .all()
+        )
+        assert [r.event_type for r in rows] == ["success", "error"]
+        assert rows[0].status_code == 200
+        assert rows[0].document_id == doc.id
+        assert rows[1].status_code == 403
+        assert rows[1].error_kind == "rbac"
+
+    def test_unauthorized_import_is_recorded_as_auth_error(
+        self, client, admin_user, db_session
+    ):
+        proj = _make_project(db_session, "PROJ-031")
+        doc = _make_document(db_session, admin_user.id, proj.id)
+
+        resp = client.post(
+            f"/api/v1/documents/{doc.id}/review-sidecar", json=SIDECAR_PAYLOAD
+        )
+        assert resp.status_code == 401
+
+        row = db_session.query(DxSyncMetric).first()
+        assert row is not None
+        assert row.event_type == "error"
+        assert row.error_kind == "auth"
 
 
 class TestGetReviewSidecar:
