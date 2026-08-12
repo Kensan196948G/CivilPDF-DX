@@ -96,8 +96,42 @@ export async function setupApp(page: Page, opts: SetupOptions = {}): Promise<voi
       route.fulfill({ contentType: 'application/json', body: JSON.stringify(data) })
 
     if (pathname.endsWith('/auth/me')) return json(ADMIN_USER)
-    if (pathname === '/api/v1/documents/' && method === 'GET') return json(documents)
+    if (pathname === '/api/v1/documents/' && method === 'GET') {
+      const includeMeta = new URL(request.url()).searchParams.get('include_meta')
+      if (includeMeta === 'true') {
+        return json({
+          items: documents,
+          total: documents.length,
+          page: 1,
+          per_page: 20,
+          pages: 1,
+        })
+      }
+      return json(documents)
+    }
+    if (pathname.endsWith('/documents/trash') && method === 'GET') return json([])
     if (pathname === '/api/v1/projects/' && method === 'GET') return json(projects)
+    if (pathname === '/api/v1/notifications/unread-count') return json({ unread: 1 })
+    if (pathname === '/api/v1/notifications/') {
+      return json({
+        items: [
+          {
+            id: 'notif-1',
+            notification_type: 'workflow.assigned',
+            title: '承認依頼が届いています',
+            body: '文書「橋梁設計図」の承認が依頼されました',
+            resource_type: 'workflow',
+            resource_id: 'wf-1',
+            is_read: false,
+            created_at: '2026-08-12T00:00:00Z',
+          },
+        ],
+        total: 1,
+        page: 1,
+        per_page: 20,
+        pages: 1,
+      })
+    }
     if (pathname.endsWith('/timestamp/verify')) return json(TIMESTAMP_VERIFY)
     if (pathname.endsWith('/timestamp') && method === 'POST') return json(TIMESTAMP_APPLY)
     if (pathname.endsWith('/electronic-delivery/check')) return json(DELIVERY_READINESS)

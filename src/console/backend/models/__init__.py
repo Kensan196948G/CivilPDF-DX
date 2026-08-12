@@ -14,6 +14,7 @@ from models.audit_log import AuditLog
 from models.retention_policy import RetentionPolicy, RetentionCategory, DEFAULT_POLICIES
 from models.consent import ConsentRecord, ConsentType
 from models.ai_setting import AiSetting
+from models.notification import Notification
 
 __all__ = [
     "Organization",
@@ -37,4 +38,5 @@ __all__ = [
     "ConsentRecord",
     "ConsentType",
     "AiSetting",
+    "Notification",
 ]

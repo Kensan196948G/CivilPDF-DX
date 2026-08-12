@@ -87,6 +87,10 @@ class UserUpdate(BaseModel):
     unlock: Optional[bool] = None
 
 
+class AdminPasswordResetRequest(BaseModel):
+    new_password: str
+
+
 class UserResponse(BaseModel):
     id: str
     email: str

@@ -15,6 +15,7 @@ from api.schemas import (
 )
 from services.audit_chain_service import create_chained_audit_log
 from services.access_control import assert_document_visible, document_visible
+from services.notification_service import create_notification
 
 router = APIRouter(prefix="/workflows", tags=["Approval Workflows"])
 
@@ -93,8 +94,19 @@ def create_workflow(
         db.add(step)
 
     doc.status = DocumentStatus.PENDING_REVIEW
+    first_approver_id = body.approver_ids[0]
     db.commit()
     db.refresh(workflow)
+    create_notification(
+        db,
+        user_id=first_approver_id,
+        notification_type="workflow.assigned",
+        title="承認依頼が届いています",
+        body=f"文書「{doc.title}」の承認が依頼されました",
+        resource_type="workflow",
+        resource_id=workflow.id,
+    )
+    db.commit()
     create_chained_audit_log(
         db,
         user_id=current_user.id,
@@ -177,6 +189,15 @@ def decide_step(
         workflow.status = "rejected"
         workflow.completed_at = datetime.now(timezone.utc)
         document.status = DocumentStatus.REJECTED
+        create_notification(
+            db,
+            user_id=document.owner_id,
+            notification_type="workflow.decided",
+            title="承認が却下されました",
+            body=f"文書「{document.title}」が却下されました",
+            resource_type="workflow",
+            resource_id=workflow.id,
+        )
     else:
         # Check if all steps approved
         all_steps = (
@@ -186,6 +207,15 @@ def decide_step(
             workflow.status = "approved"
             workflow.completed_at = datetime.now(timezone.utc)
             document.status = DocumentStatus.APPROVED
+            create_notification(
+                db,
+                user_id=document.owner_id,
+                notification_type="workflow.decided",
+                title="承認が完了しました",
+                body=f"文書「{document.title}」の承認が完了しました",
+                resource_type="workflow",
+                resource_id=workflow.id,
+            )
         else:
             # Activate next step
             next_step = (
@@ -198,6 +228,15 @@ def decide_step(
             )
             if next_step:
                 next_step.status = "pending"
+                create_notification(
+                    db,
+                    user_id=next_step.approver_id,
+                    notification_type="workflow.assigned",
+                    title="承認依頼が届いています",
+                    body=f"文書「{document.title}」の承認が依頼されました",
+                    resource_type="workflow",
+                    resource_id=workflow.id,
+                )
 
     db.commit()
     db.refresh(workflow)

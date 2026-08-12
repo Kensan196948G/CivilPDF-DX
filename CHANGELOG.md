@@ -8,6 +8,21 @@
 
 ## [Unreleased]
 
+### 2026-08-12 — Phase 1 中核機能（SSO/パスワードリセット/ごみ箱/ページネーション/通知/権限棚卸し/オフサイトバックアップ）
+
+- **OIDC SSO（Entra ID / HENNGE）**: 認可コード + PKCE フロー（`GET /auth/oidc/login` → `GET /auth/oidc/callback`）。JWKS 署名・issuer/audience/nonce 検証、自動プロビジョニング、state httpOnly cookie。MFA は IdP（Conditional Access）で強制。設定手順: `docs/deployment/oidc-sso-setup.md`
+- **パスワード再設定**: 自己申請（トークン SHA-256 + 60分期限）と管理者再設定（`POST /users/{id}/password-reset`）。ログイン画面に申請ダイアログ、ユーザー管理に再設定ボタン
+- **ごみ箱と復元**: `GET /documents/trash` / `POST /documents/{id}/restore` と UI（一覧から除外・復元可能）
+- **サーバーサイドページネーション**: `GET /documents/?include_meta=true` と UI ページャー
+- **通知センター**: `notifications` テーブル + API（一覧/未読数/既読化）。ワークフロー作成・次承認者・完了/却下時に自動通知。WebUI ベル（30秒ポーリング）
+- **権限棚卸し**: `GET /users/permissions-report`（JSON/CSV、admin のみ・監査記録あり）+ WebUI ボタン
+- **GET 系監査**: 文書ダウンロードを `document.downloaded` としてハッシュチェーン監査ログへ記録
+- **PostgreSQL 全文検索**: FTS5 に加え PG では `search_vector`（tsvector + GIN）に対応（migration `j1k2l3m4n5o6`）
+- **オフサイトバックアップ**: `scripts/backup-offsite.sh`（rclone→R2/S3）+ systemd timer（毎日03:00 JST）
+- **セッション管理**: WebUI の 30 分アイドルタイムアウト（自動ログアウト）
+- **E2E 拡充**: Playwright 3→6 件（通知バッジ・ページネーション・SSO/パスワード再設定画面）
+- **テスト**: 674 件体制（backend 400・frontend 268・playwright 6）
+
 ### 2026-08-12 — 本番運用前総合評価とセキュリティ強化（PR #120/#121/#122）
 
 - **セキュリティ（#122）**:

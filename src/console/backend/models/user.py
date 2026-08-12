@@ -53,6 +53,10 @@ class User(Base):
     failed_login_attempts = Column(Integer, default=0, nullable=False)
     locked_until = Column(DateTime(timezone=True), nullable=True)
 
+    # Password reset (self-service + admin reset)
+    password_reset_token_hash = Column(String, nullable=True)
+    password_reset_expires_at = Column(DateTime(timezone=True), nullable=True)
+
     # Organization hierarchy (マルチテナント)
     organization_id = Column(String, ForeignKey("organizations.id"), nullable=True)
 

@@ -1,9 +1,13 @@
 import ipaddress
+import hashlib
 import os
+import secrets
 from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
+from jose import jwt
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 from database import get_db
@@ -20,6 +24,7 @@ from auth.dependencies import get_current_user
 from api.schemas import TokenResponse, TokenRefreshRequest, UserResponse
 from config import settings
 from services import m365 as m365_service
+from services import oidc as oidc_service
 from services.audit_chain_service import create_chained_audit_log
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
@@ -111,6 +116,15 @@ class ProfileUpdateRequest(BaseModel):
 
 class PasswordChangeRequest(BaseModel):
     current_password: str
+    new_password: str
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str
     new_password: str
 
 
@@ -293,6 +307,86 @@ def change_password(
         resource_type="auth",
         resource_id=current_user.id,
         detail="password changed by user",
+        ip_address=None,
+    )
+
+
+@router.post("/password-reset/request", status_code=status.HTTP_202_ACCEPTED)
+def request_password_reset(
+    body: PasswordResetRequest,
+    db: Session = Depends(get_db),
+):
+    """Request a password reset for an existing active account.
+
+    A single-use token is stored as a SHA-256 hash with a 60-minute expiry.
+    Delivery is delegated to the email adapter (TODO) or to an admin reset;
+    the token is returned in the response only when DEBUG=true for local
+    development and automated tests.
+    """
+    user = db.query(User).filter(User.email == body.email).first()
+    if not user or user.status != "active":
+        # Do not reveal whether the address exists.
+        return {"message": "If the account exists, a reset link has been prepared"}
+
+    token = secrets.token_urlsafe(32)
+    user.password_reset_token_hash = hashlib.sha256(token.encode()).hexdigest()
+    user.password_reset_expires_at = _utc_now() + timedelta(hours=1)
+    db.commit()
+    create_chained_audit_log(
+        db,
+        user_id=user.id,
+        action="auth.password_reset_requested",
+        resource_type="auth",
+        resource_id=user.id,
+        detail="password reset token issued",
+        ip_address=None,
+    )
+    response = {"message": "If the account exists, a reset link has been prepared"}
+    if settings.debug:
+        response["reset_token"] = token
+    return response
+
+
+@router.post("/password-reset/confirm", status_code=status.HTTP_204_NO_CONTENT)
+def confirm_password_reset(
+    body: PasswordResetConfirm,
+    db: Session = Depends(get_db),
+):
+    token_hash = hashlib.sha256(body.token.encode()).hexdigest()
+    user = db.query(User).filter(User.password_reset_token_hash == token_hash).first()
+    if not user or not user.password_reset_expires_at:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid reset token"
+        )
+    expires_at = user.password_reset_expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at < _utc_now():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Reset token has expired",
+        )
+    if not _password_policy_ok(body.new_password):
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=(
+                "New password must be at least 8 characters and contain "
+                "at least two of: lowercase, uppercase, digits, symbols"
+            ),
+        )
+    user.hashed_password = get_password_hash(body.new_password)
+    user.password_reset_token_hash = None
+    user.password_reset_expires_at = None
+    user.failed_login_attempts = 0
+    user.locked_until = None
+    db.commit()
+    create_chained_audit_log(
+        db,
+        user_id=user.id,
+        action="auth.password_reset_confirmed",
+        resource_type="auth",
+        resource_id=user.id,
+        detail="password reset completed",
         ip_address=None,
     )
 
@@ -488,4 +582,177 @@ def login_m365(
     return TokenResponse(
         access_token=create_access_token(token_data),
         refresh_token=create_refresh_token(token_data),
+    )
+
+
+@router.get("/oidc/login")
+def oidc_login(request: Request):
+    """Start Entra ID / OIDC authorization-code flow with PKCE."""
+    if not oidc_service.is_configured():
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="OIDC SSO is not configured",
+        )
+    state = secrets.token_urlsafe(24)
+    nonce = secrets.token_urlsafe(24)
+    verifier = secrets.token_urlsafe(48)
+    state_payload = {
+        "type": "oidc_state",
+        "sub": state,
+        "verifier": verifier,
+        "nonce": nonce,
+        "exp": datetime.now(timezone.utc) + timedelta(minutes=10),
+    }
+    state_token = jwt.encode(
+        state_payload, settings.secret_key, algorithm=settings.algorithm
+    )
+    try:
+        auth_url = oidc_service.build_authorization_url(state, nonce, verifier)
+    except oidc_service.OIDCConfigError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)
+        ) from exc
+    redirect = RedirectResponse(
+        auth_url, status_code=status.HTTP_307_TEMPORARY_REDIRECT
+    )
+    redirect.set_cookie(
+        "civilpdf_oidc_state",
+        state_token,
+        httponly=True,
+        samesite="lax",
+        secure=not settings.debug,
+        max_age=600,
+        path="/api/v1/auth/oidc",
+    )
+    return redirect
+
+
+@router.get("/oidc/callback")
+def oidc_callback(
+    code: str = "",
+    state: str = "",
+    request: Request = None,
+    db: Session = Depends(get_db),
+):
+    """Complete the OIDC flow: validate state, exchange code, provision user."""
+    if not code or not state:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Missing code or state"
+        )
+    state_token = request.cookies.get("civilpdf_oidc_state") if request else None
+    if not state_token:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Missing state cookie"
+        )
+    try:
+        payload = decode_token(state_token, expected_type="oidc_state")
+    except HTTPException:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid state"
+        ) from None
+    if payload.get("sub") != state:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="State mismatch"
+        )
+
+    try:
+        tokens = oidc_service.exchange_code(code, payload["verifier"])
+        claims = oidc_service.validate_id_token(tokens["id_token"], payload["nonce"])
+    except (oidc_service.OIDCExchangeError, oidc_service.OIDCValidationError) as exc:
+        _log_audit(
+            db,
+            action="oidc_login_failed",
+            user_id=None,
+            detail=f"oidc_error: {exc}",
+            ip=request.client.host if request and request.client else None,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_502_BAD_GATEWAY, detail=str(exc)
+        ) from exc
+
+    email = (claims.get("email") or "").lower()
+    entra_id = claims.get("sub") or claims.get("oid")
+    user = None
+    if entra_id:
+        user = db.query(User).filter(User.entra_id == entra_id).first()
+    if user is None and email:
+        user_by_email = db.query(User).filter(User.email == email).first()
+        if user_by_email is not None:
+            if user_by_email.entra_id and user_by_email.entra_id != entra_id:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="Local account email is bound to a different identity",
+                )
+            user = user_by_email
+
+    if user is None:
+        if not settings.oidc_auto_provision or not email:
+            _log_audit(
+                db,
+                action="oidc_login_failed",
+                user_id=None,
+                detail=f"no_local_user_and_auto_provision_off email={email}",
+                ip=request.client.host if request and request.client else None,
+            )
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="No local account for this identity",
+            )
+        user = User(
+            email=email,
+            username=(claims.get("preferred_username") or email.split("@", 1)[0]),
+            full_name=claims.get("name") or claims.get("email") or email,
+            role=UserRole.VIEWER,
+            status=UserStatus.ACTIVE,
+            entra_id=entra_id,
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        _log_audit(
+            db,
+            action="oidc_user_provisioned",
+            user_id=user.id,
+            detail=f"role={user.role.value} email={email}",
+            ip=request.client.host if request and request.client else None,
+        )
+    else:
+        if user.status != UserStatus.ACTIVE:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account is not active",
+            )
+        if entra_id and not user.entra_id:
+            user.entra_id = entra_id
+        if not user.full_name and claims.get("name"):
+            user.full_name = claims["name"]
+
+    user.last_login = datetime.now(timezone.utc)
+    user.failed_login_attempts = 0
+    user.locked_until = None
+    db.commit()
+    role_value = user.role.value if hasattr(user.role, "value") else str(user.role)
+    token_data = {"sub": user.id, "email": user.email, "role": role_value}
+    access_token = create_access_token(token_data)
+    refresh_token = create_refresh_token(token_data)
+    _log_audit(
+        db,
+        action="oidc_login_success",
+        user_id=user.id,
+        detail=f"email={email}",
+        ip=request.client.host if request and request.client else None,
+    )
+
+    if settings.frontend_origin:
+        fragment = (
+            f"#access_token={access_token}&refresh_token={refresh_token}"
+            f"&token_type=bearer"
+        )
+        return RedirectResponse(
+            settings.frontend_origin.rstrip("/") + "/login" + fragment
+        )
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
     )

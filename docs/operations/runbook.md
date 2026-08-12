@@ -89,12 +89,23 @@
 - 証明書: Cloudflare が自動管理（更新作業不要）
 - アクセス: 公開面はログイン必須。`DEBUG=false` を維持（DEV AUTH BYPASS 無効化）
 - 権限棚卸し: ユーザーロール（admin / manager / engineer / viewer）は WebUI 管理画面で四半期ごとに確認推奨
+- OIDC SSO（Phase 1）: 設定手順は [oidc-sso-setup.md](../deployment/oidc-sso-setup.md)。MFA は Entra Conditional Access / HENNGE 側で強制
+- パスワード再設定: ユーザーはログイン画面「パスワードを忘れた場合」から申請（メール送信アダプタは将来実装）。管理者は WebUI ユーザー管理 → パスワード再設定で即時対応可能
+- 権限棚卸しレポート: WebUI ユーザー管理 → 「権限棚卸し CSV」、または `GET /api/v1/users/permissions-report?format=csv`（admin のみ・監査ログ記録あり）
 
 ## 7. 容量・予算
 
 - 現状: DB 176KB・uploads 7.7MB 程度。SQLite は数 GB まで実用可能だが、本格運用開始時（同時利用者・文書数増加）に PostgreSQL へ移行する
 - 移行パス: `docker-compose.prod.yml`（PostgreSQL 16）+ CI の PostgreSQL migration ジョブが検証済み。Neon を含む移行手順・ロールバック・検証は [neon-postgresql-migration.md](../deployment/neon-postgresql-migration.md)
 - 監視項目: ディスク使用量（`df -h`）、uploads サイズ、DB サイズ、エラー率（journalctl）
+
+## 7.1 オフサイトバックアップ（Phase 1）
+
+- ローカルバックアップ（§3）に加え、rclone で Cloudflare R2 / S3 へ同期可能
+- 設定: `CIVILPDF_RCLONE_REMOTE=civildx-r2:civilpdf-backups` を `~/.config/civilpdf/civilpdf.env` に追加し、`rclone config` で remote を事前作成
+- 手動実行: `./scripts/backup-offsite.sh`
+- systemd 常設: `deploy/civilpdf-offsite-backup.service` / `.timer`（毎日 03:00 JST）を `install-systemd.sh` と同様にリンク
+- 注意: ローカルバックアップに失敗している日は同期対象から除外（最新スナップショットのみ同期）
 
 ## 8. 既知の制約・残課題
 

@@ -20,6 +20,12 @@ import { Settings as SettingsPage } from '../../pages/Settings'
 import { Users } from '../../pages/Users'
 import { useAuthStore } from '../../store/auth'
 import type { UserResponse } from '../../api/auth'
+import {
+  listNotifications,
+  markAllRead as apiMarkAllRead,
+  markRead as apiMarkRead,
+  type NotificationItem,
+} from '../../api/notifications'
 
 type ViewId = 'lp' | 'dashboard' | 'documents' | 'projects' | 'upload' | 'viewer' | 'workflow' | 'apps' | 'editor' | 'security' | 'audit' | 'm365' | 'settings' | 'privacy' | 'users'
 type DashSubView = 'overview' | 'stats' | 'dist' | 'users'
@@ -35,14 +41,6 @@ interface Toast {
 interface ModalContent {
   title: string
   body: string
-}
-
-interface Notification {
-  id: number
-  text: string
-  time: string
-  read: boolean
-  targetView?: ViewId
 }
 
 const NAV_GROUPS = [
@@ -99,9 +97,6 @@ const ROLE_BADGE_LABELS: Record<UserResponse['role'], string> = {
   viewer: '閲覧者',
 }
 
-// 実通知 API が接続されるまで空で初期化する（デモ文言を本番 UI に残さない）。
-const INITIAL_NOTIFICATIONS: Notification[] = []
-
 const SEARCH_INDEX = [
   { label: '概要ページ', desc: 'ランディング / ビューへ移動', view: 'lp', icon: '🏠' },
   { label: 'ダッシュボード', desc: 'KPI・ジョブ概要', view: 'dashboard', icon: '📊' },
@@ -145,7 +140,7 @@ export const EnterpriseLayout: FC = () => {
   const [role, setRole] = useState<Role>('adm')
   const [toasts, setToasts] = useState<Toast[]>([])
   const [modal, setModal] = useState<ModalContent | null>(null)
-  const [notifications, setNotifications] = useState<Notification[]>(INITIAL_NOTIFICATIONS)
+  const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [showNotif, setShowNotif] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const [showPalette, setShowPalette] = useState(false)
@@ -161,6 +156,47 @@ export const EnterpriseLayout: FC = () => {
   const tweaksRef = useRef<HTMLDivElement>(null)
   const profileRef = useRef<HTMLDivElement>(null)
   const paletteInputRef = useRef<HTMLInputElement>(null)
+
+  // ── Notification polling (30s) ───────────────────────────────────────
+  useEffect(() => {
+    if (!user) return
+    let cancelled = false
+    async function refresh() {
+      try {
+        const page = await listNotifications(1, 20)
+        if (!cancelled) setNotifications(page.items)
+      } catch {
+        // keep current list on transient errors
+      }
+    }
+    void refresh()
+    const timer = window.setInterval(refresh, 30_000)
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
+    }
+  }, [user])
+
+  // ── Idle session timeout (30 minutes) ────────────────────────────────
+  useEffect(() => {
+    if (!user) return
+    const IDLE_MS = 30 * 60 * 1000
+    const expire = () => {
+      useAuthStore.getState().logout()
+      window.location.href = '/login'
+    }
+    let timer = window.setTimeout(expire, IDLE_MS)
+    const reset = () => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(expire, IDLE_MS)
+    }
+    const events = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll']
+    events.forEach((ev) => document.addEventListener(ev, reset, { passive: true }))
+    return () => {
+      window.clearTimeout(timer)
+      events.forEach((ev) => document.removeEventListener(ev, reset))
+    }
+  }, [user])
 
   // ── Auto-select role from logged-in user ────────────────────────────
   useEffect(() => {
@@ -246,23 +282,32 @@ export const EnterpriseLayout: FC = () => {
   }, [showToast])
 
   // ── Notification helpers ─────────────────────────────────────────────
-  const unreadCount = notifications.filter((n) => !n.read).length
+  const unreadCount = notifications.filter((n) => !n.is_read).length
 
-  function markAllRead() {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })))
+  async function markAllRead() {
+    await apiMarkAllRead()
+    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })))
   }
 
-  function clearAll() {
+  async function clearAll() {
+    await apiMarkAllRead()
     setNotifications([])
   }
 
-  function handleNotifClick(n: Notification) {
+  async function handleNotifClick(n: NotificationItem) {
+    await apiMarkRead(n.id)
     setNotifications((prev) =>
-      prev.map((x) => x.id === n.id ? { ...x, read: true } : x)
+      prev.map((x) => (x.id === n.id ? { ...x, is_read: true } : x))
     )
-    if (n.targetView) {
+    const targetView =
+      n.resource_type === 'workflow'
+        ? 'workflow'
+        : n.resource_type === 'document'
+          ? 'documents'
+          : null
+    if (targetView) {
       setShowNotif(false)
-      navigate(n.targetView)
+      navigate(targetView)
     }
   }
 
@@ -508,16 +553,28 @@ export const EnterpriseLayout: FC = () => {
                   notifications.map((n) => (
                     <div
                       key={n.id}
-                      className={`ep-notif-item${n.read ? ' read' : ''}${n.targetView ? ' clickable' : ''}`}
+                      className={`ep-notif-item${n.is_read ? ' read' : ''}${
+                        n.resource_type ? ' clickable' : ''
+                      }`}
                       onClick={() => handleNotifClick(n)}
-                      title={n.targetView ? 'クリックして移動' : undefined}
+                      title={n.resource_type ? 'クリックして移動' : undefined}
                     >
-                      <span className="ep-notif-dot-inline" style={{ opacity: n.read ? 0 : 1 }} />
+                      <span
+                        className="ep-notif-dot-inline"
+                        style={{ opacity: n.is_read ? 0 : 1 }}
+                      />
                       <div style={{ flex: 1 }}>
-                        <p className="ep-notif-text">{n.text}</p>
-                        <p className="ep-notif-time">{n.time}</p>
+                        <p className="ep-notif-text">{n.title}</p>
+                        {n.body && (
+                          <p className="ep-notif-time">{n.body}</p>
+                        )}
+                        <p className="ep-notif-time">
+                          {n.created_at
+                            ? new Date(n.created_at).toLocaleString('ja-JP')
+                            : ''}
+                        </p>
                       </div>
-                      {n.targetView && !n.read && (
+                      {n.resource_type && !n.is_read && (
                         <span className="ep-notif-arrow">›</span>
                       )}
                     </div>

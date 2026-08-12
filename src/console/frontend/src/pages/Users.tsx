@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api/client'
 import type { UserResponse } from '../api/auth'
 import { useAuthStore } from '../store/auth'
+import { adminResetPassword, exportPermissionsReport } from '../api/users'
 
 async function listUsers(): Promise<UserResponse[]> {
   const res = await api.get<UserResponse[]>('/users/')
@@ -45,6 +46,9 @@ export function Users() {
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(initialForm)
   const [confirmDisableId, setConfirmDisableId] = useState<string | null>(null)
+  const [resetTarget, setResetTarget] = useState<UserResponse | null>(null)
+  const [resetPassword, setResetPassword] = useState('')
+  const [resetError, setResetError] = useState('')
 
   const create = useMutation({
     mutationFn: () => createUser(form),
@@ -64,6 +68,17 @@ export function Users() {
     },
   })
 
+  const resetPasswordMutation = useMutation({
+    mutationFn: () =>
+      adminResetPassword(resetTarget!.id, resetPassword),
+    onSuccess: () => {
+      setResetTarget(null)
+      setResetPassword('')
+      setResetError('')
+    },
+    onError: () => setResetError('再設定に失敗しました（8文字以上・2種以上の文字種）'),
+  })
+
   if (currentUser?.role !== 'admin' && currentUser?.role !== 'manager') {
     return (
       <div className="p-8">
@@ -78,14 +93,25 @@ export function Users() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">ユーザー管理</h1>
-        {isAdmin && (
-          <button
-            onClick={() => setShowForm(true)}
-            className="bg-blue-700 hover:bg-blue-800 text-white text-sm px-4 py-2 rounded-lg transition-colors"
-          >
-            + ユーザー追加
-          </button>
-        )}
+        <div className="flex gap-2">
+          {isAdmin && (
+            <>
+              <button
+                type="button"
+                onClick={() => void exportPermissionsReport()}
+                className="border border-gray-300 text-gray-700 text-sm px-4 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                権限棚卸し CSV
+              </button>
+              <button
+                onClick={() => setShowForm(true)}
+                className="bg-blue-700 hover:bg-blue-800 text-white text-sm px-4 py-2 rounded-lg transition-colors"
+              >
+                + ユーザー追加
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {showForm && (
@@ -227,38 +253,50 @@ export function Users() {
                   {isAdmin && (
                     <td className="px-4 py-3">
                       {u.id !== currentUser?.id && (
-                        confirmDisableId === u.id ? (
-                          <span className="inline-flex items-center gap-1.5">
-                            <span className="text-xs text-gray-500">無効化しますか?</span>
+                        <span className="inline-flex items-center gap-2">
+                          {confirmDisableId === u.id ? (
+                            <span className="inline-flex items-center gap-1.5">
+                              <span className="text-xs text-gray-500">無効化しますか?</span>
+                              <button
+                                onClick={() => toggleStatus.mutate({ id: u.id, status: u.status })}
+                                disabled={toggleStatus.isPending}
+                                className="text-red-600 hover:text-red-800 text-xs font-semibold disabled:opacity-50"
+                              >
+                                無効化する
+                              </button>
+                              <button
+                                onClick={() => setConfirmDisableId(null)}
+                                className="text-gray-500 hover:text-gray-700 text-xs"
+                              >
+                                キャンセル
+                              </button>
+                            </span>
+                          ) : u.status === 'active' ? (
+                            <button
+                              onClick={() => setConfirmDisableId(u.id)}
+                              className="text-xs px-2 py-1 rounded border border-red-300 text-red-600 hover:bg-red-50 transition-colors"
+                            >
+                              無効化
+                            </button>
+                          ) : (
                             <button
                               onClick={() => toggleStatus.mutate({ id: u.id, status: u.status })}
-                              disabled={toggleStatus.isPending}
-                              className="text-red-600 hover:text-red-800 text-xs font-semibold disabled:opacity-50"
+                              className="text-xs px-2 py-1 rounded border border-green-300 text-green-600 hover:bg-green-50 transition-colors"
                             >
-                              無効化する
+                              有効化
                             </button>
-                            <button
-                              onClick={() => setConfirmDisableId(null)}
-                              className="text-gray-500 hover:text-gray-700 text-xs"
-                            >
-                              キャンセル
-                            </button>
-                          </span>
-                        ) : u.status === 'active' ? (
+                          )}
                           <button
-                            onClick={() => setConfirmDisableId(u.id)}
-                            className="text-xs px-2 py-1 rounded border border-red-300 text-red-600 hover:bg-red-50 transition-colors"
+                            onClick={() => {
+                              setResetTarget(u)
+                              setResetPassword('')
+                              setResetError('')
+                            }}
+                            className="text-xs px-2 py-1 rounded border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors"
                           >
-                            無効化
+                            パスワード再設定
                           </button>
-                        ) : (
-                          <button
-                            onClick={() => toggleStatus.mutate({ id: u.id, status: u.status })}
-                            className="text-xs px-2 py-1 rounded border border-green-300 text-green-600 hover:bg-green-50 transition-colors"
-                          >
-                            有効化
-                          </button>
-                        )
+                        </span>
                       )}
                     </td>
                   )}
@@ -268,6 +306,67 @@ export function Users() {
           </table>
         )}
       </div>
+
+      {resetTarget && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reset-user-title"
+          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+          onClick={() => setResetTarget(null)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="reset-user-title" className="text-lg font-bold text-gray-800 mb-1">
+              パスワード再設定
+            </h2>
+            <p className="text-xs text-gray-500 mb-4">
+              {resetTarget.full_name}（{resetTarget.email}）のパスワードを再設定します。
+            </p>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                resetPasswordMutation.mutate()
+              }}
+              className="space-y-3"
+            >
+              <label htmlFor="reset-user-password" className="block text-sm font-medium text-gray-700">
+                新しいパスワード（8文字以上・2種以上の文字種）
+              </label>
+              <input
+                id="reset-user-password"
+                type="password"
+                autoComplete="new-password"
+                value={resetPassword}
+                onChange={(e) => setResetPassword(e.target.value)}
+                required
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {resetError && (
+                <p role="alert" className="text-red-600 text-xs">{resetError}</p>
+              )}
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setResetTarget(null)}
+                  className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="submit"
+                  disabled={resetPasswordMutation.isPending}
+                  className="px-4 py-1.5 text-sm bg-blue-700 hover:bg-blue-800 text-white rounded-lg disabled:opacity-50"
+                >
+                  {resetPasswordMutation.isPending ? '送信中...' : '再設定'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

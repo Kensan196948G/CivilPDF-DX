@@ -9,6 +9,12 @@ import { useAuthStore } from '../store/auth'
 vi.mock('../api/auth', () => ({
   getMe: vi.fn(),
 }))
+vi.mock('../api/notifications', () => ({
+  listNotifications: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, per_page: 20, pages: 0 }),
+  unreadCount: vi.fn().mockResolvedValue(0),
+  markRead: vi.fn(),
+  markAllRead: vi.fn(),
+}))
 
 import { getMe } from '../api/auth'
 

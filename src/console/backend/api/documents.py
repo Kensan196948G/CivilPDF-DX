@@ -1,5 +1,6 @@
 import io
 import json
+import math
 import re
 import uuid
 from pathlib import Path
@@ -59,7 +60,7 @@ def _ensure_pdf_content(first_chunk: bytes) -> bool:
     return first_chunk.startswith(b"%PDF-")
 
 
-@router.get("/", response_model=List[DocumentResponse])
+@router.get("/", response_model=None)
 def list_documents(
     project_id: Optional[str] = Query(None),
     organization_id: Optional[str] = Query(None),
@@ -67,6 +68,7 @@ def list_documents(
     status_filter: Optional[DocumentStatus] = Query(None, alias="status"),
     page: int = Query(1, ge=1),
     per_page: int = Query(20, ge=1, le=100),
+    include_meta: bool = Query(False, description="paginated response metadata"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -83,8 +85,28 @@ def list_documents(
     if status_filter:
         q = q.filter(Document.status == status_filter)
 
+    total = q.count()
     items = q.offset((page - 1) * per_page).limit(per_page).all()
+    if include_meta:
+        return {
+            "items": items,
+            "total": total,
+            "page": page,
+            "per_page": per_page,
+            "pages": math.ceil(total / per_page) if total else 0,
+        }
     return items
+
+
+@router.get("/trash", response_model=List[DocumentResponse])
+def list_trash(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Return soft-deleted documents visible to the user (ごみ箱)."""
+    q = visible_documents_query(db, current_user)
+    q = q.filter(Document.deletion_requested_at.is_not(None))
+    return q.order_by(Document.deletion_requested_at.desc()).all()
 
 
 @router.post("/", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
@@ -287,6 +309,15 @@ def download_document(
         buf = io.BytesIO()
         writer.write(buf)
         buf.seek(0)
+        create_chained_audit_log(
+            db,
+            user_id=current_user.id,
+            action="document.downloaded",
+            resource_type="document",
+            resource_id=doc.id,
+            detail=json.dumps({"filename": _safe_filename(doc.filename)}),
+            ip_address=None,
+        )
         return StreamingResponse(
             buf,
             media_type="application/pdf",
@@ -297,6 +328,15 @@ def download_document(
             },
         )
     except Exception:
+        create_chained_audit_log(
+            db,
+            user_id=current_user.id,
+            action="document.downloaded",
+            resource_type="document",
+            resource_id=doc.id,
+            detail=json.dumps({"filename": _safe_filename(doc.filename)}),
+            ip_address=None,
+        )
         return FileResponse(
             path=doc.file_path,
             filename=_safe_filename(doc.filename),
@@ -419,3 +459,34 @@ def delete_document(
         detail=json.dumps({"deletion_requested_at": now.isoformat()}),
         ip_address=None,
     )
+
+
+@router.post("/{doc_id}/restore", response_model=DocumentResponse)
+def restore_document(
+    doc_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Restore a soft-deleted document (ごみ箱から復元)."""
+    doc = db.query(Document).filter(Document.id == doc_id).first()
+    assert_document_visible(doc, current_user)
+    if doc.deletion_requested_at is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Document is not in the trash",
+        )
+    doc.deletion_requested_at = None
+    doc.is_archived = False
+    doc.status = DocumentStatus.DRAFT
+    db.commit()
+    db.refresh(doc)
+    create_chained_audit_log(
+        db,
+        user_id=current_user.id,
+        action="document.restored",
+        resource_type="document",
+        resource_id=doc.id,
+        detail=json.dumps({"restored_at": datetime.now(timezone.utc).isoformat()}),
+        ip_address=None,
+    )
+    return doc
