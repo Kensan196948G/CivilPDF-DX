@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_
+from sqlalchemy import func
 from datetime import datetime, timedelta, timezone
 
 from database import get_db
@@ -9,6 +9,7 @@ from models.user import User, UserStatus, UserRole, Project
 from models.document import Document, DocumentStatus, ApprovalWorkflow
 from models.audit_log import AuditLog
 from auth.dependencies import get_current_user
+from services.access_control import can_access_all, visible_documents_query
 
 router = APIRouter(prefix="/stats", tags=["Stats"])
 
@@ -36,43 +37,50 @@ def get_stats(
     thirty_days_ago = now - timedelta(days=30)
     seven_days_ago = now - timedelta(days=7)
 
-    total_documents = db.query(func.count(Document.id)).scalar() or 0
+    visible_docs = visible_documents_query(db, current_user)
+    total_documents = visible_docs.count() or 0
+    visible_doc_ids = visible_docs.with_entities(Document.id).subquery()
     pending_approvals = (
         db.query(func.count(ApprovalWorkflow.id))
         .filter(ApprovalWorkflow.status == "pending")
+        .join(Document, ApprovalWorkflow.document_id == Document.id)
+        .filter(Document.id.in_(visible_doc_ids))
         .scalar()
         or 0
     )
-    active_users = (
-        db.query(func.count(User.id)).filter(User.status == UserStatus.ACTIVE).scalar()
-        or 0
-    )
-    approved_this_month = (
-        db.query(func.count(Document.id))
-        .filter(
-            and_(
-                Document.status == DocumentStatus.APPROVED,
-                Document.updated_at >= thirty_days_ago,
-            )
+    if can_access_all(current_user):
+        active_users = (
+            db.query(func.count(User.id))
+            .filter(User.status == UserStatus.ACTIVE)
+            .scalar()
+            or 0
         )
-        .scalar()
+    else:
+        active_users = 0
+    approved_this_month = (
+        visible_docs.filter(
+            Document.status == DocumentStatus.APPROVED,
+            Document.updated_at >= thirty_days_ago,
+        ).count()
         or 0
     )
     uploaded_this_week = (
-        db.query(func.count(Document.id))
-        .filter(Document.created_at >= seven_days_ago)
+        visible_docs.filter(Document.created_at >= seven_days_ago).count() or 0
+    )
+    total_file_size = (
+        db.query(func.sum(Document.file_size))
+        .filter(Document.id.in_(visible_doc_ids))
         .scalar()
         or 0
     )
-    total_file_size = db.query(func.sum(Document.file_size)).scalar() or 0
 
     type_breakdown = (
-        db.query(Document.document_type, func.count(Document.id))
+        visible_docs.with_entities(Document.document_type, func.count(Document.id))
         .group_by(Document.document_type)
         .all()
     )
     status_breakdown = (
-        db.query(Document.status, func.count(Document.id))
+        visible_docs.with_entities(Document.status, func.count(Document.id))
         .group_by(Document.status)
         .all()
     )

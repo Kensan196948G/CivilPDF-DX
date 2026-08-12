@@ -1,4 +1,6 @@
 import io
+import json
+import re
 import uuid
 from pathlib import Path
 from fastapi import (
@@ -32,11 +34,29 @@ from config import settings
 from services import timestamp_service
 from services.pdfa_validator import validate_pdfa
 from services.retention_service import apply_retention_policy
+from services.audit_chain_service import create_chained_audit_log
+from services.access_control import (
+    assert_document_visible,
+    assert_project_visible,
+    visible_documents_query,
+)
 
 router = APIRouter(prefix="/documents", tags=["Documents"])
 
 ALLOWED_MIME_TYPES = {"application/pdf"}
 MAX_FILE_BYTES = settings.max_file_size_mb * 1024 * 1024
+_CONTROL_CHARS = re.compile(r"[\x00-\x1f\x7f\"\\]")
+
+
+def _safe_filename(filename: str) -> str:
+    """Sanitize a filename for use inside Content-Disposition header values."""
+    cleaned = _CONTROL_CHARS.sub("_", filename or "download")
+    return cleaned.strip() or "download"
+
+
+def _ensure_pdf_content(first_chunk: bytes) -> bool:
+    """Return True when the uploaded content looks like a PDF (magic bytes)."""
+    return first_chunk.startswith(b"%PDF-")
 
 
 @router.get("/", response_model=List[DocumentResponse])
@@ -50,7 +70,8 @@ def list_documents(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    q = db.query(Document)
+    q = visible_documents_query(db, current_user)
+    q = q.filter(Document.deletion_requested_at.is_(None))
     if project_id:
         q = q.filter(Document.project_id == project_id)
     if organization_id:
@@ -81,17 +102,13 @@ async def upload_document(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    project = db.query(Project).filter(Project.id == project_id).first()
+    assert_project_visible(project, current_user)
+
     if file.content_type not in ALLOWED_MIME_TYPES:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
             detail="Only PDF files are allowed",
-        )
-
-    content = await file.read()
-    if len(content) > MAX_FILE_BYTES:
-        raise HTTPException(
-            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
-            detail=f"File size exceeds {settings.max_file_size_mb}MB limit",
         )
 
     # Save file
@@ -100,8 +117,36 @@ async def upload_document(
     file_id = str(uuid.uuid4())
     file_path = upload_dir / f"{file_id}.pdf"
 
+    first_chunk = await file.read(4096)
+    if not _ensure_pdf_content(first_chunk):
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail="File content is not a valid PDF",
+        )
+
+    total_size = len(first_chunk)
+    if total_size > MAX_FILE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File size exceeds {settings.max_file_size_mb}MB limit",
+        )
     async with aiofiles.open(file_path, "wb") as f:
-        await f.write(content)
+        await f.write(first_chunk)
+        while True:
+            chunk = await file.read(1024 * 1024)
+            if not chunk:
+                break
+            total_size += len(chunk)
+            if total_size > MAX_FILE_BYTES:
+                await f.close()
+                file_path.unlink(missing_ok=True)
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail=f"File size exceeds {settings.max_file_size_mb}MB limit",
+                )
+            await f.write(chunk)
+
+    content = Path(file_path).read_bytes()
 
     doc = Document(
         title=title,
@@ -147,6 +192,27 @@ async def upload_document(
 
     db.commit()
     db.refresh(doc)
+    create_chained_audit_log(
+        db,
+        user_id=current_user.id,
+        action="document.uploaded",
+        resource_type="document",
+        resource_id=doc.id,
+        detail=json.dumps(
+            {
+                "project_id": project_id,
+                "title": title,
+                "file_size": total_size,
+                "document_type": (
+                    document_type.value
+                    if hasattr(document_type, "value")
+                    else str(document_type)
+                ),
+            },
+            ensure_ascii=False,
+        ),
+        ip_address=None,
+    )
     return doc
 
 
@@ -157,11 +223,7 @@ def get_document(
     current_user: User = Depends(get_current_user),
 ):
     doc = db.query(Document).filter(Document.id == doc_id).first()
-    if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
-        )
-    return doc
+    return assert_document_visible(doc, current_user)
 
 
 @router.patch("/{doc_id}", response_model=DocumentResponse)
@@ -172,10 +234,7 @@ def update_document(
     current_user: User = Depends(get_current_user),
 ):
     doc = db.query(Document).filter(Document.id == doc_id).first()
-    if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
-        )
+    assert_document_visible(doc, current_user)
     if doc.owner_id != current_user.id and current_user.role.value not in (
         "admin",
         "manager",
@@ -188,6 +247,15 @@ def update_document(
         setattr(doc, field, value)
     db.commit()
     db.refresh(doc)
+    create_chained_audit_log(
+        db,
+        user_id=current_user.id,
+        action="document.updated",
+        resource_type="document",
+        resource_id=doc.id,
+        detail=json.dumps(body.model_dump(exclude_none=True), ensure_ascii=False),
+        ip_address=None,
+    )
     return doc
 
 
@@ -198,10 +266,7 @@ def download_document(
     current_user: User = Depends(get_current_user),
 ):
     doc = db.query(Document).filter(Document.id == doc_id).first()
-    if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
-        )
+    assert_document_visible(doc, current_user)
     if not doc.file_path or not Path(doc.file_path).exists():
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="File not found on disk"
@@ -225,12 +290,16 @@ def download_document(
         return StreamingResponse(
             buf,
             media_type="application/pdf",
-            headers={"Content-Disposition": f'attachment; filename="{doc.filename}"'},
+            headers={
+                "Content-Disposition": (
+                    f'attachment; filename="{_safe_filename(doc.filename)}"'
+                )
+            },
         )
     except Exception:
         return FileResponse(
             path=doc.file_path,
-            filename=doc.filename,
+            filename=_safe_filename(doc.filename),
             media_type="application/pdf",
         )
 
@@ -243,10 +312,7 @@ async def apply_timestamp(
 ):
     """Apply RFC 3161 timestamp to an existing document (電子帳簿保存法・e-文書法)."""
     doc = db.query(Document).filter(Document.id == doc_id).first()
-    if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
-        )
+    assert_document_visible(doc, current_user)
     if doc.owner_id != current_user.id and current_user.role.value not in (
         "admin",
         "manager",
@@ -268,6 +334,15 @@ async def apply_timestamp(
     doc.timestamp_verified_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(doc)
+    create_chained_audit_log(
+        db,
+        user_id=current_user.id,
+        action="document.timestamped",
+        resource_type="document",
+        resource_id=doc.id,
+        detail=json.dumps({"token_type": ts["token_type"], "tsa_url": ts["tsa_url"]}),
+        ip_address=None,
+    )
 
     return TimestampResponse(
         document_id=doc.id,
@@ -287,10 +362,7 @@ def verify_timestamp(
 ):
     """Verify that the stored timestamp matches the current file content."""
     doc = db.query(Document).filter(Document.id == doc_id).first()
-    if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
-        )
+    assert_document_visible(doc, current_user)
 
     if not doc.timestamp_hash or not doc.timestamp_token:
         return TimestampVerifyResponse(
@@ -329,20 +401,21 @@ def delete_document(
     current_user: User = Depends(get_current_user),
 ):
     doc = db.query(Document).filter(Document.id == doc_id).first()
-    if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
-        )
-    if doc.owner_id != current_user.id and current_user.role.value not in (
-        "admin",
-        "manager",
-    ):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Access denied"
-        )
+    assert_document_visible(doc, current_user)
 
-    if doc.file_path:
-        Path(doc.file_path).unlink(missing_ok=True)
-
-    db.delete(doc)
+    # Soft delete: retention/GDPR requires a grace period before physical
+    # removal. The background deletion job performs the physical erasure.
+    now = datetime.now(timezone.utc)
+    doc.deletion_requested_at = now
+    doc.is_archived = True
+    doc.status = DocumentStatus.ARCHIVED
     db.commit()
+    create_chained_audit_log(
+        db,
+        user_id=current_user.id,
+        action="document.soft_deleted",
+        resource_type="document",
+        resource_id=doc.id,
+        detail=json.dumps({"deletion_requested_at": now.isoformat()}),
+        ip_address=None,
+    )

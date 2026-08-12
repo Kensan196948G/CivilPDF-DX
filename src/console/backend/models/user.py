@@ -1,4 +1,13 @@
-from sqlalchemy import Column, String, Boolean, DateTime, Enum, ForeignKey, Table
+from sqlalchemy import (
+    Column,
+    String,
+    Boolean,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Integer,
+    Table,
+)
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import uuid
@@ -39,6 +48,10 @@ class User(Base):
     hashed_password = Column(String, nullable=True)  # nullable for SSO users
     role = Column(Enum(UserRole), default=UserRole.ENGINEER)
     status = Column(Enum(UserStatus), default=UserStatus.ACTIVE)
+
+    # Login protection (brute-force lockout)
+    failed_login_attempts = Column(Integer, default=0, nullable=False)
+    locked_until = Column(DateTime(timezone=True), nullable=True)
 
     # Organization hierarchy (マルチテナント)
     organization_id = Column(String, ForeignKey("organizations.id"), nullable=True)

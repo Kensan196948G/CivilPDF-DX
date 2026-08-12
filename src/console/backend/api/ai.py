@@ -12,8 +12,10 @@ from sqlalchemy.orm import Session
 from auth.dependencies import get_current_user
 from database import get_db
 from models.document import Document
-from models.user import User, UserRole
+from models.user import User
 from services import ai_settings as ai_settings_service
+from services.access_control import document_visible
+from services.audit_chain_service import create_chained_audit_log
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
@@ -51,14 +53,8 @@ _CLAUDE_MODEL = "claude-haiku-4-5-20251001"  # Cost-efficient for classification
 
 
 def _check_document_access(doc: Document, current_user: User) -> None:
-    """Raise 404 if the user is not allowed to access this document.
-
-    Admin/Manager can access any document. Others are limited to their own.
-    Using 404 (not 403) to avoid revealing document existence to unauthorized users.
-    """
-    if current_user.role in (UserRole.ADMIN, UserRole.MANAGER):
-        return
-    if doc.owner_id != current_user.id:
+    """Raise 404 if the user is not allowed to access this document."""
+    if not document_visible(doc, current_user):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
         )
@@ -215,8 +211,24 @@ def classify_document(
         "model": model_name,
     }
     doc.extra_data = extra
-
     db.commit()
+    create_chained_audit_log(
+        db,
+        user_id=current_user.id,
+        action="ai.document_classified",
+        resource_type="document",
+        resource_id=document_id,
+        detail=json.dumps(
+            {
+                "drawing_type": drawing_type,
+                "project_type": project_type,
+                "confidence": confidence,
+                "model": model_name,
+            },
+            ensure_ascii=False,
+        ),
+        ip_address=None,
+    )
 
     return ClassifyResponse(
         document_id=document_id,
@@ -296,6 +308,15 @@ def extract_document_data(
     }
     doc.extra_data = extra
     db.commit()
+    create_chained_audit_log(
+        db,
+        user_id=current_user.id,
+        action="ai.document_extracted",
+        resource_type="document",
+        resource_id=document_id,
+        detail=json.dumps({"model": model_name}, ensure_ascii=False),
+        ip_address=None,
+    )
 
     return ExtractResponse(
         document_id=document_id,
@@ -357,6 +378,15 @@ def get_document_summary(
     }
     doc.extra_data = extra
     db.commit()
+    create_chained_audit_log(
+        db,
+        user_id=current_user.id,
+        action="ai.document_summarized",
+        resource_type="document",
+        resource_id=document_id,
+        detail=json.dumps({"model": model_name}, ensure_ascii=False),
+        ip_address=None,
+    )
 
     return SummaryResponse(
         document_id=document_id,

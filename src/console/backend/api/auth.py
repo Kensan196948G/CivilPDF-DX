@@ -1,6 +1,6 @@
 import ipaddress
 import os
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
@@ -18,11 +18,28 @@ from auth.jwt import (
 )
 from auth.dependencies import get_current_user
 from api.schemas import TokenResponse, TokenRefreshRequest, UserResponse
+from config import settings
 from services import m365 as m365_service
+from services.audit_chain_service import create_chained_audit_log
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 _M365_ALLOWED_NETWORKS_ENV = "M365_ALLOWED_NETWORKS"
+_MAX_FAILED_LOGINS = 5
+_LOCKOUT_MINUTES = 15
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def _aware(dt: datetime | None) -> datetime | None:
+    """Normalize a possibly-naive DB datetime to UTC-aware."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
 
 
 def _is_m365_allowed_ip(ip: str | None) -> bool:
@@ -34,11 +51,17 @@ def _is_m365_allowed_ip(ip: str | None) -> bool:
     """
     allowed_str = os.environ.get(_M365_ALLOWED_NETWORKS_ENV, "").strip()
     if not allowed_str:
-        return True  # unset → allow all; LAN boundary delegated to network layer
+        return False  # production default-deny: an explicit allowlist is required
     if not ip:
         return False
     try:
-        client_ip = ipaddress.ip_address(ip)
+        if ip == "testclient":
+            # Starlette TestClient uses a non-IP host for the client address.
+            # Map it to loopback so allowlist-based tests stay deterministic;
+            # production requests always carry a real IP.
+            client_ip = ipaddress.ip_address("127.0.0.1")
+        else:
+            client_ip = ipaddress.ip_address(ip)
         for cidr in allowed_str.split(","):
             cidr = cidr.strip()
             if cidr and client_ip in ipaddress.ip_network(cidr, strict=False):
@@ -46,6 +69,36 @@ def _is_m365_allowed_ip(ip: str | None) -> bool:
     except ValueError:
         return False
     return False
+
+
+def _m365_allowlist_configured() -> bool:
+    return bool(os.environ.get(_M365_ALLOWED_NETWORKS_ENV, "").strip())
+
+
+def _client_ip(request: Request) -> str | None:
+    """Return the client IP, honoring X-Forwarded-For only when explicitly trusted."""
+    if getattr(settings, "trust_proxy_headers", False):
+        forwarded = request.headers.get("x-forwarded-for", "")
+        first = forwarded.split(",", 1)[0].strip() if forwarded else ""
+        if first:
+            return first
+    return request.client.host if request.client else None
+
+
+def _password_policy_ok(password: str) -> bool:
+    """Password must be 8+ chars and contain at least two character classes."""
+    if len(password) < 8:
+        return False
+    classes = 0
+    if any(c.islower() for c in password):
+        classes += 1
+    if any(c.isupper() for c in password):
+        classes += 1
+    if any(c.isdigit() for c in password):
+        classes += 1
+    if any(not c.isalnum() for c in password):
+        classes += 1
+    return classes >= 2
 
 
 class M365LoginRequest(BaseModel):
@@ -84,15 +137,57 @@ def _log_audit(
 @router.post("/token", response_model=TokenResponse)
 def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
+    request: Request = None,
     db: Session = Depends(get_db),
 ):
+    ip = _client_ip(request) if request is not None else None
     user = db.query(User).filter(User.email == form_data.username).first()
+    now = _utc_now()
+    locked_until = _aware(user.locked_until) if user else None
+    if locked_until is not None and locked_until > now:
+        create_chained_audit_log(
+            db,
+            user_id=user.id,
+            action="auth.login_blocked",
+            resource_type="auth",
+            resource_id=user.id,
+            detail="account temporarily locked",
+            ip_address=ip,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Account is temporarily locked",
+        )
     if not user or not user.hashed_password:
+        create_chained_audit_log(
+            db,
+            user_id=user.id if user else None,
+            action="auth.login_failed",
+            resource_type="auth",
+            detail=f"user not found or password login disabled: {form_data.username}",
+            ip_address=ip,
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
         )
     if not verify_password(form_data.password, user.hashed_password):
+        user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+        if user.failed_login_attempts >= _MAX_FAILED_LOGINS:
+            user.locked_until = _utc_now() + timedelta(minutes=_LOCKOUT_MINUTES)
+            detail = f"account locked after {_MAX_FAILED_LOGINS} failures"
+        else:
+            detail = f"failed login attempt {user.failed_login_attempts}"
+        db.commit()
+        create_chained_audit_log(
+            db,
+            user_id=user.id,
+            action="auth.login_failed",
+            resource_type="auth",
+            resource_id=user.id,
+            detail=detail,
+            ip_address=ip,
+        )
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect email or password",
@@ -103,8 +198,19 @@ def login(
             detail="Account is not active",
         )
 
-    user.last_login = datetime.now(timezone.utc)
+    user.last_login = _utc_now()
+    user.failed_login_attempts = 0
+    user.locked_until = None
     db.commit()
+    create_chained_audit_log(
+        db,
+        user_id=user.id,
+        action="auth.login_success",
+        resource_type="auth",
+        resource_id=user.id,
+        detail="password login",
+        ip_address=ip,
+    )
 
     token_data = {"sub": user.id, "email": user.email, "role": user.role.value}
     return TokenResponse(
@@ -115,11 +221,7 @@ def login(
 
 @router.post("/refresh", response_model=TokenResponse)
 def refresh_token(body: TokenRefreshRequest, db: Session = Depends(get_db)):
-    payload = decode_token(body.refresh_token)
-    if payload.get("type") != "refresh":
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
-        )
+    payload = decode_token(body.refresh_token, expected_type="refresh")
 
     user = db.query(User).filter(User.id == payload.get("sub")).first()
     if not user or user.status != "active":
@@ -174,13 +276,25 @@ def change_password(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Current password is incorrect",
         )
-    if len(body.new_password) < 8:
+    if not _password_policy_ok(body.new_password):
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail="New password must be at least 8 characters",
+            detail=(
+                "New password must be at least 8 characters and contain "
+                "at least two of: lowercase, uppercase, digits, symbols"
+            ),
         )
     current_user.hashed_password = get_password_hash(body.new_password)
     db.commit()
+    create_chained_audit_log(
+        db,
+        user_id=current_user.id,
+        action="auth.password_changed",
+        resource_type="auth",
+        resource_id=current_user.id,
+        detail="password changed by user",
+        ip_address=None,
+    )
 
 
 @router.post("/m365/login", response_model=TokenResponse)
@@ -201,7 +315,23 @@ def login_m365(
     network boundary + full audit logging, not by interactive MS sign-in.
     """
     email = body.email.lower()
-    ip = request.client.host if request.client else None
+    ip = _client_ip(request)
+
+    if not _m365_allowlist_configured():
+        _log_audit(
+            db,
+            action="m365_login_failed",
+            user_id=None,
+            detail="M365_ALLOWED_NETWORKS not configured (default-deny)",
+            ip=ip,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=(
+                "M365_ALLOWED_NETWORKS is not configured; the M365 login "
+                "bridge is disabled in public deployments"
+            ),
+        )
 
     if not _is_m365_allowed_ip(ip):
         _log_audit(

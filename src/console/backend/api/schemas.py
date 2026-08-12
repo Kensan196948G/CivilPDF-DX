@@ -6,6 +6,20 @@ from models.user import UserRole, UserStatus
 from models.document import DocumentStatus, DocumentType
 
 
+def _password_classes(password: str) -> int:
+    """Count character classes present in a password (lower/upper/digit/symbol)."""
+    classes = 0
+    if any(c.islower() for c in password):
+        classes += 1
+    if any(c.isupper() for c in password):
+        classes += 1
+    if any(c.isdigit() for c in password):
+        classes += 1
+    if any(not c.isalnum() for c in password):
+        classes += 1
+    return classes
+
+
 # ─── Organization ───
 class OrganizationCreate(BaseModel):
     name: str
@@ -58,8 +72,11 @@ class UserCreate(BaseModel):
     @field_validator("password")
     @classmethod
     def password_strength(cls, v: str) -> str:
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters")
+        if len(v) < 8 or _password_classes(v) < 2:
+            raise ValueError(
+                "Password must be at least 8 characters and contain at least "
+                "two of: lowercase, uppercase, digits, symbols"
+            )
         return v
 
 
@@ -67,6 +84,7 @@ class UserUpdate(BaseModel):
     full_name: Optional[str] = None
     role: Optional[UserRole] = None
     status: Optional[UserStatus] = None
+    unlock: Optional[bool] = None
 
 
 class UserResponse(BaseModel):

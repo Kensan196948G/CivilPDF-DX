@@ -2,6 +2,7 @@ from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from typing import List
 import json
+import os
 
 # Cross-platform default: <user home>/civildx/uploads
 # Override with UPLOAD_DIR env var or .env file.
@@ -25,6 +26,12 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 60
     refresh_token_expire_days: int = 7
 
+    # M365 login bridge: only trust X-Forwarded-For when the app runs behind a
+    # reverse proxy that strips client-supplied headers (e.g. Cloudflare Tunnel).
+    trust_proxy_headers: bool = False
+
+    timestamp_hmac_key: str = "change-me-in-production"
+
     cors_origins: str = (
         '["http://localhost:5173","http://localhost:3000",'
         '"tauri://localhost","http://tauri.localhost"]'
@@ -45,3 +52,32 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def validate_production_settings(cfg: Settings | None = None) -> None:
+    """Fail fast when production-critical secrets still use insecure defaults.
+
+    Called from the FastAPI lifespan when DEBUG=false. Without this guard a
+    misconfigured deployment silently runs with forgeable JWT/HMAC keys.
+    """
+    cfg = cfg or settings
+    insecure_defaults = {
+        "change-this-in-production",
+        "change-me-in-production",
+        "change-this-to-a-secure-random-string-in-production",
+        "",
+    }
+    if cfg.secret_key in insecure_defaults:
+        raise RuntimeError(
+            "SECRET_KEY must be set to a strong random value in production "
+            "(generate with: openssl rand -hex 32)"
+        )
+    hmac_key = cfg.timestamp_hmac_key or os.environ.get(
+        "TIMESTAMP_HMAC_KEY", "change-me-in-production"
+    )
+    if hmac_key in insecure_defaults:
+        raise RuntimeError(
+            "TIMESTAMP_HMAC_KEY must be set to a strong random value in production "
+            "(generate with: openssl rand -hex 32). It protects the timestamp "
+            "fallback used when TSA_URL is not configured."
+        )

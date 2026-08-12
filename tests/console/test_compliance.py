@@ -7,6 +7,7 @@ Covers:
 - api/privacy.py                 (GDPR/CCPA endpoints)
 - GET /audit-logs/verify         (chain verification endpoint)
 """
+
 import base64
 import hashlib
 import hmac
@@ -32,6 +33,7 @@ from services.retention_service import (
 
 
 # ─── Timestamp Service ───────────────────────────────────────────────────────
+
 
 class TestTimestampService:
     def test_generate_timestamp_local_fallback(self):
@@ -88,6 +90,7 @@ class TestTimestampService:
 
 # ─── Retention Service ────────────────────────────────────────────────────────
 
+
 class TestRetentionService:
     def test_seed_default_policies(self, db_session):
         seed_default_policies(db_session)
@@ -108,6 +111,7 @@ class TestRetentionService:
     def test_apply_retention_sets_expiry(self, db_session, admin_user):
         seed_default_policies(db_session)
         from datetime import datetime, timezone
+
         doc = Document(
             title="test",
             document_type=DocumentType.DRAWING,
@@ -134,6 +138,7 @@ class TestRetentionService:
 
 
 # ─── Audit Chain Service ──────────────────────────────────────────────────────
+
 
 class TestAuditChainService:
     def test_genesis_hash_format(self):
@@ -202,6 +207,7 @@ class TestAuditChainService:
 
     def test_verify_chain_detects_tampering(self, db_session, admin_user):
         from models.audit_log import AuditLog
+
         log = create_chained_audit_log(
             db_session,
             user_id=admin_user.id,
@@ -223,6 +229,7 @@ class TestAuditChainService:
 
 # ─── Privacy API ─────────────────────────────────────────────────────────────
 
+
 class TestPrivacyAPI:
     def test_deletion_request_admin_only(self, client, viewer_token, admin_user):
         resp = client.delete(
@@ -238,7 +245,9 @@ class TestPrivacyAPI:
         )
         assert resp.status_code == 404
 
-    def test_deletion_request_marks_documents(self, client, admin_token, db_session, admin_user):
+    def test_deletion_request_marks_documents(
+        self, client, admin_token, db_session, admin_user
+    ):
         doc = Document(
             title="sensitive",
             document_type=DocumentType.CONTRACT,
@@ -340,7 +349,9 @@ class TestPrivacyAPI:
         assert len(records) >= 1
         assert records[0]["consent_type"] == "analytics"
 
-    def test_get_consent_forbidden_for_other_user(self, client, viewer_token, admin_user):
+    def test_get_consent_forbidden_for_other_user(
+        self, client, viewer_token, admin_user
+    ):
         resp = client.get(
             f"/api/v1/privacy/consent/{admin_user.id}",
             headers={"Authorization": f"Bearer {viewer_token}"},
@@ -350,8 +361,9 @@ class TestPrivacyAPI:
 
 # ─── Audit Log Chain Verify Endpoint ─────────────────────────────────────────
 
+
 class TestAuditChainEndpoint:
-    def test_verify_empty_chain(self, client, admin_token):
+    def test_verify_chain_after_login(self, client, admin_token):
         resp = client.get(
             "/api/v1/audit-logs/verify",
             headers={"Authorization": f"Bearer {admin_token}"},
@@ -359,7 +371,8 @@ class TestAuditChainEndpoint:
         assert resp.status_code == 200
         data = resp.json()
         assert data["chain_valid"] is True
-        assert data["records_checked"] == 0
+        # Login audit entries must form a valid chain (records_checked >= 1).
+        assert data["records_checked"] >= 1
         assert data["first_broken_sequence"] is None
 
     def test_verify_requires_admin(self, client, viewer_token):

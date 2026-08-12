@@ -16,6 +16,17 @@ from models.audit_log import AuditLog
 from models.m365_setting import M365Setting
 
 
+@pytest.fixture(autouse=True)
+def _allow_loopback_for_m365(monkeypatch):
+    """M365 login now requires an explicit network allowlist (default-deny).
+
+    TestClient reports the client host as ``testclient``, which the API maps
+    to 127.0.0.1; allow loopback by default so functional tests exercise the
+    auth flow. Tests that assert network blocking override this fixture.
+    """
+    monkeypatch.setenv("M365_ALLOWED_NETWORKS", "127.0.0.1/32")
+
+
 # --- helpers ----------------------------------------------------------------
 
 
@@ -75,12 +86,12 @@ def fernet_key(monkeypatch):
 @pytest.fixture
 def mock_lookup_ok(monkeypatch):
     """Returns a setter — call it to install a fake Graph response."""
+
     def _install(graph_user: dict | None = None):
         graph_user = graph_user or _make_graph_user()
-        monkeypatch.setattr(
-            m365_service, "lookup_user", lambda db, email: graph_user
-        )
+        monkeypatch.setattr(m365_service, "lookup_user", lambda db, email: graph_user)
         return graph_user
+
     return _install
 
 
@@ -88,7 +99,9 @@ def mock_lookup_ok(monkeypatch):
 
 
 class TestM365Disabled:
-    def test_login_when_m365_disabled_returns_503(self, client, db_session, monkeypatch):
+    def test_login_when_m365_disabled_returns_503(
+        self, client, db_session, monkeypatch
+    ):
         """No mocking — _require_enabled raises M365ConfigError."""
         # Default singleton row has enabled=False
         resp = client.post(
@@ -188,7 +201,9 @@ class TestAutoProvision:
         assert "refresh_token" in body and body["refresh_token"]
 
         # User was created with role=viewer
-        user = db_session.query(User).filter(User.email == "newuser@example.com").first()
+        user = (
+            db_session.query(User).filter(User.email == "newuser@example.com").first()
+        )
         assert user is not None
         assert user.role == UserRole.VIEWER
         assert user.status == UserStatus.ACTIVE
@@ -220,9 +235,7 @@ class TestAutoProvision:
         )
         mock_lookup_ok(_make_graph_user(email="eng@example.com"))
 
-        resp = client.post(
-            "/api/v1/auth/m365/login", json={"email": "eng@example.com"}
-        )
+        resp = client.post("/api/v1/auth/m365/login", json={"email": "eng@example.com"})
         assert resp.status_code == 200
 
         user = db_session.query(User).filter(User.email == "eng@example.com").first()
@@ -294,15 +307,11 @@ class TestExistingActiveUser:
         self, client, db_session, fernet_key, mock_lookup_ok, viewer_user
     ):
         _set_m365_settings(db_session, enabled=True, auto_provision=True)
-        mock_lookup_ok(
-            _make_graph_user(user_id="graph-xyz", email=viewer_user.email)
-        )
+        mock_lookup_ok(_make_graph_user(user_id="graph-xyz", email=viewer_user.email))
 
         assert viewer_user.entra_id is None  # precondition
 
-        resp = client.post(
-            "/api/v1/auth/m365/login", json={"email": viewer_user.email}
-        )
+        resp = client.post("/api/v1/auth/m365/login", json={"email": viewer_user.email})
         assert resp.status_code == 200
         assert "access_token" in resp.json()
 
@@ -353,9 +362,7 @@ class TestGraphAuthError:
 
 class TestInputValidation:
     def test_invalid_email_returns_422(self, client):
-        resp = client.post(
-            "/api/v1/auth/m365/login", json={"email": "not-an-email"}
-        )
+        resp = client.post("/api/v1/auth/m365/login", json={"email": "not-an-email"})
         assert resp.status_code == 422
 
     def test_missing_email_returns_422(self, client):
@@ -367,9 +374,7 @@ class TestInputValidation:
 
 
 class TestNetworkBoundary:
-    def test_blocked_ip_returns_403_and_audits(
-        self, client, db_session, monkeypatch
-    ):
+    def test_blocked_ip_returns_403_and_audits(self, client, db_session, monkeypatch):
         monkeypatch.setenv("M365_ALLOWED_NETWORKS", "10.0.0.0/8")
 
         resp = client.post(
@@ -387,17 +392,16 @@ class TestNetworkBoundary:
         )
         assert log is not None
 
-    def test_empty_allowed_networks_allows_all(
+    def test_empty_allowed_networks_is_default_deny(
         self, client, db_session, monkeypatch, fernet_key, mock_lookup_ok
     ):
         monkeypatch.setenv("M365_ALLOWED_NETWORKS", "")
         _set_m365_settings(db_session, enabled=True, auto_provision=True)
         mock_lookup_ok(_make_graph_user(email="any@example.com"))
 
-        resp = client.post(
-            "/api/v1/auth/m365/login", json={"email": "any@example.com"}
-        )
-        assert resp.status_code == 200
+        resp = client.post("/api/v1/auth/m365/login", json={"email": "any@example.com"})
+        assert resp.status_code == 503
+        assert "M365_ALLOWED_NETWORKS" in resp.json()["detail"]
 
 
 # --- T10: Identity conflict (entra_id mismatch) ----------------------------

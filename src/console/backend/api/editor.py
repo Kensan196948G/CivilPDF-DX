@@ -20,6 +20,9 @@ from models.document import Document, DocumentStatus
 from models.user import User, UserRole
 from services.audit_chain_service import create_chained_audit_log
 from services.editor_service import determine_editor_status
+from services.access_control import assert_document_visible
+
+_MAX_SIDECAR_BYTES = 2 * 1024 * 1024  # 2 MiB
 
 router = APIRouter(prefix="/documents", tags=["Editor Integration"])
 
@@ -49,8 +52,16 @@ def import_review_sidecar(
     current_user: User = Depends(get_current_user),
 ) -> ReviewSidecarImportResponse:
     _require_manager(current_user)
-    doc = _get_doc_or_404(doc_id, db)
     sidecar_dict = payload.model_dump()
+    if (
+        len(json.dumps(sidecar_dict, ensure_ascii=False).encode("utf-8"))
+        > _MAX_SIDECAR_BYTES
+    ):
+        raise HTTPException(
+            status_code=413, detail="Review sidecar payload is too large"
+        )
+    doc = _get_doc_or_404(doc_id, db)
+    assert_document_visible(doc, current_user)
     doc.review_sidecar = sidecar_dict
     doc.review_sidecar_imported_at = datetime.now(timezone.utc)
     doc.status = determine_editor_status(sidecar_dict)
@@ -80,6 +91,7 @@ def get_review_sidecar(
 ) -> ReviewSidecarGetResponse:
     _require_engineer(current_user)
     doc = _get_doc_or_404(doc_id, db)
+    assert_document_visible(doc, current_user)
     return ReviewSidecarGetResponse(
         review_sidecar=doc.review_sidecar,
         review_sidecar_imported_at=doc.review_sidecar_imported_at,
@@ -94,6 +106,7 @@ def flatten_check(
 ) -> FlattenCheckResponse:
     _require_manager(current_user)
     doc = _get_doc_or_404(doc_id, db)
+    assert_document_visible(doc, current_user)
     if doc.file_path is None:
         raise HTTPException(status_code=422, detail="Document file path is not set")
     try:
@@ -138,7 +151,8 @@ def post_editor_events(
     current_user: User = Depends(get_current_user),
 ) -> EditorEventsResponse:
     _require_engineer(current_user)
-    _get_doc_or_404(doc_id, db)
+    doc = _get_doc_or_404(doc_id, db)
+    assert_document_visible(doc, current_user)
     count = 0
     for event in events:
         create_chained_audit_log(
@@ -162,6 +176,7 @@ def get_workflow_status(
 ) -> WorkflowStatusResponse:
     _require_engineer(current_user)
     doc = _get_doc_or_404(doc_id, db)
+    assert_document_visible(doc, current_user)
     workflow = doc.workflow
     if workflow:
         status_str = workflow.status

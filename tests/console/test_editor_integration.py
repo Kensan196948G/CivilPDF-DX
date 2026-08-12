@@ -291,10 +291,10 @@ EVENTS_PAYLOAD = [
 
 class TestEditorEvents:
     def test_engineer_can_post_events(
-        self, client, engineer_token, admin_user, db_session
+        self, client, engineer_token, engineer_user, db_session
     ):
         proj = _make_project(db_session, "PROJ-030")
-        doc = _make_document(db_session, admin_user.id, proj.id)
+        doc = _make_document(db_session, engineer_user.id, proj.id)
 
         resp = client.post(
             f"/api/v1/documents/{doc.id}/editor-events",
@@ -306,10 +306,10 @@ class TestEditorEvents:
         assert data["created"] == 2
 
     def test_events_are_stored_in_audit_log(
-        self, client, engineer_token, admin_token, admin_user, db_session
+        self, client, engineer_token, engineer_user, admin_token, db_session
     ):
         proj = _make_project(db_session, "PROJ-031")
-        doc = _make_document(db_session, admin_user.id, proj.id)
+        doc = _make_document(db_session, engineer_user.id, proj.id)
 
         client.post(
             f"/api/v1/documents/{doc.id}/editor-events",
@@ -326,10 +326,10 @@ class TestEditorEvents:
         assert any("stamp.placed" in a for a in actions)
 
     def test_empty_events_list_returns_200(
-        self, client, engineer_token, admin_user, db_session
+        self, client, engineer_token, engineer_user, db_session
     ):
         proj = _make_project(db_session, "PROJ-032")
-        doc = _make_document(db_session, admin_user.id, proj.id)
+        doc = _make_document(db_session, engineer_user.id, proj.id)
 
         resp = client.post(
             f"/api/v1/documents/{doc.id}/editor-events",
@@ -395,10 +395,10 @@ class TestEditorEvents:
 
 class TestWorkflowStatus:
     def test_engineer_can_get_workflow_status(
-        self, client, engineer_token, admin_user, db_session
+        self, client, engineer_token, engineer_user, db_session
     ):
         proj = _make_project(db_session, "PROJ-040")
-        doc = _make_document(db_session, admin_user.id, proj.id)
+        doc = _make_document(db_session, engineer_user.id, proj.id)
 
         resp = client.get(
             f"/api/v1/documents/{doc.id}/workflow-status",
@@ -410,10 +410,10 @@ class TestWorkflowStatus:
         assert "updated_at" in data
 
     def test_workflow_status_includes_steps_when_workflow_exists(
-        self, client, engineer_token, admin_user, db_session
+        self, client, engineer_token, engineer_user, db_session
     ):
         proj = _make_project(db_session, "PROJ-041")
-        doc = _make_document(db_session, admin_user.id, proj.id)
+        doc = _make_document(db_session, engineer_user.id, proj.id)
 
         resp = client.get(
             f"/api/v1/documents/{doc.id}/workflow-status",
@@ -450,10 +450,10 @@ class TestWorkflowStatus:
         assert resp.status_code == 404
 
     def test_document_status_synced_to_extra_data(
-        self, client, engineer_token, admin_user, db_session
+        self, client, engineer_token, engineer_user, db_session
     ):
         proj = _make_project(db_session, "PROJ-044")
-        doc = _make_document(db_session, admin_user.id, proj.id)
+        doc = _make_document(db_session, engineer_user.id, proj.id)
 
         resp = client.get(
             f"/api/v1/documents/{doc.id}/workflow-status",

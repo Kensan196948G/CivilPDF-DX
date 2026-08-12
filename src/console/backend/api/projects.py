@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+import json
 from sqlalchemy.orm import Session
 from typing import List, Optional
 
@@ -6,6 +7,8 @@ from database import get_db
 from models.user import User, Project
 from auth.dependencies import get_current_user, require_manager
 from api.schemas import ProjectCreate, ProjectResponse
+from services.audit_chain_service import create_chained_audit_log
+from services.access_control import assert_project_visible
 
 router = APIRouter(prefix="/projects", tags=["Projects"])
 
@@ -47,6 +50,15 @@ def create_project(
     db.add(project)
     db.commit()
     db.refresh(project)
+    create_chained_audit_log(
+        db,
+        user_id=current_user.id,
+        action="project.created",
+        resource_type="project",
+        resource_id=project.id,
+        detail=json.dumps({"name": body.name, "code": body.code}),
+        ip_address=None,
+    )
     return project
 
 
@@ -57,11 +69,7 @@ def get_project(
     current_user: User = Depends(get_current_user),
 ):
     project = db.query(Project).filter(Project.id == project_id).first()
-    if not project:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Project not found"
-        )
-    return project
+    return assert_project_visible(project, current_user)
 
 
 @router.post("/{project_id}/members/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -69,7 +77,7 @@ def add_member(
     project_id: str,
     user_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(require_manager),
+    current_user: User = Depends(require_manager),
 ):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
@@ -84,6 +92,15 @@ def add_member(
     if user not in project.members:
         project.members.append(user)
         db.commit()
+        create_chained_audit_log(
+            db,
+            user_id=current_user.id,
+            action="project.member.added",
+            resource_type="project",
+            resource_id=project.id,
+            detail=json.dumps({"user_id": user_id}),
+            ip_address=None,
+        )
 
 
 @router.delete(
@@ -93,7 +110,7 @@ def remove_member(
     project_id: str,
     user_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(require_manager),
+    current_user: User = Depends(require_manager),
 ):
     project = db.query(Project).filter(Project.id == project_id).first()
     if not project:
@@ -104,3 +121,12 @@ def remove_member(
     if user and user in project.members:
         project.members.remove(user)
         db.commit()
+        create_chained_audit_log(
+            db,
+            user_id=current_user.id,
+            action="project.member.removed",
+            resource_type="project",
+            resource_id=project.id,
+            detail=json.dumps({"user_id": user_id}),
+            ip_address=None,
+        )

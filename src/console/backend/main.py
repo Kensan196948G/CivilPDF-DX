@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
 
-from config import settings
+from config import settings, validate_production_settings
 from database import engine, Base
 from api import (
     apps_router,
@@ -34,6 +34,9 @@ logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if not settings.debug:
+        validate_production_settings(settings)
+
     # Create tables on startup (use Alembic in production)
     Base.metadata.create_all(bind=engine)
     logger.info("Database tables created/verified")
