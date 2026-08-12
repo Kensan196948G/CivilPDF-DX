@@ -38,21 +38,21 @@ graph TB
         TANSTACK["TanStack Query v5\nデータフェッチ・キャッシュ"]
         AXIOS["Axios v1\nHTTP クライアント"]
         TAILWIND["Tailwind CSS v4\nスタイリング"]
-        ROUTER["React Router v7\nルーティング"]
+        ROUTER["React Router v8\nルーティング"]
         MOCK["Mock Adapter\n（dev 専用）"]
     end
 
-    subgraph BACKEND["🐍 バックエンド — FastAPI 0.136+"]
+    subgraph BACKEND["🐍 バックエンド — FastAPI 0.136.3"]
         direction TB
-        API_LAYER["📡 API 層（14 ルーター）"]
+        API_LAYER["📡 API 層（18 ルーター）"]
         MW_LAYER["🔒 ミドルウェア層\nAudit・CORS・JWT"]
         SVC_LAYER["⚙️ サービス層\nTSA・PDFA・Deletion・Retention"]
         MODEL_LAYER["🗄️ モデル層\nSQLAlchemy 2.0 ORM"]
     end
 
     subgraph DATA["🗄️ データ層"]
-        POSTGRES["PostgreSQL 16\n（本番）"]
-        SQLITE["SQLite 3\n（開発・テスト）"]
+        POSTGRES["PostgreSQL 16 / Neon\n（移行推奨・正本）"]
+        SQLITE["SQLite 3\n（現行暫定・開発・テスト）"]
         FILES["📁 ファイルストレージ\nuploads/"]
         FTS["SQLite FTS5\n全文検索インデックス"]
     end
@@ -89,8 +89,8 @@ graph TB
 
 | 技術                | バージョン | 選定理由                                     |
 | ------------------- | ---------- | -------------------------------------------- |
-| ⚛️ **React**        | 19.x       | Concurrent Features・Suspense による UX 向上 |
-| 🔷 **TypeScript**   | 5.x        | 型安全性・IDE 補完・大規模コード品質維持     |
+| ⚛️ **React**        | 19.2.x     | Concurrent Features・Suspense による UX 向上 |
+| 🔷 **TypeScript**   | ~6.0.x     | 型安全性・IDE 補完・大規模コード品質維持     |
 | ⚡ **Vite**         | 8.x        | 高速 HMR・ES Modules ネイティブ・本番最適化  |
 | 🎨 **Tailwind CSS** | v4         | ユーティリティファースト・ゼロランタイムCSS  |
 
@@ -118,24 +118,33 @@ graph LR
 | 🐻 **Zustand**        | v5         | 認証状態・グローバル UI 状態                                |
 | 🔄 **TanStack Query** | v5         | サーバーデータのキャッシュ・同期・ページネーション          |
 | 📡 **Axios**          | v1         | HTTP クライアント（JWT インターセプター・自動リフレッシュ） |
-| 🛣️ **React Router**   | v7         | クライアントサイドルーティング・認証ガード                  |
+| 🛣️ **react-router**  | v8         | クライアントサイドルーティング・認証ガード                  |
+| 🗺️ **@tanstack/react-router** | v1 | TanStack Router（package.json 上は依存として同梱） |
 
-### フロントエンド構成（12 画面）
+### フロントエンド構成（Enterprise シェル 15 ビュー + ログイン）
+
+`App.tsx` のルートは `/login` と、認証必須の Enterprise シェル（`components/enterprise/EnterpriseLayout.tsx`）です。シェル内は内部ステートでビューを切替えます。
 
 ```
+src/pages/                    # API 接続済みページ
+├── Login.tsx                 # 🔐 ログイン
+├── Documents.tsx             # 📄 図書管理
+├── Projects.tsx              # 🏗️ プロジェクト
+├── Workflows.tsx             # ✅ 承認ワークフロー
+├── AuditLogs.tsx             # 🔍 監査ログ
+├── Users.tsx                 # 👥 ユーザー管理
+└── Settings.tsx              # ⚙️ システム設定
+
 src/components/enterprise/views/
-├── DashboardView.tsx      # 📊 統計ダッシュボード
-├── DocumentsView.tsx      # 📄 文書一覧・検索・フィルター
-├── UploadView.tsx         # 📤 アップロード + ISO 19650 メタデータ
-├── WorkflowView.tsx       # ✅ 承認ワークフロー管理
-├── AuditView.tsx          # 🔍 監査ログ・証跡閲覧
-├── PrivacyView.tsx        # 🛡️ GDPR Art.17 削除管理
-├── SecurityView.tsx       # 🔒 セキュリティ設定
-├── M365View.tsx           # 🏢 M365 / Azure AD 設定
-├── TimestampView.tsx      # ⏱️ RFC 3161 タイムスタンプ
-├── OrganizationsView.tsx  # 🏗️ 組織階層管理
-├── ElectronicDeliveryView.tsx  # 📦 電子納品 ZIP
-└── AIAnalysisView.tsx     # 🤖 AI 分類・要約
+├── LandingView.tsx           # 🏠 概要
+├── DashboardView.tsx         # 📊 ダッシュボード（overview/stats/dist/users）
+├── UploadView.tsx            # 📤 取込/解析
+├── ViewerView.tsx            # 👁️ ビューア
+├── AppsView.tsx              # 📱 アプリ配布
+├── EditorSyncView.tsx        # 🔗 Editor連携
+├── SecurityView.tsx          # 🔒 セキュリティ
+├── M365View.tsx              # 🏢 Microsoft365
+└── PrivacyView.tsx           # 🛡️ プライバシー
 ```
 
 ### モックアーキテクチャ（dev 専用）
@@ -164,31 +173,34 @@ graph LR
 
 | 技術            | バージョン | 選定理由                                              |
 | --------------- | ---------- | ----------------------------------------------------- |
-| 🚀 **FastAPI**  | 0.136+     | async/await ネイティブ・型ヒント自動 OpenAPI 生成     |
+| 🚀 **FastAPI**  | 0.136.3    | async/await ネイティブ・型ヒント自動 OpenAPI 生成     |
 | 🐍 **Python**   | 3.12       | 最新パフォーマンス改善・型システム強化                |
-| ⚡ **uvicorn**  | 最新       | ASGI サーバー・高スループット                         |
-| ✅ **Pydantic** | v2         | 高速バリデーション・シリアライゼーション（Rust コア） |
+| ⚡ **uvicorn**  | 0.32.1     | ASGI サーバー・高スループット                         |
+| ✅ **Pydantic** | 2.10.x     | 高速バリデーション・シリアライゼーション（Rust コア） |
 
-### API 構成（14 ルーター）
+### API 構成（18 ルーター）
 
 ```mermaid
 graph TB
     subgraph ROUTERS["📡 FastAPI ルーター"]
         AUTH["/auth\n🔐 JWT 認証・トークン管理"]
         USERS["/users\n👥 ユーザー CRUD + RBAC"]
-        DOCS["/documents\n📄 文書管理 + PDF/A"]
+        DOCS["/documents\n📄 文書管理 + PDF/A + タイムスタンプ"]
+        REVISIONS["/documents/{id}/revisions\n📑 リビジョン"]
+        EDITOR["/documents/{id}\n🔗 Editor 連携"]
         WF["/workflows\n✅ 多段階承認"]
         PROJ["/projects\n📁 プロジェクト管理"]
+        ED["/projects/{id}/electronic-delivery\n📦 CALS/EC ZIP"]
         AUDIT["/audit-logs\n🔍 証跡 + チェーン検証"]
         STATS["/stats\n📊 統計集計"]
         M365["/m365\n🏢 Azure AD 統合"]
         PRIVACY["/privacy\n🛡️ GDPR + 同意管理"]
         OCR["/ocr\n🔤 テキスト抽出"]
         AI["/ai\n🤖 分類・抽出・要約"]
+        AICONFIG["/ai-config\n⚙️ AI 設定"]
         SEARCH["/search\n🔎 FTS5 + セマンティック"]
-        TS["/documents/{id}/timestamp\n⏱️ RFC 3161 TSA"]
         ORG["/organizations\n🏗️ 組織階層 CRUD"]
-        ED["/electronic-delivery\n📦 CALS/EC ZIP"]
+        APPS["/apps\n📱 アプリ配布"]
     end
 ```
 
@@ -221,11 +233,13 @@ graph LR
         SQLITE_FILE["SQLite（ファイル）\nローカル開発"]
     end
 
-    subgraph PROD["🚀 本番環境"]
-        POSTGRES["PostgreSQL 16\nACID 保証・高並列"]
+    subgraph PROD["🚀 本番環境（移行推奨）"]
+        POSTGRES["PostgreSQL 16 / Neon\nACID 保証・高並列"]
+        SQLITE_PROD["SQLite（現行暫定）"]
     end
 
     ORM["SQLAlchemy 2.0\nasync ORM"] --> DEV
+    ORM --> SQLITE_PROD
     ORM --> PROD
     ALEMBIC["Alembic\nスキーママイグレーション"] --> DEV
     ALEMBIC --> PROD
@@ -233,9 +247,10 @@ graph LR
 
 | 技術               | バージョン | 用途                                                     |
 | ------------------ | ---------- | -------------------------------------------------------- |
-| 🗄️ **SQLAlchemy**  | 2.0        | async ORM・マッパー・クエリビルダー                      |
-| 📋 **Alembic**     | 最新       | スキーマバージョン管理・ゼロダウンタイムマイグレーション |
-| 🐘 **PostgreSQL**  | 15+        | 本番 DB（全文検索・トランザクション・JSONB）             |
+| 🗄️ **SQLAlchemy**  | 2.0.36     | async ORM・マッパー・クエリビルダー                      |
+| 📋 **Alembic**     | 1.14.0     | スキーマバージョン管理・ゼロダウンタイムマイグレーション |
+| 🐘 **PostgreSQL**  | 16         | 本番 DB 正本（移行推奨・Neon 可。全文検索は FTS/tsvector 設計） |
+| 🗄️ **SQLite**     | 3.x        | 現行本番の暫定 DB・開発/テスト。移行完了まで運用継続     |
 | 🔍 **SQLite FTS5** | 組み込み   | 日本語全文検索（unicode61 トークナイザー）               |
 
 ### データモデル（主要テーブル）
@@ -381,10 +396,12 @@ graph TB
 
 | 技術                   | バージョン | 用途                                     |
 | ---------------------- | ---------- | ---------------------------------------- |
-| 🔑 **python-jose**     | 3.x        | JWT 署名・検証（HS256）                  |
-| 🔒 **passlib[bcrypt]** | 1.x        | パスワードハッシュ（bcrypt cost=12）     |
-| 🛡️ **cryptography**    | 46.x       | Fernet 対称暗号（M365 シークレット保護） |
+| 🔑 **python-jose**     | 3.5.0      | JWT 署名・検証（HS256）                  |
+| 🔒 **bcrypt**          | 4.2.1      | パスワードハッシュ（bcrypt cost=12）     |
+| 🛡️ **cryptography**    | 50.0.0     | Fernet 対称暗号（M365 シークレット保護） |
 | 🔗 **hashlib**         | 組み込み   | SHA-256 監査チェーン生成                 |
+
+> ⚠️ M365 認証は現状 **Client Credentials Flow の非対話ブリッジ**です。Entra ID OIDC SSO（要件 WEB-AUTH-002）は未実装のため、要件上は将来課題として管理しています。
 
 ---
 
@@ -444,23 +461,21 @@ sequenceDiagram
 ### テスト構成と分布
 
 ```mermaid
-pie title テストスイート分布（397件）
-    "Backend ユニット" : 234
-    "E2E 統合テスト" : 20
-    "Frontend Vitest" : 132
+pie title テストスイート分布（実測 633件 / 2026-08-12）
+    "Backend pytest（console + integration）" : 371
+    "Frontend Vitest" : 259
     "Playwright E2E" : 3
-    "org_filter API" : 8
 ```
 
 ```mermaid
 graph TB
     subgraph BACKEND_TEST["🐍 Backend テスト（pytest）"]
-        UNIT["🧪 ユニットテスト\n234件\nSQLite in-memory\nカバレッジ 98%"]
+        UNIT["🧪 ユニットテスト\n351件\nSQLite in-memory\nカバレッジ目標 80% 以上"]
         INTEGRATION["🔗 E2E 統合テスト\n20件\n認証・文書・承認・GDPR・RBAC"]
     end
 
     subgraph FRONTEND_TEST["⚛️ Frontend テスト"]
-        VITEST["⚡ Vitest\n132件\nコンポーネント + シェル統合\njsdom 環境"]
+        VITEST["⚡ Vitest\n259件\nコンポーネント + シェル統合\njsdom 環境"]
         PLAYWRIGHT["🎭 Playwright E2E\n3件\n実ブラウザ（chromium）\n本番ビルド + API モック"]
     end
 
@@ -474,12 +489,10 @@ graph TB
 
 | スイート              | 件数       | カバレッジ         | 実行環境            |
 | --------------------- | ---------- | ------------------ | ------------------- |
-| 🐍 Backend ユニット   | 234 件     | 98%                | SQLite in-memory    |
-| 🔗 E2E 統合テスト     | 20 件      | —                  | SQLite ファイル     |
-| ⚡ Vitest（Frontend） | 132 件     | —                  | jsdom               |
+| 🐍 Backend pytest     | 371 件（console 351 + integration 20） | 目標 80% 以上 | SQLite（in-memory / ファイル） |
+| ⚡ Vitest（Frontend） | 259 件     | —                  | jsdom               |
 | 🎭 Playwright E2E     | 3 件       | —                  | Chromium 実ブラウザ |
-| 🔍 org_filter API     | 8 件       | —                  | SQLite in-memory    |
-| **合計**              | **397 件** | **98%（Backend）** | —                   |
+| **合計**              | **633 件** | —                  | —                   |
 
 ---
 
@@ -491,11 +504,14 @@ graph TB
 # .github/workflows/ci.yml の概要構成
 jobs:
   backend-lint: # ruff check + ruff format --check
-  backend-test: # pytest 234件（SQLite in-memory）
+  backend-test: # pytest 351件（SQLite）+ カバレッジ閾値
   backend-security: # pip-audit 脆弱性スキャン
-  frontend-lint-test: # ESLint + Vitest 132件 + tsc --noEmit
+  frontend-lint-test: # ESLint + Vitest 259件 + tsc --noEmit + build
+  frontend-security: # npm audit
+  secret-scan: # gitleaks
+  ops-checks: # bash -n + バージョン整合チェック
   frontend-e2e: # Playwright 3件（chromium）
-  integration-test: # pytest 20件（E2E）
+  integration-test: # pytest 20件（API E2E）
 ```
 
 ### デプロイゲート
@@ -523,36 +539,38 @@ main → （手動） → Docker build → 本番サーバーへ
 
 | パッケージ                  | バージョン | 用途                       |
 | --------------------------- | ---------- | -------------------------- |
-| `fastapi`                   | 0.136+     | Web フレームワーク         |
-| `uvicorn[standard]`         | 最新       | ASGI サーバー              |
-| `sqlalchemy`                | 2.0+       | ORM                        |
-| `alembic`                   | 最新       | マイグレーション           |
-| `pydantic`                  | v2         | バリデーション             |
-| `python-jose[cryptography]` | 3.x        | JWT                        |
-| `passlib[bcrypt]`           | 1.x        | パスワードハッシュ         |
-| `cryptography`              | 46.x       | Fernet 暗号化              |
-| `anthropic`                 | 0.40+      | Claude AI API              |
-| `pypdf`                     | 最新       | PDF 処理・テキスト抽出     |
-| `aiofiles`                  | 最新       | 非同期ファイル I/O         |
-| `httpx`                     | 最新       | M365 API HTTP クライアント |
-| `psycopg2-binary`           | 最新       | PostgreSQL ドライバー      |
+| `fastapi`                   | 0.136.3    | Web フレームワーク         |
+| `uvicorn[standard]`         | 0.32.1     | ASGI サーバー              |
+| `sqlalchemy`                | 2.0.36     | ORM                        |
+| `alembic`                   | 1.14.0     | マイグレーション           |
+| `pydantic`                  | 2.10.3     | バリデーション             |
+| `python-jose[cryptography]` | 3.5.0      | JWT                        |
+| `bcrypt`                    | 4.2.1      | パスワードハッシュ         |
+| `cryptography`              | 50.0.0     | Fernet 暗号化              |
+| `anthropic`                 | >=0.40.0   | Claude AI API              |
+| `pypdf`                     | >=6.12.0   | PDF 処理・テキスト抽出     |
+| `aiofiles`                  | 24.1.0     | 非同期ファイル I/O         |
+| `httpx`                     | 0.28.1     | M365 API HTTP クライアント |
+| `psycopg2-binary`           | 2.9.10     | PostgreSQL ドライバー      |
+| `starlette`                 | 1.3.1      | ASGI フレームワーク        |
+| `msal`                      | 1.37.0     | Microsoft Entra ID SDK     |
 
 ### フロントエンド（package.json 主要）
 
 | パッケージ              | バージョン | 用途                         |
 | ----------------------- | ---------- | ---------------------------- |
-| `react`                 | 19.x       | UI フレームワーク            |
-| `typescript`            | 5.x        | 型システム                   |
-| `vite`                  | 8.x        | ビルドツール                 |
+| `react`                 | 19.2.x     | UI フレームワーク            |
+| `typescript`            | ~6.0.x     | 型システム                   |
+| `vite`                  | 8.0.x      | ビルドツール                 |
 | `@tanstack/react-query` | v5         | データフェッチ               |
 | `zustand`               | v5         | 状態管理                     |
-| `axios`                 | v1         | HTTP クライアント            |
-| `react-router-dom`      | v7         | ルーティング                 |
+| `axios`                 | 1.19.x     | HTTP クライアント            |
+| `react-router`          | 8.3.x      | ルーティング                 |
+| `@tanstack/react-router`| 1.169.x    | ルーティング（同梱）         |
 | `tailwindcss`           | v4         | スタイリング                 |
-| `axios-mock-adapter`    | 最新       | モックアダプター（dev 専用） |
-| `vitest`                | 最新       | ユニットテスト               |
-| `@playwright/test`      | 最新       | E2E テスト                   |
-| `eslint`                | 最新       | Lint                         |
+| `vitest`                | 4.1.x      | ユニットテスト               |
+| `@playwright/test`      | 1.60.x     | E2E テスト                   |
+| `eslint`                | 10.2.x     | Lint                         |
 
 ---
 
@@ -560,9 +578,9 @@ main → （手動） → Docker build → 本番サーバーへ
 
 ### ADR-001: SQLite → PostgreSQL 移行戦略
 
-- **決定**: 開発は SQLite、本番は PostgreSQL。Alembic で両方サポート
-- **理由**: 開発環境の簡便性 + 本番の ACID 保証・スケーラビリティ
-- **トレードオフ**: SQLite の FTS5 全文検索が PostgreSQL では使えない（tsvector で代替予定）
+- **決定**: 開発・テストは SQLite。本番の正本は PostgreSQL 16 / Neon へ移行（2026-08-12 時点では本番は SQLite の暫定運用）
+- **理由**: 開発環境の簡便性 + 本番の ACID 保証・スケーラビリティ。利用前提の「DB 正本は Neon PostgreSQL」を満たすため
+- **トレードオフ**: SQLite の FTS5 全文検索は PostgreSQL では tsvector 等へ置換が必要。移行手順は [docs/deployment/neon-postgresql-migration.md](deployment/neon-postgresql-migration.md)
 
 ### ADR-002: JWT ステートレス認証
 
@@ -600,7 +618,10 @@ main → （手動） → Docker build → 本番サーバーへ
 | 🌐 API リファレンス     | [docs/api/README.md](api/README.md)                                             |
 | 🗄️ DB 設計書            | [docs/database-design.md](database-design.md)                                   |
 | 📋 要件定義書           | [docs/requirements.md](requirements.md)                                         |
+| 🐘 Neon/PostgreSQL 移行  | [docs/deployment/neon-postgresql-migration.md](deployment/neon-postgresql-migration.md) |
+| 🔑 秘密鍵管理・ローテーション | [docs/deployment/secret-management.md](deployment/secret-management.md)     |
+| 🔢 バージョン管理       | [docs/deployment/version-management.md](deployment/version-management.md)       |
 
 ---
 
-_最終更新: 2026-06-14 | CivilPDF-DX Phase 9 / Release Ready_
+_最終更新: 2026-08-12 | CivilPDF-DX Production Readiness 評価 / 運用文書更新_

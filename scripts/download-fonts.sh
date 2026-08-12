@@ -155,7 +155,7 @@ echo "ダウンロード完了"
 echo "================================================"
 echo ""
 echo "配置されたフォント:"
-find "${FONT_DIR}" -name "*.ttf" -o -name "*.otf" | sort | while read f; do
+find "${FONT_DIR}" -name "*.ttf" -o -name "*.otf" | sort | while read -r f; do
   SIZE=$(du -h "$f" | cut -f1)
   echo "  ${SIZE}  $(basename "$f")"
 done

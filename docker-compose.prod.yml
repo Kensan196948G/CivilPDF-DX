@@ -12,6 +12,9 @@
 #   - db / backend のポートはホストに公開しない（内部ネットワークのみ）。
 #   - API はフロントエンド nginx の /api/ リバースプロキシ経由で到達する。
 #   - 公開ポートは frontend (既定 8080) のみ。HTTPS は前段の TLS リバースプロキシで終端する。
+#   - POSTGRES_PASSWORD は .env 経由で注入する（Git 管理外・0600 推奨）。
+#     厳格な要件がある場合は Docker secrets / 外部シークレット管理へ移行を推奨。
+#   - パスワードに URL 特殊文字（@ : / ?）を含める場合は DATABASE_URL 用にエンコードする。
 # =============================================================================
 
 services:
@@ -82,6 +85,8 @@ services:
       - civilpdf
 
 volumes:
+  # 本番データは named volume に永続化。バックアップは
+  #   pg_dump + uploaded_files ボリュームの tar（docs/deployment/* 参照）を定期実行する。
   postgres_data:
   uploaded_files:
 

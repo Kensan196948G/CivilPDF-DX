@@ -40,7 +40,7 @@ jobs:
           DATABASE_URL: sqlite:///./test_ci.db
           PYTHONPATH: src/console/backend
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-        run: python -m pytest tests/console/ -v --tb=short --cov=src/console/backend --cov-report=xml
+        run: python -m pytest tests/console/ -v --tb=short --cov=src/console/backend --cov-report=xml --cov-fail-under=80
       - name: Upload coverage
         uses: codecov/codecov-action@v4
         if: always()
@@ -156,6 +156,58 @@ jobs:
       - name: Audit dependencies
         # ecdsa PYSEC-2026-1325 は upstream fix 未リリースのため明示 ignore (Issue #106)
         run: pip-audit -r src/console/backend/requirements.txt --ignore-vuln PYSEC-2026-1325
+
+  secret-scan:
+    name: Secret Scan (gitleaks)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install gitleaks
+        run: |
+          mkdir -p "$HOME/.local/bin"
+          curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.30.1/gitleaks_8.30.1_linux_x64.tar.gz \
+            | tar -xz -C "$HOME/.local/bin" gitleaks
+          chmod +x "$HOME/.local/bin/gitleaks"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Run gitleaks detect
+        run: gitleaks detect --source . --redact --verbose
+
+  frontend-security:
+    name: Frontend Dependency Audit (npm audit)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/console/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: "npm"
+          cache-dependency-path: src/console/frontend/package-lock.json
+      - run: npm ci
+      - name: npm audit
+        run: npm audit --audit-level=high
+
+  ops-checks:
+    name: Ops Docs / Script / Version Sync Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate bash scripts
+        run: |
+          for f in scripts/*.sh deploy/install-systemd.sh; do
+            bash -n "$f"
+          done
+      - name: Run shellcheck (warning+)
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq shellcheck
+          shellcheck -S warning scripts/*.sh deploy/install-systemd.sh
+      - name: Validate version sync
+        run: ./scripts/verify-version-sync.sh
 
   frontend-lint-test:
     name: Frontend Lint & Test

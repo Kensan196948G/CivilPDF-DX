@@ -34,12 +34,17 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+if [[ ! "$PORT" =~ ^[0-9]+$ ]] || (( PORT < 1024 || PORT > 65535 )); then
+  echo "ERROR: invalid port: $PORT" >&2
+  exit 2
+fi
+
 mkdir -p "$(dirname "$LOGFILE")"
 log() { printf '%s %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$*" | tee -a "$LOGFILE"; }
 
 # --- locate backup -----------------------------------------------------------
 if [[ -z "${BACKUP_DIR:-}" ]]; then
-  BACKUP_DIR="$(ls -1dt "$BACKUP_ROOT"/[0-9]* 2>/dev/null | head -1)"
+  BACKUP_DIR="$(find "$BACKUP_ROOT" -mindepth 1 -maxdepth 1 -type d -name '[0-9]*' -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2-)"
 fi
 if [[ -z "${BACKUP_DIR:-}" || ! -f "$BACKUP_DIR/civilpdf_dev.db" ]]; then
   log "ERROR: no valid backup found under $BACKUP_ROOT"
