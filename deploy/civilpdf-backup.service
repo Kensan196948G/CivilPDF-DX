@@ -1,5 +1,5 @@
 [Unit]
-Description=CivilPDF-DX production backup (SQLite DB + uploads)
+Description=CivilPDF-DX production backup (PostgreSQL/Neon or SQLite DB + uploads)
 Documentation=https://github.com/Kensan196948G/CivilPDF-DX
 
 [Service]

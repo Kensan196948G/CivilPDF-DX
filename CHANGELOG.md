@@ -17,6 +17,18 @@
   frontend（HTTP 200）・`dx_sync_metrics` テーブル作成を確認
 - バックアップ: `~/civildx-backups/pre-dx-metrics-20260812/`
 
+### 2026-08-12 — 本番DBを Neon PostgreSQL へ移行
+
+- Neon プロジェクト `civilpdf-dx-production`（PG 18.4・aws-ap-southeast-1）を作成し、
+  `alembic upgrade head`（k1l2m3n4o5p6）を適用
+- `scripts/migrate-sqlite-to-neon.py` を新設し、SQLite → PostgreSQL のデータ移行を実行
+  （日時/Boolean/JSON 変換・整数PKシーケンス同期・行数検証を内包）
+- `~/.config/civilpdf/civilpdf.env` の `DATABASE_URL` を Neon へ切替・backend 再起動
+  （alembic `PostgresqlImpl`・/health 200・/stats/dx-sync 401 を確認）
+- `scripts/backup-production.sh` / `deploy/civilpdf-backup.service` を PostgreSQL 対応へ更新
+  （pg_dump 18 自動選択・custom format・pg_restore 検証）
+- ロールバック手順を docs/deployment/neon-postgresql-migration.md に更新
+
 ### 2026-08-12 — DX 同期監視基盤と sidecar 上限拡大（Editor v1.12.3 連携）
 
 - **`dx_sync_metrics` テーブル新設**（migration `k1l2m3n4o5p6`）— review-sidecar 送信の
