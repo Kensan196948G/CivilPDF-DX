@@ -8,6 +8,7 @@ from config import settings
 from models.user import User, UserStatus, UserRole, Project
 from models.document import Document, DocumentStatus, ApprovalWorkflow
 from models.audit_log import AuditLog
+from models.dx_sync_metric import DxSyncMetric
 from auth.dependencies import get_current_user
 from services.access_control import can_access_all, visible_documents_query
 
@@ -302,3 +303,85 @@ def get_daily_stats(
         series.append({"date": day, "count": counts.get(day, 0)})
 
     return {"period": period, "series": series}
+
+
+@router.get(
+    "/dx-sync",
+    summary="DX 同期成功率（dx_sync_metrics 実データ由来）",
+    description=(
+        "CivilPDF-Editor の review-sidecar 送信（POST /documents/{id}/review-sidecar）の"
+        "実測成功/失敗を集計します。値は dx_sync_metrics テーブルの実データです。"
+        "SLO: 成功率 >= 99%。"
+    ),
+)
+def get_dx_sync_stats(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    if current_user.role != UserRole.ADMIN:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
+        )
+
+    rows = db.query(DxSyncMetric).all()
+    now = datetime.now(timezone.utc)
+    thirty_days_ago = now - timedelta(days=30)
+
+    def _aware(dt):
+        if dt is None:
+            return None
+        if dt.tzinfo is None:
+            return dt.replace(tzinfo=timezone.utc)
+        return dt
+
+    rows = [r for r in rows if _aware(r.created_at) is not None]
+
+    total = len(rows)
+    success = sum(1 for r in rows if r.event_type == "success")
+    error = total - success
+
+    recent = [r for r in rows if _aware(r.created_at) >= thirty_days_ago]
+    recent_total = len(recent)
+    recent_success = sum(1 for r in recent if r.event_type == "success")
+    recent_error = recent_total - recent_success
+
+    by_error_kind: dict[str, int] = {}
+    for r in recent:
+        if r.event_type == "error" and r.error_kind:
+            by_error_kind[r.error_kind] = by_error_kind.get(r.error_kind, 0) + 1
+
+    # Last 6 calendar months (Python-side aggregation for SQLite/PostgreSQL parity).
+    monthly: list[dict] = []
+    for offset in range(5, -1, -1):
+        month_start = (
+            now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            - timedelta(days=offset * 31)
+        ).replace(day=1)
+        month_end = (month_start + timedelta(days=32)).replace(day=1)
+        bucket = [r for r in rows if month_start <= _aware(r.created_at) < month_end]
+        monthly.append(
+            {
+                "month": month_start.strftime("%Y-%m"),
+                "success": sum(1 for r in bucket if r.event_type == "success"),
+                "error": sum(1 for r in bucket if r.event_type == "error"),
+            }
+        )
+
+    def _rate(s, e):
+        t = s + e
+        return round(s / t * 100, 2) if t else None
+
+    return {
+        "total": total,
+        "success": success,
+        "error": error,
+        "success_rate_total": _rate(success, error),
+        "success_rate_30d": _rate(recent_success, recent_error),
+        "recent_30d": {
+            "total": recent_total,
+            "success": recent_success,
+            "error": recent_error,
+        },
+        "by_error_kind_30d": by_error_kind,
+        "monthly": monthly,
+    }

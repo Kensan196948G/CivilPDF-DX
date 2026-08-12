@@ -6,6 +6,26 @@ from models.audit_log import AuditLog
 from models.document import Document, DocumentStatus
 
 
+SIDECAR_PAYLOAD = {
+    "schema": "civilpdf.review/v1",
+    "generator": "CivilPDF-Editor",
+    "savedAt": "2026-08-12T09:00:00Z",
+    "stamps": [
+        {
+            "id": "stamp-1",
+            "page": 1,
+            "x": 0.5,
+            "y": 0.5,
+            "w": 0.1,
+            "ratio": 1.0,
+            "src": "data:image/png;base64,AAAA",
+            "status": "approved",
+        }
+    ],
+    "annotations": [],
+}
+
+
 def _pdf_bytes() -> bytes:
     return b"%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n%%EOF"
 
@@ -337,3 +357,35 @@ class TestDailyStats:
             headers={"Authorization": f"Bearer {admin_token}"},
         ).json()["series"]
         assert sum(p["count"] for p in admin_series) >= 2
+
+    def test_dx_sync_stats_aggregates_imports(
+        self, client, admin_token, manager_token
+    ):
+        project_id = _create_project(client, admin_token, code="STAT-DX")
+        doc_id = _upload(client, admin_token, project_id, title="DX Doc")
+
+        resp = client.post(
+            f"/api/v1/documents/{doc_id}/review-sidecar",
+            json=SIDECAR_PAYLOAD,
+            headers={"Authorization": f"Bearer {manager_token}"},
+        )
+        assert resp.status_code == 200
+
+        stats = client.get(
+            "/api/v1/stats/dx-sync",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert stats.status_code == 200
+        data = stats.json()
+        assert data["total"] == 1
+        assert data["success"] == 1
+        assert data["error"] == 0
+        assert data["success_rate_total"] == 100.0
+        assert data["monthly"][-1]["success"] == 1
+
+    def test_dx_sync_stats_is_admin_only(self, client, manager_token):
+        resp = client.get(
+            "/api/v1/stats/dx-sync",
+            headers={"Authorization": f"Bearer {manager_token}"},
+        )
+        assert resp.status_code == 403

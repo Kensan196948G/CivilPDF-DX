@@ -15,6 +15,7 @@ from models.retention_policy import RetentionPolicy, RetentionCategory, DEFAULT_
 from models.consent import ConsentRecord, ConsentType
 from models.ai_setting import AiSetting
 from models.notification import Notification
+from models.dx_sync_metric import DxSyncMetric
 
 __all__ = [
     "Organization",
@@ -39,4 +40,5 @@ __all__ = [
     "ConsentType",
     "AiSetting",
     "Notification",
+    "DxSyncMetric",
 ]

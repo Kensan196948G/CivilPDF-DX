@@ -22,7 +22,11 @@ from services.audit_chain_service import create_chained_audit_log
 from services.editor_service import determine_editor_status
 from services.access_control import assert_document_visible
 
-_MAX_SIDECAR_BYTES = 2 * 1024 * 1024  # 2 MiB
+# Aligned with CivilPDF-Editor v1.12.3 (MAX_SIDECAR_BYTES).
+# 8 MiB supports review sidecars with several image stamps while still
+# bounding abuse. If photo-grade stamp images become common, move to
+# client-side compression instead of raising this further (Issue #92).
+_MAX_SIDECAR_BYTES = 8 * 1024 * 1024  # 8 MiB
 
 router = APIRouter(prefix="/documents", tags=["Editor Integration"])
 

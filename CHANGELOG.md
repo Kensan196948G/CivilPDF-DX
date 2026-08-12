@@ -8,6 +8,18 @@
 
 ## [Unreleased]
 
+### 2026-08-12 — DX 同期監視基盤と sidecar 上限拡大（Editor v1.12.3 連携）
+
+- **`dx_sync_metrics` テーブル新設**（migration `k1l2m3n4o5p6`）— review-sidecar 送信の
+  成功/失敗をサーバー側で 1 リクエスト 1 行記録（ミドルウェア `middleware/dx_metrics.py`）。
+  監査ログとは独立した SLI 集計用の正本
+- **`GET /api/v1/stats/dx-sync` 追加**（Admin 限定）— 総数/成功/失敗/成功率（全体・30日）、
+  エラー種別（auth/rbac/not_found/too_large/invalid/server）、直近 6 か月の月次系列
+- **sidecar 上限を 2 MiB → 8 MiB に拡大**（`api/editor.py`）— Editor v1.12.3 と整合。
+  写真級の印鑑画像が増える場合はクライアント圧縮へ移行（Editor Issue #92）
+- テスト: `test_editor_integration.py`（413・metrics 記録 3 件）、`test_stats.py`
+  （dx-sync 集計・Admin 限定）を追加
+
 ### 2026-08-12 — Phase 1 中核機能（SSO/パスワードリセット/ごみ箱/ページネーション/通知/権限棚卸し/オフサイトバックアップ）
 
 - **OIDC SSO（Entra ID / HENNGE）**: 認可コード + PKCE フロー（`GET /auth/oidc/login` → `GET /auth/oidc/callback`）。JWKS 署名・issuer/audience/nonce 検証、自動プロビジョニング、state httpOnly cookie。MFA は IdP（Conditional Access）で強制。設定手順: `docs/deployment/oidc-sso-setup.md`
