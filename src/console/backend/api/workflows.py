@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+import json
 from sqlalchemy.orm import Session
 from datetime import datetime, timezone
 
@@ -12,6 +13,8 @@ from api.schemas import (
     WorkflowListItem,
     ApprovalDecision,
 )
+from services.audit_chain_service import create_chained_audit_log
+from services.access_control import assert_document_visible, document_visible
 
 router = APIRouter(prefix="/workflows", tags=["Approval Workflows"])
 
@@ -26,6 +29,8 @@ def list_workflows(
     )
     result = []
     for wf in workflows:
+        if not document_visible(wf.document, current_user):
+            continue
         all_steps = wf.steps
         pending = sum(1 for s in all_steps if s.status == "pending")
         result.append(
@@ -50,10 +55,7 @@ def create_workflow(
     current_user: User = Depends(get_current_user),
 ):
     doc = db.query(Document).filter(Document.id == body.document_id).first()
-    if not doc:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Document not found"
-        )
+    assert_document_visible(doc, current_user)
 
     if (
         db.query(ApprovalWorkflow)
@@ -93,6 +95,15 @@ def create_workflow(
     doc.status = DocumentStatus.PENDING_REVIEW
     db.commit()
     db.refresh(workflow)
+    create_chained_audit_log(
+        db,
+        user_id=current_user.id,
+        action="workflow.created",
+        resource_type="workflow",
+        resource_id=workflow.id,
+        detail=json.dumps({"document_id": doc.id, "approver_ids": body.approver_ids}),
+        ip_address=None,
+    )
     return workflow
 
 
@@ -105,10 +116,7 @@ def get_workflow(
     workflow = (
         db.query(ApprovalWorkflow).filter(ApprovalWorkflow.id == workflow_id).first()
     )
-    if not workflow:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Workflow not found"
-        )
+    assert_document_visible(workflow.document if workflow else None, current_user)
     return workflow
 
 
@@ -142,7 +150,21 @@ def decide_step(
             status_code=status.HTTP_409_CONFLICT, detail="Step already decided"
         )
 
-    step.status = body.decision if body.decision == "approved" else "rejected"
+    # Enforce approval order: all previous steps must be approved first.
+    previous_steps = (
+        db.query(ApprovalStep)
+        .filter(
+            ApprovalStep.workflow_id == workflow_id,
+            ApprovalStep.order < step.order,
+        )
+        .all()
+    )
+    if any(s.status != "approved" for s in previous_steps):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Previous approval steps must be approved first",
+        )
+
     # normalize: "approve" -> "approved", "reject" -> "rejected"
     step.status = "approved" if body.decision == "approve" else "rejected"
     step.comment = body.comment
@@ -179,4 +201,20 @@ def decide_step(
 
     db.commit()
     db.refresh(workflow)
+    create_chained_audit_log(
+        db,
+        user_id=current_user.id,
+        action="workflow.step.decided",
+        resource_type="workflow",
+        resource_id=workflow.id,
+        detail=json.dumps(
+            {
+                "step_id": step.id,
+                "decision": body.decision,
+                "step_order": step.order,
+            },
+            ensure_ascii=False,
+        ),
+        ip_address=None,
+    )
     return workflow

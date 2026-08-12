@@ -59,7 +59,7 @@ def get_current_user(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    payload = decode_token(token)
+    payload = decode_token(token, expected_type="access")
     user_id: str = payload.get("sub")
     if not user_id:
         raise HTTPException(

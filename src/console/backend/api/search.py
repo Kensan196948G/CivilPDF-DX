@@ -13,6 +13,7 @@ from auth.dependencies import get_current_user
 from database import get_db
 from models.document import Document
 from models.user import User, UserRole
+from services.access_control import document_visible
 
 router = APIRouter(prefix="/search", tags=["Search"])
 
@@ -194,13 +195,10 @@ def _build_fts_query(terms: list[str], mode: str) -> str:
 # ── Access filter helper ───────────────────────────────────────────────────────
 
 
-def _is_accessible(doc_row: dict, current_user: User) -> bool:
-    """True if the user can see this document hit."""
-    if current_user.role in (UserRole.ADMIN, UserRole.MANAGER):
-        return True
-    # For other roles: only own documents
-    # document_id is available; we trust FTS JOIN already filters by non-GDPR docs
-    return True  # All authenticated users can search — RBAC limits write ops
+def _is_accessible(doc_row: dict, current_user: User, db: Session) -> bool:
+    """True if the user can see this document hit (owner or project member)."""
+    doc = db.query(Document).filter(Document.id == doc_row["document_id"]).first()
+    return document_visible(doc, current_user)
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -254,7 +252,7 @@ def search_documents(
             tags=_parse_tags(r.get("tags")),
         )
         for r in rows
-        if _is_accessible(r, current_user)
+        if _is_accessible(r, current_user, db)
     ]
 
     return SearchResponse(

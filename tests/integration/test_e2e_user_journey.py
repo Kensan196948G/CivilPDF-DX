@@ -4,6 +4,7 @@ These tests verify complete business flows from authentication through
 document management and approval workflows. Each test class represents
 a distinct user scenario.
 """
+
 import io
 import uuid
 
@@ -29,7 +30,9 @@ def create_project(client, token: str, name: str = "E2E Project") -> str:
     return resp.json()["id"]
 
 
-def upload_document(client, token: str, project_id: str, title: str = "E2E Doc") -> dict:
+def upload_document(
+    client, token: str, project_id: str, title: str = "E2E Doc"
+) -> dict:
     resp = client.post(
         "/api/v1/documents/",
         data={"project_id": project_id, "title": title},
@@ -150,13 +153,30 @@ class TestDocumentFlow:
         ids = [d["id"] for d in list_resp.json()]
         assert doc["id"] not in ids
 
-    def test_any_authenticated_user_can_upload_document(self, client, admin_token):
-        # Upload API has no role restriction — any authenticated user may upload
-        _, engineer_token = create_user_and_token(
-            client, admin_token,
-            email="eng@e2e.com", username="eng_e2e", role="engineer"
+    def test_non_member_engineer_cannot_upload_document(self, client, admin_token):
+        # Upload requires project membership (RBAC hardening).
+        engineer_id, engineer_token = create_user_and_token(
+            client,
+            admin_token,
+            email="eng@e2e.com",
+            username="eng_e2e",
+            role="engineer",
         )
         project_id = create_project(client, admin_token)
+        resp = client.post(
+            "/api/v1/documents/",
+            data={"project_id": project_id, "title": "エンジニア図面"},
+            files={"file": ("f.pdf", io.BytesIO(_minimal_pdf()), "application/pdf")},
+            headers={"Authorization": f"Bearer {engineer_token}"},
+        )
+        assert resp.status_code == 404
+
+        # After membership is granted the same user can upload.
+        resp = client.post(
+            f"/api/v1/projects/{project_id}/members/{engineer_id}",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert resp.status_code == 204
         resp = client.post(
             "/api/v1/documents/",
             data={"project_id": project_id, "title": "エンジニア図面"},
@@ -185,18 +205,27 @@ class TestApprovalWorkflowFlow:
         doc = upload_document(client, admin_token, project_id)
 
         approver1_id, approver1_token = create_user_and_token(
-            client, admin_token,
-            email="approver1@e2e.com", username="approver1", role="manager"
+            client,
+            admin_token,
+            email="approver1@e2e.com",
+            username="approver1",
+            role="manager",
         )
         approver2_id, approver2_token = create_user_and_token(
-            client, admin_token,
-            email="approver2@e2e.com", username="approver2", role="manager"
+            client,
+            admin_token,
+            email="approver2@e2e.com",
+            username="approver2",
+            role="manager",
         )
 
         # Create workflow with 2 approvers
         wf_resp = client.post(
             "/api/v1/workflows/",
-            json={"document_id": doc["id"], "approver_ids": [approver1_id, approver2_id]},
+            json={
+                "document_id": doc["id"],
+                "approver_ids": [approver1_id, approver2_id],
+            },
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert wf_resp.status_code == 201
@@ -238,8 +267,11 @@ class TestApprovalWorkflowFlow:
         doc = upload_document(client, admin_token, project_id)
 
         approver_id, approver_token = create_user_and_token(
-            client, admin_token,
-            email="approver_rej@e2e.com", username="approver_rej", role="manager"
+            client,
+            admin_token,
+            email="approver_rej@e2e.com",
+            username="approver_rej",
+            role="manager",
         )
 
         wf_resp = client.post(
@@ -269,12 +301,18 @@ class TestApprovalWorkflowFlow:
         doc = upload_document(client, admin_token, project_id)
 
         approver_id, _ = create_user_and_token(
-            client, admin_token,
-            email="real_approver@e2e.com", username="real_approver", role="manager"
+            client,
+            admin_token,
+            email="real_approver@e2e.com",
+            username="real_approver",
+            role="manager",
         )
         _, intruder_token = create_user_and_token(
-            client, admin_token,
-            email="intruder@e2e.com", username="intruder", role="manager"
+            client,
+            admin_token,
+            email="intruder@e2e.com",
+            username="intruder",
+            role="manager",
         )
 
         wf_resp = client.post(
@@ -292,12 +330,17 @@ class TestApprovalWorkflowFlow:
         )
         assert decide.status_code == 403
 
-    def test_duplicate_workflow_for_same_document_returns_409(self, client, admin_token):
+    def test_duplicate_workflow_for_same_document_returns_409(
+        self, client, admin_token
+    ):
         project_id = create_project(client, admin_token)
         doc = upload_document(client, admin_token, project_id)
         approver_id, _ = create_user_and_token(
-            client, admin_token,
-            email="dup_approver@e2e.com", username="dup_approver", role="manager"
+            client,
+            admin_token,
+            email="dup_approver@e2e.com",
+            username="dup_approver",
+            role="manager",
         )
 
         client.post(
@@ -328,7 +371,9 @@ class TestGDPRPrivacyFlow:
         assert data["user_id"] == admin_user.id
         assert "documents" in data
 
-    def test_user_can_request_deletion_of_own_data(self, client, admin_token, admin_user):
+    def test_user_can_request_deletion_of_own_data(
+        self, client, admin_token, admin_user
+    ):
         project_id = create_project(client, admin_token)
         upload_document(client, admin_token, project_id)
 
@@ -344,8 +389,11 @@ class TestGDPRPrivacyFlow:
 
     def test_user_cannot_request_deletion_for_other_user(self, client, admin_token):
         _, other_token = create_user_and_token(
-            client, admin_token,
-            email="other_gdpr@e2e.com", username="other_gdpr", role="engineer"
+            client,
+            admin_token,
+            email="other_gdpr@e2e.com",
+            username="other_gdpr",
+            role="engineer",
         )
         resp = client.delete(
             f"/api/v1/privacy/users/{admin_token[:10]}/data",
@@ -374,8 +422,11 @@ class TestRBACFlow:
 
     def test_viewer_cannot_create_users(self, client, admin_token):
         _, viewer_token = create_user_and_token(
-            client, admin_token,
-            email="viewer_rbac@e2e.com", username="viewer_rbac", role="viewer"
+            client,
+            admin_token,
+            email="viewer_rbac@e2e.com",
+            username="viewer_rbac",
+            role="viewer",
         )
         resp = client.post(
             "/api/v1/users/",
@@ -391,8 +442,11 @@ class TestRBACFlow:
 
     def test_viewer_cannot_access_audit_logs(self, client, admin_token):
         _, viewer_token = create_user_and_token(
-            client, admin_token,
-            email="viewer_audit@e2e.com", username="viewer_audit", role="viewer"
+            client,
+            admin_token,
+            email="viewer_audit@e2e.com",
+            username="viewer_audit",
+            role="viewer",
         )
         resp = client.get(
             "/api/v1/audit-logs/",

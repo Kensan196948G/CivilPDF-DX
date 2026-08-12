@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+import json
 from sqlalchemy.orm import Session
 from typing import List
 from database import get_db
@@ -6,6 +7,8 @@ from models.user import User
 from auth.dependencies import get_current_user, require_admin
 from auth.jwt import get_password_hash
 from api.schemas import UserCreate, UserUpdate, UserResponse
+from services.audit_chain_service import create_chained_audit_log
+from models.document import Document
 
 router = APIRouter(prefix="/users", tags=["Users"])
 
@@ -22,7 +25,7 @@ def list_users(
 def create_user(
     body: UserCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    current_user: User = Depends(require_admin),
 ):
     if db.query(User).filter(User.email == body.email).first():
         raise HTTPException(
@@ -43,6 +46,17 @@ def create_user(
     db.add(user)
     db.commit()
     db.refresh(user)
+    create_chained_audit_log(
+        db,
+        user_id=current_user.id,
+        action="user.created",
+        resource_type="user",
+        resource_id=user.id,
+        detail=json.dumps(
+            {"email": user.email, "role": user.role.value}, ensure_ascii=False
+        ),
+        ip_address=None,
+    )
     return user
 
 
@@ -69,7 +83,7 @@ def update_user(
     user_id: str,
     body: UserUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    current_user: User = Depends(require_admin),
 ):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
@@ -79,8 +93,20 @@ def update_user(
 
     for field, value in body.model_dump(exclude_none=True).items():
         setattr(user, field, value)
+    if body.unlock:
+        user.failed_login_attempts = 0
+        user.locked_until = None
     db.commit()
     db.refresh(user)
+    create_chained_audit_log(
+        db,
+        user_id=current_user.id,
+        action="user.updated",
+        resource_type="user",
+        resource_id=user_id,
+        detail=json.dumps(body.model_dump(exclude_none=True), ensure_ascii=False),
+        ip_address=None,
+    )
     return user
 
 
@@ -99,5 +125,23 @@ def delete_user(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="User not found"
         )
+    owned_docs = db.query(Document.id).filter(Document.owner_id == user_id).first()
+    if owned_docs:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "User owns documents; deactivate the account instead of deleting "
+                "to preserve document ownership and audit integrity"
+            ),
+        )
     db.delete(user)
     db.commit()
+    create_chained_audit_log(
+        db,
+        user_id=current_user.id,
+        action="user.deleted",
+        resource_type="user",
+        resource_id=user_id,
+        detail=json.dumps({"email": user.email}, ensure_ascii=False),
+        ip_address=None,
+    )

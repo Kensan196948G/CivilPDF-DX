@@ -11,6 +11,7 @@ from database import get_db
 from models.document import Document, DocumentVersion
 from models.user import User, UserRole
 from services.audit_chain_service import create_chained_audit_log
+from services.access_control import assert_document_visible
 
 router = APIRouter(prefix="/documents", tags=["Revisions"])
 
@@ -33,9 +34,18 @@ async def upload_revision(
 ) -> RevisionResponse:
     _require_manager(current_user)
     doc = db.query(Document).filter(Document.id == doc_id).first()
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
+    assert_document_visible(doc, current_user)
     content = await file.read()
+    if not content.startswith(b"%PDF-"):
+        raise HTTPException(status_code=415, detail="File content is not a valid PDF")
+    from config import settings
+
+    max_bytes = settings.max_file_size_mb * 1024 * 1024
+    if len(content) > max_bytes:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File size exceeds {settings.max_file_size_mb}MB limit",
+        )
     file_size = len(content)
     max_version = (
         db.query(func.max(DocumentVersion.version_number))
@@ -77,8 +87,7 @@ def list_revisions(
     current_user: User = Depends(get_current_user),
 ) -> List[RevisionResponse]:
     doc = db.query(Document).filter(Document.id == doc_id).first()
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
+    assert_document_visible(doc, current_user)
     versions = (
         db.query(DocumentVersion)
         .filter(DocumentVersion.document_id == doc_id)

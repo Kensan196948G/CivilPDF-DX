@@ -1,7 +1,13 @@
 """Integration test fixtures — full-stack API flow tests."""
+
 import sys
 import os
+
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src/console/backend"))
+
+# Production-safety validation must see strong test secrets.
+os.environ.setdefault("SECRET_KEY", "unit-test-secret-key-value")
+os.environ.setdefault("TIMESTAMP_HMAC_KEY", "unit-test-hmac-key-value")
 
 import pytest
 from fastapi.testclient import TestClient

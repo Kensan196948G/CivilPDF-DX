@@ -1,4 +1,5 @@
 """Document management API tests."""
+
 import io
 from unittest.mock import patch
 
@@ -21,8 +22,14 @@ class TestDocumentUpload:
         project_id = self._create_project(client, admin_token)
         resp = client.post(
             "/api/v1/documents/",
-            data={"project_id": project_id, "title": "Test Drawing", "document_type": "drawing"},
-            files={"file": ("test.pdf", io.BytesIO(_make_pdf_bytes()), "application/pdf")},
+            data={
+                "project_id": project_id,
+                "title": "Test Drawing",
+                "document_type": "drawing",
+            },
+            files={
+                "file": ("test.pdf", io.BytesIO(_make_pdf_bytes()), "application/pdf")
+            },
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert resp.status_code == 201
@@ -42,7 +49,9 @@ class TestDocumentUpload:
         assert resp.status_code == 415
 
     def test_list_documents_empty(self, client, admin_token):
-        resp = client.get("/api/v1/documents/", headers={"Authorization": f"Bearer {admin_token}"})
+        resp = client.get(
+            "/api/v1/documents/", headers={"Authorization": f"Bearer {admin_token}"}
+        )
         assert resp.status_code == 200
         assert resp.json() == []
 
@@ -70,7 +79,10 @@ class TestDocumentUpload:
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         doc_id = upload.json()["id"]
-        resp = client.get(f"/api/v1/documents/{doc_id}", headers={"Authorization": f"Bearer {admin_token}"})
+        resp = client.get(
+            f"/api/v1/documents/{doc_id}",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
         assert resp.status_code == 200
         assert resp.json()["id"] == doc_id
 
@@ -100,10 +112,23 @@ class TestDocumentUpload:
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         doc_id = upload.json()["id"]
-        resp = client.delete(f"/api/v1/documents/{doc_id}", headers={"Authorization": f"Bearer {admin_token}"})
+        resp = client.delete(
+            f"/api/v1/documents/{doc_id}",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
         assert resp.status_code == 204
-        get_resp = client.get(f"/api/v1/documents/{doc_id}", headers={"Authorization": f"Bearer {admin_token}"})
-        assert get_resp.status_code == 404
+        get_resp = client.get(
+            f"/api/v1/documents/{doc_id}",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        assert get_resp.status_code == 200
+        assert get_resp.json()["deletion_requested_at"] is not None
+        list_resp = client.get(
+            "/api/v1/documents/",
+            headers={"Authorization": f"Bearer {admin_token}"},
+        )
+        titles = [d["title"] for d in list_resp.json()]
+        assert "Delete Me" not in titles
 
     def test_upload_requires_auth(self, client):
         resp = client.post(
@@ -136,7 +161,13 @@ class TestDocumentUpload:
             resp = client.post(
                 "/api/v1/documents/",
                 data={"project_id": project_id, "title": "Too Large"},
-                files={"file": ("big.pdf", io.BytesIO(small_but_over_limit), "application/pdf")},
+                files={
+                    "file": (
+                        "big.pdf",
+                        io.BytesIO(small_but_over_limit),
+                        "application/pdf",
+                    )
+                },
                 headers={"Authorization": f"Bearer {admin_token}"},
             )
         assert resp.status_code == 413
@@ -163,7 +194,7 @@ class TestDocumentUpload:
             json={"title": "Hijacked"},
             headers={"Authorization": f"Bearer {viewer_token}"},
         )
-        assert resp.status_code == 403
+        assert resp.status_code == 404
 
     def test_delete_document_not_found(self, client, admin_token):
         resp = client.delete(
@@ -185,7 +216,7 @@ class TestDocumentUpload:
             f"/api/v1/documents/{doc_id}",
             headers={"Authorization": f"Bearer {viewer_token}"},
         )
-        assert resp.status_code == 403
+        assert resp.status_code == 404
 
 
 class TestTimestamp:
@@ -201,7 +232,9 @@ class TestTimestamp:
         upload = client.post(
             "/api/v1/documents/",
             data={"project_id": project_id, "title": "TS Doc"},
-            files={"file": ("ts.pdf", io.BytesIO(_make_pdf_bytes()), "application/pdf")},
+            files={
+                "file": ("ts.pdf", io.BytesIO(_make_pdf_bytes()), "application/pdf")
+            },
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         return upload.json()["id"], project_id
@@ -232,7 +265,7 @@ class TestTimestamp:
             f"/api/v1/documents/{doc_id}/timestamp",
             headers={"Authorization": f"Bearer {viewer_token}"},
         )
-        assert resp.status_code == 403
+        assert resp.status_code == 404
 
     def test_verify_timestamp_valid(self, client, admin_token):
         doc_id, _ = self._upload_doc(client, admin_token)
@@ -259,11 +292,20 @@ class TestTimestamp:
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         project_id = proj.json()["id"]
-        with patch("services.timestamp_service.generate_timestamp", side_effect=Exception("TSA unavailable")):
+        with patch(
+            "services.timestamp_service.generate_timestamp",
+            side_effect=Exception("TSA unavailable"),
+        ):
             upload = client.post(
                 "/api/v1/documents/",
                 data={"project_id": project_id, "title": "No TS Doc"},
-                files={"file": ("no_ts.pdf", io.BytesIO(_make_pdf_bytes()), "application/pdf")},
+                files={
+                    "file": (
+                        "no_ts.pdf",
+                        io.BytesIO(_make_pdf_bytes()),
+                        "application/pdf",
+                    )
+                },
                 headers={"Authorization": f"Bearer {admin_token}"},
             )
         doc_id = upload.json()["id"]

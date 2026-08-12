@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+import json
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -7,6 +8,7 @@ from models.user import User
 from models.organization import Organization
 from auth.dependencies import get_current_user
 from api.schemas import OrganizationCreate, OrganizationResponse, OrganizationUpdate
+from services.audit_chain_service import create_chained_audit_log
 
 router = APIRouter(prefix="/organizations", tags=["Organizations"])
 
@@ -82,6 +84,17 @@ def create_organization(
     db.add(org)
     db.commit()
     db.refresh(org)
+    create_chained_audit_log(
+        db,
+        user_id=current_user.id,
+        action="organization.created",
+        resource_type="organization",
+        resource_id=org.id,
+        detail=json.dumps(
+            {"name": org.name, "code": org.code, "org_type": org.org_type.value}
+        ),
+        ip_address=None,
+    )
     return org
 
 
@@ -117,6 +130,15 @@ def update_organization(
         setattr(org, field, value)
     db.commit()
     db.refresh(org)
+    create_chained_audit_log(
+        db,
+        user_id=current_user.id,
+        action="organization.updated",
+        resource_type="organization",
+        resource_id=org_id,
+        detail=json.dumps(body.model_dump(exclude_none=True)),
+        ip_address=None,
+    )
     return org
 
 
@@ -142,6 +164,15 @@ def delete_organization(
 
     org.is_active = False
     db.commit()
+    create_chained_audit_log(
+        db,
+        user_id=current_user.id,
+        action="organization.deleted",
+        resource_type="organization",
+        resource_id=org_id,
+        detail=json.dumps({"name": org.name, "code": org.code}),
+        ip_address=None,
+    )
 
 
 @router.get("/{org_id}/members", response_model=List[dict])
@@ -152,6 +183,7 @@ def list_members(
     current_user: User = Depends(get_current_user),
 ):
     """List users belonging to this organization (or whole subtree)."""
+    _require_admin(current_user)
     org = db.query(Organization).filter(Organization.id == org_id).first()
     if not org:
         raise HTTPException(

@@ -1,9 +1,12 @@
 """Audit log API tests."""
+
 from models.audit_log import AuditLog
 
 
 class TestAuditLogs:
-    def _create_log(self, db, action: str, resource_type: str = None, user_id: str = None):
+    def _create_log(
+        self, db, action: str, resource_type: str = None, user_id: str = None
+    ):
         log = AuditLog(
             action=action,
             resource_type=resource_type,
@@ -17,7 +20,9 @@ class TestAuditLogs:
         db.refresh(log)
         return log
 
-    def test_list_audit_logs_as_admin(self, client, admin_token, db_session, admin_user):
+    def test_list_audit_logs_as_admin(
+        self, client, admin_token, db_session, admin_user
+    ):
         self._create_log(db_session, "document.upload", "document", admin_user.id)
         self._create_log(db_session, "workflow.create", "workflow", admin_user.id)
 
@@ -81,15 +86,16 @@ class TestAuditLogs:
         assert data["per_page"] == 2
         assert data["pages"] >= 3
 
-    def test_empty_audit_logs(self, client, admin_token):
+    def test_login_records_audit_entries(self, client, admin_token):
         resp = client.get(
             "/api/v1/audit-logs/",
             headers={"Authorization": f"Bearer {admin_token}"},
         )
         assert resp.status_code == 200
         data = resp.json()
-        assert data["total"] == 0
-        assert data["items"] == []
+        # Every successful password login now persists an audit entry.
+        assert data["total"] >= 1
+        assert any(item["action"] == "auth.login_success" for item in data["items"])
 
     def test_log_response_fields(self, client, admin_token, db_session, admin_user):
         self._create_log(db_session, "document.delete", "document", admin_user.id)

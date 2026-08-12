@@ -1,0 +1,12 @@
+title = "CivilPDF-DX gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Test fixtures intentionally set dummy secret environment values for production-safety validation. No real secrets are stored in the repository."
+paths = [
+  '''tests/console/conftest.py''',
+  '''tests/integration/conftest.py''',
+  '''tests/console/test_security_authz_fixes.py''',
+]
