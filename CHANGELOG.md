@@ -8,6 +8,34 @@
 
 ## [Unreleased]
 
+### 2026-08-12 — 本番運用前総合評価とセキュリティ強化（PR #120/#121/#122）
+
+- **セキュリティ（#122）**:
+  - RBAC 境界の一元化（`services/access_control.py`）— 文書/プロジェクト/ワークフロー/リビジョン/Editor/電子納品/検索/AI/統計/組織メンバーに組織・プロジェクト所属＋ロール制御。未許可は 404
+  - refresh token の API 利用を拒否（access/refresh の type 検証）
+  - 本番（DEBUG=false）で `SECRET_KEY` / `TIMESTAMP_HMAC_KEY` 既定値なら起動失敗（fail-fast）
+  - M365 非対話ログインを既定拒否化（`M365_ALLOWED_NETWORKS` 必須・`TRUST_PROXY_HEADERS` で X-Forwarded-For 制御）
+  - アップロード: PDF マジックバイト検証・プロジェクト所属検証・ストリーミング保存・filename サニタイズ
+  - 文書削除を論理削除化（`deletion_requested_at` + archived。物理削除は GDPR バッチへ委譲）
+  - 承認ワークフローの順序強制（後続ステップ先行承認は 409）
+  - 監査ログ DB 永続化（ログイン/パスワード/文書/ユーザー/プロジェクト/ワークフロー/組織/AI 操作をハッシュチェーン付きで記録）
+  - ログイン失敗 5 回で 15 分ロック（Alembic `i1j2k3l4m5n6`）＋管理者 unlock
+  - パスワード 8 文字以上＋文字種 2 種以上を強制
+  - ユーザー削除の FK ガード・Editor sidecar 2MB 上限・組織メンバー一覧を管理者限定
+- **フロントエンド UX/アクセシビリティ（#120）**:
+  - 401 リフレッシュの単一フライト化と失敗時クリーンアップ
+  - 破壊的操作（文書/プロジェクト削除・ユーザー無効化）の確認ダイアログ
+  - モーダルの role/aria-labelledby/Escape/フォーカストラップ（共通フック `useModalDialog`）
+  - フォーム label/autoComplete/role=alert、テーブル th scope・横スクロール対応
+  - PDF プレビュー iframe sandbox、デモ通知・虚構データの除去、再試行バナー
+- **運用・文書・CI（#121）**:
+  - Neon/PostgreSQL 移行ガイド・秘密鍵ローテーション手順（`docs/deployment/`）
+  - `VERSION`（0.8.0）一元化＋`scripts/verify-version-sync.sh`
+  - API リファレンス・WebUI 画面一覧・tech-stack を実装と同期
+  - CI に gitleaks・npm audit・ops-checks（bash -n/shellcheck/version sync）・カバレッジ閾値 80% を追加
+  - systemd ユニットの `%h` 展開・backup/restore スクリプトの安全ガード
+- **テスト**: 657 件体制（backend 388・frontend 266・playwright 3）
+
 ### 2026-08-06 — Production Hardening（本番運用可能化）
 
 - **マイグレーション修理（Issue #109）**: `alembic upgrade head` を新規 DB・既存 DB（create_all 由来）・部分適用状態で冪等化。`audit_logs` の正規作成、`ai_settings` の migration 追加、PostgreSQL `ALTER TYPE` の `autocommit_block` 化
