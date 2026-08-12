@@ -1,4 +1,4 @@
-import { type FC, useState } from "react";
+import { type FC, useState, type CSSProperties } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { listDocuments, type DocumentResponse } from "../../../api/documents";
 import {
@@ -9,6 +9,7 @@ import {
   type FlattenCheckResponse,
 } from "../../../api/editor";
 import { listAuditLogs } from "../../../api/auditLogs";
+import { getDxSyncStats } from "../../../api/stats";
 
 interface ViewProps {
   onNavigate: (view: string) => void;
@@ -67,6 +68,14 @@ export const EditorSyncView: FC<ViewProps> = ({ onShowToast }) => {
     enabled,
   });
 
+  // DX 同期成功率（dx_sync_metrics / Admin 限定）。非 Admin は 403 になるため
+  // retry を無効にし、画面に「Admin 限定」と表示する。
+  const { data: dxStats, isError: dxStatsError } = useQuery({
+    queryKey: ["stats", "dx-sync"],
+    queryFn: () => getDxSyncStats(),
+    retry: false,
+  });
+
   const flattenMutation = useMutation({
     mutationFn: () => flattenCheck(selectedDocId),
     onSuccess: (data: FlattenCheckResponse) => {
@@ -95,6 +104,95 @@ export const EditorSyncView: FC<ViewProps> = ({ onShowToast }) => {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      {/* DX sync success rate (SLO >= 99%) */}
+      <div className="ep-panel">
+        <div className="ep-panel-head">
+          <h3>📡 DX 同期成功率</h3>
+          <span className="ep-pill ep-pill-muted">
+            dx_sync_metrics / SLO ≥ 99%
+          </span>
+        </div>
+        {dxStats ? (
+          <>
+            <div
+              className="ep-stat-grid"
+              style={{ gridTemplateColumns: "repeat(4, 1fr)" }}
+            >
+              <div className="ep-stat">
+                <div className="lbl">30日成功率</div>
+                <div className="val">
+                  {dxStats.success_rate_30d !== null
+                    ? `${dxStats.success_rate_30d}%`
+                    : "—"}
+                </div>
+                <div className="delta">
+                  30日 {dxStats.recent_30d.total} 件
+                </div>
+              </div>
+              <div className="ep-stat">
+                <div className="lbl">累計成功率</div>
+                <div className="val">
+                  {dxStats.success_rate_total !== null
+                    ? `${dxStats.success_rate_total}%`
+                    : "—"}
+                </div>
+                <div className="delta">累計 {dxStats.total} 件</div>
+              </div>
+              <div className="ep-stat">
+                <div className="lbl">成功</div>
+                <div className="val">{dxStats.success}</div>
+                <div className="delta">30日 {dxStats.recent_30d.success}</div>
+              </div>
+              <div className="ep-stat">
+                <div className="lbl">失敗（30日）</div>
+                <div className="val" style={{ color: "var(--danger, #b91c1c)" }}>
+                  {dxStats.recent_30d.error}
+                </div>
+                <div className="delta">
+                  {Object.entries(dxStats.by_error_kind_30d)
+                    .map(([k, v]) => `${k}: ${v}`)
+                    .join(" / ") || "分類なし"}
+                </div>
+              </div>
+            </div>
+            <table
+              style={{ width: "100%", borderCollapse: "collapse", marginTop: "10px" }}
+            >
+              <thead>
+                <tr>
+                  <th style={thStyle}>月</th>
+                  <th style={thStyle}>成功</th>
+                  <th style={thStyle}>失敗</th>
+                  <th style={thStyle}>成功率</th>
+                </tr>
+              </thead>
+              <tbody>
+                {dxStats.monthly.map((m) => {
+                  const rate =
+                    m.success + m.error > 0
+                      ? ((m.success / (m.success + m.error)) * 100).toFixed(1)
+                      : "—";
+                  return (
+                    <tr key={m.month}>
+                      <td style={tdStyle}>{m.month}</td>
+                      <td style={tdStyle}>{m.success}</td>
+                      <td style={tdStyle}>{m.error}</td>
+                      <td style={tdStyle}>{rate}%</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </>
+        ) : dxStatsError ? (
+          <p style={{ color: "var(--muted)", padding: "12px 0" }}>
+            DX 同期統計は Admin 権限でのみ表示できます（403）。
+          </p>
+        ) : (
+          <p style={{ color: "var(--muted)", padding: "12px 0" }}>読み込み中...</p>
+        )}
+      </div>
+
       {/* Header + document selector */}
       <div className="ep-panel">
         <div className="ep-panel-head">
@@ -320,4 +418,18 @@ export const EditorSyncView: FC<ViewProps> = ({ onShowToast }) => {
       )}
     </div>
   );
+};
+
+const thStyle: CSSProperties = {
+  textAlign: "left",
+  padding: "6px 8px",
+  borderBottom: "1px solid var(--border, #e2e8f0)",
+  fontSize: "12px",
+  color: "var(--muted)",
+};
+
+const tdStyle: CSSProperties = {
+  padding: "6px 8px",
+  borderBottom: "1px solid var(--border, #e2e8f0)",
+  fontSize: "13px",
 };

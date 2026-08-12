@@ -93,3 +93,29 @@ export async function getDailyStats(period = 30): Promise<DailyStatsResponse> {
   });
   return res.data;
 }
+
+/**
+ * DX sync success-rate metrics (server-side dx_sync_metrics table).
+ * Admin-only on the backend; non-admins receive 403.
+ */
+export interface DxSyncMonthlyPoint {
+  month: string;
+  success: number;
+  error: number;
+}
+
+export interface DxSyncStatsResponse {
+  total: number;
+  success: number;
+  error: number;
+  success_rate_total: number | null;
+  success_rate_30d: number | null;
+  recent_30d: { total: number; success: number; error: number };
+  by_error_kind_30d: Record<string, number>;
+  monthly: DxSyncMonthlyPoint[];
+}
+
+export async function getDxSyncStats(): Promise<DxSyncStatsResponse> {
+  const res = await api.get<DxSyncStatsResponse>("/stats/dx-sync");
+  return res.data;
+}

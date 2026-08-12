@@ -606,6 +606,26 @@ function handle(config: InternalAxiosRequestConfig): unknown {
     };
   }
 
+  if (path === "/stats/dx-sync" && method === "get") {
+    return {
+      total: 128,
+      success: 126,
+      error: 2,
+      success_rate_total: 98.44,
+      success_rate_30d: 99.2,
+      recent_30d: { total: 125, success: 124, error: 1 },
+      by_error_kind_30d: { rbac: 1 },
+      monthly: [
+        { month: "2026-03", success: 98, error: 1 },
+        { month: "2026-04", success: 110, error: 1 },
+        { month: "2026-05", success: 121, error: 0 },
+        { month: "2026-06", success: 118, error: 2 },
+        { month: "2026-07", success: 125, error: 1 },
+        { month: "2026-08", success: 124, error: 1 },
+      ],
+    };
+  }
+
   /* ----- AI ----- */
   m = path.match(/^\/ai\/documents\/([^/]+)\/classify$/);
   if (m && method === "post") {

@@ -14,6 +14,7 @@ import {
   getSecurityConfig,
   getProjectStats,
   getDailyStats,
+  getDxSyncStats,
 } from "../api/stats";
 
 const statsData = {
@@ -69,6 +70,19 @@ const dailyStatsData = {
   ],
 };
 
+const dxSyncStatsData = {
+  total: 128,
+  success: 126,
+  error: 2,
+  success_rate_total: 98.44,
+  success_rate_30d: 99.2,
+  recent_30d: { total: 125, success: 124, error: 1 },
+  by_error_kind_30d: { rbac: 1 },
+  monthly: [
+    { month: "2026-08", success: 124, error: 1 },
+  ],
+};
+
 describe("stats api client", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -121,6 +135,13 @@ describe("stats api client", () => {
       params: { period: 30 },
     });
     expect(result).toEqual(dailyStatsData);
+  });
+
+  it("getDxSyncStats calls GET /stats/dx-sync and returns data", async () => {
+    vi.mocked(api.get).mockResolvedValue({ data: dxSyncStatsData });
+    const result = await getDxSyncStats();
+    expect(api.get).toHaveBeenCalledWith("/stats/dx-sync");
+    expect(result).toEqual(dxSyncStatsData);
   });
 
   it("getDailyStats forwards custom period parameter", async () => {
