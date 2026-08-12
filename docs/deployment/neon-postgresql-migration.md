@@ -1,6 +1,7 @@
 # 🐘 SQLite → Neon/PostgreSQL 移行ガイド — CivilPDF-DX
 
-> 2026-08-12 時点の本番は SQLite（`src/console/backend/civilpdf_dev.db`）で稼働していますが、利用前提では **DB 正本は Neon PostgreSQL** です。本ガイドは移行を安全に行うための手順・バックアップ・ロールバック・検証をまとめます。
+> **2026-08-12 に本番移行完了**。それ以前は SQLite（`src/console/backend/civilpdf_dev.db`）で
+> 稼働していました。本ガイドは移行手順・実施記録・ロールバックをまとめます。
 
 ## 1. 移行前の前提
 
@@ -14,11 +15,11 @@
 
 ## 2. 事前チェックリスト
 
-- [ ] `scripts/backup-production.sh` で最新バックアップ取得成功
-- [ ] アップロードファイルの件数・容量を記録
-- [ ] Neon プロジェクトを作成し、接続文字列を取得
-- [ ] テスト用 PostgreSQL で Alembic マイグレーションが通ることを確認（CI の `backend-migrations` ジョブで検証済み）
-- [ ] 移行専用のメンテナンス窓口とロールバック担当者を決める
+- [x] `scripts/backup-production.sh` で最新バックアップ取得成功（2026-08-12）
+- [x] アップロードファイルの件数・容量を記録
+- [x] Neon プロジェクトを作成し、接続文字列を取得（`civilpdf-dx-production`）
+- [x] テスト用 PostgreSQL で Alembic マイグレーションが通ることを確認（CI の `backend-migrations` ジョブで検証済み）
+- [x] 移行専用のメンテナンス窓口とロールバック担当者を決める（本番ホスト管理者）
 
 ## 3. 移行手順
 
@@ -50,20 +51,13 @@ SQLite → PostgreSQL は単純なファイルコピーでは移行できませ�
 - `documents_fts`（SQLite FTS5 仮想テーブル）は PostgreSQL へ移行しない
 - 監査ログのハッシュチェーンはレコード順を保って再投入する
 
-例（概念コード。本番適用前に必ずテスト DB で検証）:
+実装済みの変換スクリプトを使用します（SQLAlchemy ベースの汎用スクリプト。
+日時/Boolean/JSON 変換・整数 PK のシーケンス同期・行数検証を内包）:
 
-```python
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session
-from database import Base
-import models
-
-src = create_engine("sqlite:///civilpdf_dev.db")
-dst = create_engine("postgresql://user:password@host/db?sslmode=require")
-
-# スキーマは alembic upgrade head で作成済み。
-# テーブル単位で SELECT → INSERT する変換スクリプトを実装し、
-# ID・日時・enum の型差異を吸収する。
+```bash
+set -a && . ~/.config/civilpdf/civilpdf.env && set +a
+python3 scripts/migrate-sqlite-to-neon.py \
+  --sqlite src/console/backend/civilpdf_dev.db [--verify-only]
 ```
 
 ### 3.4 検証
@@ -89,16 +83,37 @@ systemctl --user start civilpdf-backend.service
 ./scripts/healthcheck-civilpdf.sh
 ```
 
+### 3.5.1 実施記録（2026-08-12）
+
+| 項目 | 値 |
+| --- | --- |
+| Neon プロジェクト | `civilpdf-dx-production`（ID: `falling-frog-80878192`・aws-ap-southeast-1・PG 18.4） |
+| DB / ロール | `civildx` / `civildx_owner` |
+| スキーマ | `alembic upgrade head` → `k1l2m3n4o5p6` |
+| データ移行 | `scripts/migrate-sqlite-to-neon.py` 実行（users 1 行ほか全テーブル 0 行・検証 OK） |
+| 接続切替 | `~/.config/civilpdf/civilpdf.env` の `DATABASE_URL` を Neon へ変更（`&` は引用符で囲む） |
+| バックアップ | `scripts/backup-production.sh` を PostgreSQL 対応へ更新（pg_dump 18 自動選択・検証済み） |
+| 検証 | `/health` 200・`/api/v1/stats/dx-sync` 401・frontend 200・alembic `PostgresqlImpl` |
+| ロールバック用バックアップ | `~/civildx-backups/20260812T125213Z/`・`pre-dx-metrics-20260812/` |
+
+### 3.5.2 注意点
+
+- Neon は PG 18 のため、ローカルの `pg_dump`/`pg_restore` は **18 系**を使う
+  （`/usr/lib/postgresql/18/bin/` を自動選択するよう `backup-production.sh` を更新済み）
+- `DATABASE_URL` に `&`（`channel_binding=require` 等）を含む場合、env ファイルでは
+  **二重引用符で囲む**（未引用だとシェルが `&` で分割し読み込まれない）
+
 ### 3.6 バックアップ運用の切替
 
 移行後は SQLite online backup をやめ、以下へ切替えます。
 
 | 方式 | 対象 |
 |---|---|
-| `pg_dump` / Neon の Point-in-Time Recovery | データベース |
+| `pg_dump`（custom format・`backup-production.sh` が自動選択）/ Neon の Point-in-Time Recovery | データベース |
 | 既存の `backup-production.sh`（または tar） | uploads と env |
 
-`deploy/civilpdf-backup.service` と `scripts/backup-production.sh` の PostgreSQL 対応は移行時に更新してください。
+> ✅ 2026-08-12 に `scripts/backup-production.sh` と `deploy/civilpdf-backup.service` を
+> PostgreSQL 対応へ更新済み（daily 02:30 JST の systemd timer は継続）。
 
 ## 4. ロールバック
 
@@ -114,10 +129,19 @@ systemctl --user start civilpdf-backend.service
 
 > ⚠️ 切替後に PostgreSQL へ書き込まれたデータは、SQLite へ戻した時点で失われます。切替後の書き込みを最小化し、必要なら差分をエクスポートしてからロールバックしてください。
 
+または PostgreSQL バックアップから復元:
+
+```bash
+systemctl --user stop civilpdf-backend.service
+pg_restore --clean --if-exists --dbname "$DATABASE_URL" ~/civildx-backups/<stamp>/civilpdf.dump
+systemctl --user start civilpdf-backend.service
+```
+
 ## 5. 移行後の監視・残課題
 
 - [ ] 全文検索 API の PostgreSQL 対応（tsvector 等）
-- [ ] `scripts/backup-production.sh` / `restore-drill.sh` の PostgreSQL 対応
+- [x] `scripts/backup-production.sh` の PostgreSQL 対応（2026-08-12）
+- [ ] `restore-drill.sh` の PostgreSQL 対応（現在は SQLite 復元ドリル）
 - [ ] `docs/operations/runbook.md` の DB 行・バックアップ節を更新
 - [ ] Neon の PITR / バックアップ設定の運用確認
 - [ ] 性能・接続プール（PgBouncer 等）の評価
