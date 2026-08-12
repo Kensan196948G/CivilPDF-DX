@@ -14,10 +14,10 @@
   "kpi": {
     "ci_success_rate": 1,
     "test_pass_rate": 1,
-    "test_count": 633,
-    "backend_unit_test_count": 351,
+    "test_count": 657,
+    "backend_unit_test_count": 368,
     "backend_e2e_test_count": 20,
-    "frontend_test_count": 259,
+    "frontend_test_count": 266,
     "frontend_e2e_test_count": 3,
     "coverage_percent": 98,
     "review_blocker_count": 0,
@@ -44,9 +44,29 @@
     "stable": true,
     "deploy_ready": true,
     "deploy_ready_note": "2026-06-20 CTO 再評価: 本番認証フローは完備（Login.tsx パスワード+M365 / api/auth login+getMe / axios Bearer+401 refresh / EnterpriseLayout ログアウト / PR #60 で本番ゲート有効）。テスト: Login 4 + ProtectedRoute redirect 2 + getInitialAuthState PROD/DEV 3 + authStore 4。当初の『ログイン UI 未実装』判断は誤りで、ログイン UI は最初から存在し #55/#56 がそれを意図的にバイパスしていた。PR #60 でバイパスを DEV 限定化し本番は完成済みログインフローを使用。残る本番化作業は人間タスク（管理者ユーザー作成 scripts/create_admin.py・docker compose・secrets 設定）のみ。",
-    "last_pr": 113,
+    "last_pr": 123,
     "last_pr_status": "merged (2026-08-06) — PR #112 本番適用済み（migration h4x5y6z7a8b9 適用・ExecStartPre 稼働・backup timer 有効）。PR #113 HTML セキュリティヘッダー付与も merged・本番反映済み。",
-    "last_merged_pr": 113,
+    "last_merged_pr": 123,
+    "evaluation_20260812": {
+      "assessment": "条件付き利用可（パイロット拡大可）。18項目平均 56.4→65.4、セキュリティ 35→76、代替率 54%→62%（予測74%）",
+      "prs": [120, 121, 122, 123],
+      "merged_at": "2026-08-12T08:30:00Z",
+      "test_count": 657,
+      "critical_fixed": [
+        "RBAC境界（IDOR）",
+        "M365非対話ログイン既定拒否",
+        "refresh token type検証",
+        "秘密値fail-fast",
+        "監査DB永続化",
+        "ログインロックアウト"
+      ],
+      "remaining_high": [
+        "SSO/MFA未実装",
+        "本番DB SQLite（Neon移行はガイド策定済み）",
+        "オフサイトバックアップ未実装",
+        "GET系監査未DB化"
+      ]
+    },
     "production_hardening_20260806": {
       "prs": [112, 113],
       "merged_at": "2026-08-06T00:35:00Z",
