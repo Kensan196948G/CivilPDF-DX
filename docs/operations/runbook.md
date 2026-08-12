@@ -2,7 +2,7 @@
 
 **文書番号:** CPDF-OPS-001  
 **対象:** 本番ホスト（`civilpdf.mirai-dx-platform.com` / Cloudflare Tunnel + systemd user units）  
-**最終更新:** 2026-08-06
+**最終更新:** 2026-08-12
 
 ---
 
@@ -15,13 +15,14 @@
 | Backend | uvicorn `127.0.0.1:8180`（`deploy/civilpdf-backend.service`） |
 | Frontend | vite preview `127.0.0.1:5182`（`deploy/civilpdf-frontend.service`、`dist/` 配信） |
 | Tunnel | cloudflared（`deploy/civilpdf-cloudflared.service` / `~/.cloudflared/civilpdf-config.yml`） |
-| DB | SQLite `src/console/backend/civilpdf_dev.db`（スキーマは Alembic 管理、起動前 `alembic upgrade head`） |
+| DB | SQLite `src/console/backend/civilpdf_dev.db`（**移行までの暫定**。スキーマは Alembic 管理、起動前 `alembic upgrade head`。Neon/PostgreSQL 移行手順は [neon-postgresql-migration.md](../deployment/neon-postgresql-migration.md)） |
 | アップロード | `~/civildx/uploads/` |
 | 環境設定 | `~/.config/civilpdf/civilpdf.env`（git 管理外・0600） |
-| バージョン | `APP_VERSION`（`~/.config/civilpdf/civilpdf.env`、現在 0.8.0） |
+| バージョン | 正本はリポジトリ `VERSION`（現在 0.8.0）。`APP_VERSION`（`~/.config/civilpdf/civilpdf.env`）でデプロイ時上書き。整合検証は `scripts/verify-version-sync.sh` |
 
 ## 2. デプロイ手順（新リリース）
 
+0. リリース前確認: `./scripts/verify-version-sync.sh` で `VERSION`・env 例・文書の整合を確認
 1. バックアップ取得: `./scripts/backup-production.sh`
 2. リポジトリを main の検証済み commit へ更新
 3. フロントエンド再ビルド: `cd src/console/frontend && npm ci && npm run build`
@@ -45,6 +46,9 @@
 - 保持: 14 日間（`scripts/backup-production.sh` 内 `RETENTION_DAYS`）
 - RPO: 最大 24 時間（timer 起動に失敗した場合に備え、手動実行も可）
 - RTO: 目標 30 分（復旧手順は下記）
+
+> ⚠️ **SQLite 暫定期間のみ** `scripts/backup-production.sh`（online backup）を使用します。
+> PostgreSQL/Neon 移行後は `pg_dump` または Neon の Point-in-Time Recovery へ切替えてください（[移行ガイド](../deployment/neon-postgresql-migration.md) §5 バックアップ運用）。
 
 ### 復旧手順
 1. `systemctl --user stop civilpdf-backend.service`
@@ -80,6 +84,8 @@
 
 - シークレット: `~/.config/civilpdf/civilpdf.env` のみ（`SECRET_KEY` / `ANTHROPIC_API_KEY` 等）。ローテーション時は値を変更後 `systemctl --user restart civilpdf-backend.service`
 - 依存脆弱性: CI の `pip-audit` / `npm audit` が毎 PR 実行。ecdsa PYSEC-2026-1325 は upstream 修正待ち（Issue #106 で明示管理）
+- 秘密情報の漏えい防止: CI の `gitleaks` ジョブが毎 PR 実行。ローカル確認は `gitleaks detect --source .`（[secret-management.md](../deployment/secret-management.md)）
+- 鍵ローテーション: `SECRET_KEY` / `TIMESTAMP_HMAC_KEY` / `M365_FERNET_KEY` の手順は [secret-management.md](../deployment/secret-management.md) に集約
 - 証明書: Cloudflare が自動管理（更新作業不要）
 - アクセス: 公開面はログイン必須。`DEBUG=false` を維持（DEV AUTH BYPASS 無効化）
 - 権限棚卸し: ユーザーロール（admin / manager / engineer / viewer）は WebUI 管理画面で四半期ごとに確認推奨
@@ -87,7 +93,7 @@
 ## 7. 容量・予算
 
 - 現状: DB 176KB・uploads 7.7MB 程度。SQLite は数 GB まで実用可能だが、本格運用開始時（同時利用者・文書数増加）に PostgreSQL へ移行する
-- 移行パス: `docker-compose.prod.yml`（PostgreSQL 16）+ CI の PostgreSQL migration ジョブが検証済み
+- 移行パス: `docker-compose.prod.yml`（PostgreSQL 16）+ CI の PostgreSQL migration ジョブが検証済み。Neon を含む移行手順・ロールバック・検証は [neon-postgresql-migration.md](../deployment/neon-postgresql-migration.md)
 - 監視項目: ディスク使用量（`df -h`）、uploads サイズ、DB サイズ、エラー率（journalctl）
 
 ## 8. 既知の制約・残課題
@@ -98,3 +104,6 @@
 - Issue #106: ecdsa advisory（upstream 修正待ち・CI 明示 ignore）
 - 外部アラートはメール（msmtp/Gmail）のみ。Slack/Teams 等へ拡張する場合は `scripts/alert-notify.sh` を拡張
 - 復元訓練は四半期 timer で自動化済み。訓練ログは `~/.local/state/civildx-drill/drill.log`
+- バージョン: リポジトリ `VERSION`（0.8.0）に対し、実 Git タグは v0.7.0 のまま。`state.json` は `v0.8.0-phase8-complete` を参照しており、リリース時に v0.8.0 タグ付与と `scripts/verify-version-sync.sh` による整合確認が必要
+- CI 強化（2026-08-12）: `gitleaks`（secret scan）・`npm audit`・スクリプト構文/バージョン整合チェックを追加
+- GitHub ブランチ保護: 2026-08-12 時点で `main` に branch protection が未設定（`develop` ブランチ自体も未作成）。「PR 必須・CI 成功のみ merge」は運用ルール上のみで、GitHub 側の必須チェック/レビュー/linear history 等の保護を有効化することを推奨

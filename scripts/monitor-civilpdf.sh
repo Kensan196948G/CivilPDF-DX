@@ -57,7 +57,9 @@ last=0
 [[ -f "$LAST_ALERT_FILE" ]] && last="$(cat "$LAST_ALERT_FILE")"
 elapsed=$((now - last))
 if (( elapsed >= ALERT_MIN_INTERVAL * 60 )); then
-  details="$(cd "$PROJECT_DIR" && ./scripts/healthcheck-civilpdf.sh 2>&1 || true)"
+  if ! details="$(cd "$PROJECT_DIR" && ./scripts/healthcheck-civilpdf.sh 2>&1)"; then
+    details="${details:-healthcheck exited non-zero}"
+  fi
   "$PROJECT_DIR/scripts/alert-notify.sh" \
     "[CivilPDF-DX] 異常検知" \
     "CivilPDF-DX のヘルスチェックに失敗しました。

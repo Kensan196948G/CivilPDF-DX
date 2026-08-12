@@ -2,6 +2,7 @@
 
 > Linux ホスト上で `docker compose` を用いて CivilPDF-DX を本番運用するための手順書です。
 > Windows ネイティブ展開（NSSM + nginx）は [`windows-deployment.md`](../windows-deployment.md) を参照してください。
+> 現行の SQLite 本番からの移行は [Neon/PostgreSQL 移行ガイド](neon-postgresql-migration.md)、秘密鍵管理は [secret-management.md](secret-management.md) を参照してください。
 
 このスタックは 3 コンテナで構成されます。
 

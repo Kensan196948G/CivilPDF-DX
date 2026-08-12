@@ -4,7 +4,10 @@ Documentation=https://github.com/Kensan196948G/CivilPDF-DX
 
 [Service]
 Type=simple
-WorkingDirectory=/home/kensan/Projects/Mirai-DX-Project/CivilPDF-DX/src/console/backend
+WorkingDirectory=%h/Projects/Mirai-DX-Project/CivilPDF-DX/src/console/backend
+
+# %h/.local/bin に Alembic / uvicorn がインストールされていることを前提にする
+Environment=PATH=%h/.local/bin:/usr/local/bin:/usr/bin:/bin
 
 # Load secrets from the env file (not checked into git)
 EnvironmentFile=%h/.config/civilpdf/civilpdf.env
@@ -12,8 +15,8 @@ EnvironmentFile=%h/.config/civilpdf/civilpdf.env
 # スキーマ管理は Alembic に一本化 (Issue #109 修理済み: 新規DB・既存DBとも
 # 冪等に upgrade head 可能)。起動時にマイグレーションを適用してから uvicorn を
 # 起動する。補助経路として main.py の create_all も残るが、Alembic が正とする。
-ExecStartPre=/home/kensan/.local/bin/alembic upgrade head
-ExecStart=/home/kensan/.local/bin/uvicorn main:app --host 127.0.0.1 --port 8180
+ExecStartPre=alembic upgrade head
+ExecStart=uvicorn main:app --host 127.0.0.1 --port 8180
 
 Restart=on-failure
 RestartSec=5s

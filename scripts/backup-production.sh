@@ -24,6 +24,15 @@ ENV_FILE="${CIVILPDF_ENV_FILE:-$HOME/.config/civilpdf/civilpdf.env}"
 BACKUP_ROOT="${BACKUP_ROOT:-$HOME/civildx-backups}"
 RETENTION_DAYS="${RETENTION_DAYS:-14}"
 
+if [[ ! "$RETENTION_DAYS" =~ ^[0-9]+$ ]]; then
+  echo "ERROR: RETENTION_DAYS must be a non-negative integer (got '$RETENTION_DAYS')" >&2
+  exit 1
+fi
+if [[ "$BACKUP_ROOT" == "/" || "$BACKUP_ROOT" == "$HOME" ]]; then
+  echo "ERROR: refusing to use '$BACKUP_ROOT' as BACKUP_ROOT (too broad for pruning)" >&2
+  exit 1
+fi
+
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 DEST="$BACKUP_ROOT/$STAMP"
 
