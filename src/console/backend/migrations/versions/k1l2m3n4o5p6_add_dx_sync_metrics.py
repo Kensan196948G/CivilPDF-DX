@@ -35,8 +35,12 @@ def upgrade() -> None:
                 nullable=False,
             ),
         )
-        op.create_index("ix_dx_sync_metrics_event_type", "dx_sync_metrics", ["event_type"])
-        op.create_index("ix_dx_sync_metrics_created_at", "dx_sync_metrics", ["created_at"])
+        op.create_index(
+            "ix_dx_sync_metrics_event_type", "dx_sync_metrics", ["event_type"]
+        )
+        op.create_index(
+            "ix_dx_sync_metrics_created_at", "dx_sync_metrics", ["created_at"]
+        )
 
 
 def downgrade() -> None:

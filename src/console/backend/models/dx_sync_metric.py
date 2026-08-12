@@ -21,6 +21,8 @@ class DxSyncMetric(Base):
     document_id = Column(String, nullable=True)
     event_type = Column(String, nullable=False, index=True)  # success | error
     status_code = Column(Integer, nullable=False)
-    error_kind = Column(String, nullable=True)  # auth|rbac|not_found|too_large|invalid|server|network
+    error_kind = Column(
+        String, nullable=True
+    )  # auth|rbac|not_found|too_large|invalid|server|network
     detail = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)

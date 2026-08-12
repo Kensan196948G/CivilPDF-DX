@@ -358,9 +358,7 @@ def get_dx_sync_stats(
             - timedelta(days=offset * 31)
         ).replace(day=1)
         month_end = (month_start + timedelta(days=32)).replace(day=1)
-        bucket = [
-            r for r in rows if month_start <= _aware(r.created_at) < month_end
-        ]
+        bucket = [r for r in rows if month_start <= _aware(r.created_at) < month_end]
         monthly.append(
             {
                 "month": month_start.strftime("%Y-%m"),
