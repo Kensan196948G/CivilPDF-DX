@@ -11,7 +11,6 @@
 #
 set -euo pipefail
 
-PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKUP_ROOT="${BACKUP_ROOT:-$HOME/civildx-backups}"
 RCLONE_REMOTE="${CIVILPDF_RCLONE_REMOTE:-}"
 RCLONE_BIN="${RCLONE_BIN:-rclone}"
