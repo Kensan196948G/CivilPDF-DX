@@ -34,16 +34,19 @@
 
 | ID | 分類 | 内容 | 優先度 | 対象 Phase |
 |---|---|---|---|---|
-| IMP-026 | 認証 | Entra ID OIDC SSO + HENNGE 連携 + MFA | P1 | Phase 1 |
-| IMP-027 | 認証 | パスワードリセット・90日期限・セッション30分失効 | P1 | Phase 1 |
-| IMP-028 | データ保全 | 論理削除のごみ箱 UI・復元 | P1 | Phase 1 |
-| IMP-029 | DB | Neon/PostgreSQL 移行（FTS5→tsvector 等） | P1 | Phase 1 |
-| IMP-030 | 性能 | サーバーサイドページネーション・インデックス | P1 | Phase 1 |
-| IMP-031 | 監査 | GET 系（閲覧/ダウンロード）の DB 監査・5年保持 | P1 | Phase 1 |
-| IMP-032 | 可用性 | オフサイト/クラウドバックアップ（RPO短縮） | P2 | Phase 2 |
-| IMP-033 | 通知 | 承認通知・通知センター（Web Push/メール） | P2 | Phase 2 |
+| IMP-026 | 認証 | Entra ID OIDC SSO（認可コード+PKCE・自動プロビジョニング） | P1 | ✅ 完了（#124） |
+| IMP-026b | 認証 | MFA 強制（IdP Conditional Access / HENNGE 側・設定手順提供） | P1 | ✅ 完了（#124 手順） |
+| IMP-027 | 認証 | パスワードリセット（自己申請+管理者）・セッション30分アイドルタイムアウト | P1 | ✅ 完了（#124） |
+| IMP-027b | 認証 | パスワード90日期限・メール送信アダプタ | P1 | ⏳ 未着手（Phase 2） |
+| IMP-028 | データ保全 | 論理削除のごみ箱 UI・復元 | P1 | ✅ 完了（#124） |
+| IMP-029 | DB | Neon/PostgreSQL 移行（FTS は tsvector+GIN 対応済み・実移行は別途） | P1 | 🔶 一部完了（#124 FTS / 実移行は Phase 1-2） |
+| IMP-030 | 性能 | サーバーサイドページネーション・インデックス | P1 | ✅ 完了（#124） |
+| IMP-031 | 監査 | GET 系（ダウンロード）の DB 監査・5年保持 | P1 | 🔶 一部完了（#124 download / 閲覧・5年保持は Phase 2） |
+| IMP-032 | 可用性 | オフサイト/クラウドバックアップ（rclone→R2/S3） | P2 | ✅ 完了（#124） |
+| IMP-033 | 通知 | 承認通知・通知センター（30秒ポーリング） | P2 | ✅ 完了（#124） |
 | IMP-034 | 帳票 | Excel/PDF 出力（一覧・監査・納品） | P2 | Phase 2 |
 | IMP-035 | モバイル | PWA・オフラインキャッシュ | P2 | Phase 3 |
 | IMP-036 | AI | RAG・引用/信頼度・入出力監査・予算上限・人間承認 | P2 | Phase 3 |
 | IMP-037 | 連携 | SharePoint/Teams/Webhook | P3 | Phase 3 |
 | IMP-038 | 土木固有 | 写真台帳・出来形XML連携・協力会社ポータル | P3 | Phase 3-4 |
+| IMP-039 | 管理 | 権限棚卸しレポート（JSON/CSV・監査記録） | P1 | ✅ 完了（#124） |
