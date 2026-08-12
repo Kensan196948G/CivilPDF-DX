@@ -32,6 +32,16 @@ class Settings(BaseSettings):
 
     timestamp_hmac_key: str = "change-me-in-production"
 
+    # Entra ID / OpenID Connect SSO (Phase 1)
+    oidc_client_id: str = ""
+    oidc_client_secret: str = ""
+    oidc_discovery_url: str = ""
+    oidc_redirect_uri: str = ""
+    oidc_scope: str = "openid profile email"
+    oidc_auto_provision: bool = True
+    # Origin of the SPA that receives the callback tokens (e.g. https://civilpdf.mirai-dx-platform.com)
+    frontend_origin: str = ""
+
     cors_origins: str = (
         '["http://localhost:5173","http://localhost:3000",'
         '"tauri://localhost","http://tauri.localhost"]'

@@ -16,6 +16,7 @@ from api.ai_settings import router as ai_settings_router
 from api.search import router as search_router
 from api.editor import router as editor_router
 from api.revisions import router as revisions_router
+from api.notifications import router as notifications_router
 
 __all__ = [
     "apps_router",
@@ -36,4 +37,5 @@ __all__ = [
     "search_router",
     "editor_router",
     "revisions_router",
+    "notifications_router",
 ]

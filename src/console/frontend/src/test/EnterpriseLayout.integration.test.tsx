@@ -13,7 +13,9 @@ import { EnterpriseLayout } from '../components/enterprise/EnterpriseLayout'
 import { useAuthStore } from '../store/auth'
 
 vi.mock('../api/documents', () => ({
-  listDocuments: vi.fn(),
+  listDocumentsPaginated: vi.fn(),
+  listTrash: vi.fn().mockResolvedValue([]),
+  restoreDocument: vi.fn(),
   uploadDocument: vi.fn(),
   deleteDocument: vi.fn(),
   fetchDocumentBlob: vi.fn(),
@@ -42,9 +44,25 @@ vi.mock('../api/electronicDelivery', () => ({
 }))
 vi.mock('../api/ai', () => ({ classifyDocument: vi.fn() }))
 vi.mock('../api/search', () => ({ searchDocuments: vi.fn() }))
+vi.mock('../api/notifications', () => ({
+  listNotifications: vi.fn().mockResolvedValue({ items: [], total: 0, page: 1, per_page: 20, pages: 0 }),
+  unreadCount: vi.fn().mockResolvedValue(0),
+  markRead: vi.fn(),
+  markAllRead: vi.fn(),
+}))
 
-import { listDocuments } from '../api/documents'
+import { listDocumentsPaginated, type DocumentResponse } from '../api/documents'
 import { listProjects } from '../api/projects'
+
+function pageOf(docs: DocumentResponse[]) {
+  return {
+    items: docs,
+    total: docs.length,
+    page: 1,
+    per_page: 20,
+    pages: Math.max(1, Math.ceil(docs.length / 20)),
+  }
+}
 
 const mockAdmin = {
   id: 'admin-1',
@@ -107,7 +125,7 @@ describe('EnterpriseLayout — functional page integration', () => {
   })
 
   it('navigates to 図書管理 and renders the real Documents page', async () => {
-    vi.mocked(listDocuments).mockResolvedValue([mockDocDrawing])
+    vi.mocked(listDocumentsPaginated).mockResolvedValue(pageOf([mockDocDrawing]))
     vi.mocked(listProjects).mockResolvedValue([mockProject])
     const user = userEvent.setup()
 
@@ -122,7 +140,7 @@ describe('EnterpriseLayout — functional page integration', () => {
   })
 
   it('opens the electronic timestamp modal (Phase 8) from the documents view', async () => {
-    vi.mocked(listDocuments).mockResolvedValue([mockDocDrawing])
+    vi.mocked(listDocumentsPaginated).mockResolvedValue(pageOf([mockDocDrawing]))
     vi.mocked(listProjects).mockResolvedValue([mockProject])
     const user = userEvent.setup()
 
@@ -136,7 +154,7 @@ describe('EnterpriseLayout — functional page integration', () => {
   })
 
   it('filters documents by title from the documents view', async () => {
-    vi.mocked(listDocuments).mockResolvedValue([mockDocDrawing, mockDocReport])
+    vi.mocked(listDocumentsPaginated).mockResolvedValue(pageOf([mockDocDrawing, mockDocReport]))
     vi.mocked(listProjects).mockResolvedValue([mockProject])
     const user = userEvent.setup()
 
@@ -166,7 +184,7 @@ describe('EnterpriseLayout — functional page integration', () => {
   })
 
   it('renders the documents table within the shell main region', async () => {
-    vi.mocked(listDocuments).mockResolvedValue([mockDocDrawing])
+    vi.mocked(listDocumentsPaginated).mockResolvedValue(pageOf([mockDocDrawing]))
     vi.mocked(listProjects).mockResolvedValue([mockProject])
     const user = userEvent.setup()
 

@@ -18,6 +18,7 @@ export interface DocumentResponse {
   timestamp_verified_at?: string | null;
   retention_expires_at?: string | null;
   is_archived?: boolean;
+  deletion_requested_at?: string | null;
   iso19650_originator?: string | null;
   iso19650_functional_breakdown?: string | null;
   iso19650_form?: string | null;
@@ -31,12 +32,33 @@ export interface ListDocumentsParams {
   status?: string;
   page?: number;
   per_page?: number;
+  include_meta?: boolean;
+}
+
+export interface DocumentPage {
+  items: DocumentResponse[];
+  total: number;
+  page: number;
+  per_page: number;
+  pages: number;
 }
 
 export async function listDocuments(
   params?: ListDocumentsParams,
 ): Promise<DocumentResponse[]> {
-  const res = await api.get<DocumentResponse[]>("/documents/", { params });
+  const res = await api.get<DocumentResponse[]>("/documents/", {
+    params,
+  });
+  return res.data;
+}
+
+export async function listDocumentsPaginated(
+  page: number,
+  perPage = 20,
+): Promise<DocumentPage> {
+  const res = await api.get<DocumentPage>("/documents/", {
+    params: { page, per_page: perPage, include_meta: true },
+  });
   return res.data;
 }
 
@@ -81,6 +103,16 @@ export async function uploadDocument(
 
 export async function deleteDocument(id: string): Promise<void> {
   await api.delete(`/documents/${id}`);
+}
+
+export async function listTrash(): Promise<DocumentResponse[]> {
+  const res = await api.get<DocumentResponse[]>("/documents/trash");
+  return res.data;
+}
+
+export async function restoreDocument(id: string): Promise<DocumentResponse> {
+  const res = await api.post<DocumentResponse>(`/documents/${id}/restore`);
+  return res.data;
 }
 
 export async function fetchDocumentBlob(id: string): Promise<Blob> {

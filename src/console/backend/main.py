@@ -24,6 +24,7 @@ from api import (
     search_router,
     editor_router,
     revisions_router,
+    notifications_router,
 )
 from middleware import AuditMiddleware
 from middleware.security import SecurityHeadersMiddleware
@@ -98,6 +99,7 @@ app.include_router(ai_settings_router, prefix=API_PREFIX)
 app.include_router(search_router, prefix=API_PREFIX)
 app.include_router(editor_router, prefix=API_PREFIX)
 app.include_router(revisions_router, prefix=API_PREFIX)
+app.include_router(notifications_router, prefix=API_PREFIX)
 
 
 @app.get("/health")

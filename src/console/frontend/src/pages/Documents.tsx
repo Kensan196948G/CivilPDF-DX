@@ -1,7 +1,9 @@
 import { useState, useRef, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
-  listDocuments,
+  listDocumentsPaginated,
+  listTrash,
+  restoreDocument,
   uploadDocument,
   deleteDocument,
   type DocumentResponse,
@@ -30,9 +32,27 @@ const STATUS_LABELS: Record<string, { label: string; cls: string }> = {
 
 export function Documents() {
   const qc = useQueryClient()
-  const { data: documents = [], isLoading, isError, refetch } = useQuery({
-    queryKey: ['documents'],
-    queryFn: () => listDocuments(),
+  const [page, setPage] = useState(1)
+  const {
+    data: docPage,
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
+    queryKey: ['documents', page],
+    queryFn: () => listDocumentsPaginated(page, 20),
+  })
+  const documents = useMemo(() => docPage?.items ?? [], [docPage])
+  const totalDocuments = docPage?.total ?? 0
+  const totalPages = docPage?.pages ?? 0
+  const [showTrash, setShowTrash] = useState(false)
+  const {
+    data: trashDocs = [],
+    refetch: refetchTrash,
+  } = useQuery({
+    queryKey: ['documents', 'trash'],
+    queryFn: listTrash,
+    enabled: showTrash,
   })
   const {
     data: projects = [],
@@ -91,6 +111,14 @@ export function Documents() {
     },
   })
 
+  const restore = useMutation({
+    mutationFn: restoreDocument,
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['documents'] })
+      void refetchTrash()
+    },
+  })
+
   const classify = useMutation({
     mutationFn: classifyDocument,
     onSuccess: (result) => {
@@ -110,12 +138,28 @@ export function Documents() {
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">ドキュメント</h1>
-        <button
-          onClick={() => setShowUpload(true)}
-          className="bg-blue-700 hover:bg-blue-800 text-white text-sm px-4 py-2 rounded-lg transition-colors"
-        >
-          + アップロード
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              setShowTrash((v) => !v)
+              setPage(1)
+            }}
+            className={`text-sm px-4 py-2 rounded-lg border transition-colors ${
+              showTrash
+                ? 'bg-gray-700 text-white border-gray-700'
+                : 'border-gray-300 text-gray-700 hover:bg-gray-50'
+            }`}
+          >
+            ごみ箱
+          </button>
+          <button
+            onClick={() => setShowUpload(true)}
+            className="bg-blue-700 hover:bg-blue-800 text-white text-sm px-4 py-2 rounded-lg transition-colors"
+          >
+            + アップロード
+          </button>
+        </div>
       </div>
 
       {showUpload && (
@@ -312,6 +356,48 @@ export function Documents() {
         )}
       </div>
 
+      {showTrash ? (
+        <div className="bg-white rounded-xl shadow overflow-x-auto">
+          {trashDocs.length === 0 ? (
+            <p className="p-6 text-gray-400 text-sm">ごみ箱は空です</p>
+          ) : (
+            <table className="w-full text-sm min-w-[640px]">
+              <thead className="border-b">
+                <tr className="text-left text-gray-500">
+                  <th scope="col" className="px-4 py-3">タイトル</th>
+                  <th scope="col" className="px-4 py-3">種別</th>
+                  <th scope="col" className="px-4 py-3">削除日</th>
+                  <th scope="col" className="px-4 py-3"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {trashDocs.map((doc) => (
+                  <tr key={doc.id} className="border-b last:border-0 hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium text-gray-600">{doc.title}</td>
+                    <td className="px-4 py-3 text-gray-500">
+                      {DOC_TYPE_LABELS[doc.document_type] ?? doc.document_type}
+                    </td>
+                    <td className="px-4 py-3 text-gray-400">
+                      {doc.deletion_requested_at
+                        ? new Date(doc.deletion_requested_at).toLocaleDateString('ja-JP')
+                        : '—'}
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        onClick={() => restore.mutate(doc.id)}
+                        disabled={restore.isPending && restore.variables === doc.id}
+                        className="text-blue-600 hover:text-blue-800 text-xs disabled:opacity-50"
+                      >
+                        {restore.isPending && restore.variables === doc.id ? '復元中...' : '復元'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      ) : (
       <div className="bg-white rounded-xl shadow overflow-x-auto">
         {isLoading ? (
           <p className="p-6 text-gray-400 text-sm">読み込み中...</p>
@@ -426,6 +512,33 @@ export function Documents() {
           </table>
         )}
       </div>
+      )}
+
+      {!showTrash && totalDocuments > 0 && (
+        <div className="flex items-center justify-between mt-4 text-sm text-gray-600">
+          <span>
+            {totalDocuments} 件中 {page} / {totalPages} ページ
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => setPage((p) => Math.max(1, p - 1))}
+              className="px-3 py-1.5 rounded-lg border border-gray-300 disabled:opacity-40 hover:bg-gray-50"
+            >
+              前へ
+            </button>
+            <button
+              type="button"
+              disabled={page >= totalPages}
+              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+              className="px-3 py-1.5 rounded-lg border border-gray-300 disabled:opacity-40 hover:bg-gray-50"
+            >
+              次へ
+            </button>
+          </div>
+        </div>
+      )}
 
       <DocumentPreviewModal
         documentId={previewDoc?.id ?? null}

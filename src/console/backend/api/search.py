@@ -73,9 +73,45 @@ ORDER BY score
 LIMIT :limit
 """
 
+_PG_SEARCH_SQL = """
+SELECT
+    d.id AS document_id,
+    d.title,
+    d.document_type,
+    d.status,
+    d.project_id,
+    d.tags,
+    ts_headline('simple', coalesce(d.ocr_text, ''), plainto_tsquery('simple', :query), 'MaxWords=24, MinWords=6') AS snippet,
+    ts_rank(d.search_vector, plainto_tsquery('simple', :query)) AS score
+FROM documents d
+WHERE d.search_vector @@ plainto_tsquery('simple', :query)
+ORDER BY score DESC
+LIMIT :limit
+"""
+
+_PG_SYNC_SQL = """
+UPDATE documents
+SET search_vector = to_tsvector('simple', coalesce(title, '') || ' ' || coalesce(ocr_text, '') || ' ' || coalesce(:tags_text, ''))
+WHERE id = :doc_id
+"""
+
+_PG_ENSURE_SQL = """
+ALTER TABLE documents ADD COLUMN IF NOT EXISTS search_vector tsvector
+"""
+
+_PG_INDEX_SQL = """
+CREATE INDEX IF NOT EXISTS ix_documents_search_vector
+ON documents USING GIN (search_vector)
+"""
+
 
 def _ensure_fts_table(db: Session) -> None:
     """Create FTS5 virtual table if it does not exist."""
+    if db.bind.dialect.name == "postgresql":
+        db.execute(text(_PG_ENSURE_SQL))
+        db.execute(text(_PG_INDEX_SQL))
+        db.commit()
+        return
     db.execute(text(_FTS_CREATE))
     db.commit()
 
@@ -84,6 +120,13 @@ def _sync_document_to_fts(db: Session, doc: Document) -> None:
     """Insert or replace a document in the FTS index."""
     tags_text = " ".join(doc.tags or [])
     ocr = (doc.ocr_text or "")[:10000]
+    if db.bind.dialect.name == "postgresql":
+        db.execute(
+            text(_PG_SYNC_SQL),
+            {"doc_id": doc.id, "tags_text": tags_text},
+        )
+        db.commit()
+        return
     db.execute(
         text("DELETE FROM documents_fts WHERE document_id = :doc_id"),
         {"doc_id": doc.id},
@@ -98,6 +141,11 @@ def _sync_document_to_fts(db: Session, doc: Document) -> None:
 def _rebuild_fts_index(db: Session) -> int:
     """Sync all documents into FTS index. Returns count of indexed documents."""
     _ensure_fts_table(db)
+    if db.bind.dialect.name == "postgresql":
+        docs = db.query(Document).all()
+        for doc in docs:
+            _sync_document_to_fts(db, doc)
+        return len(docs)
     db.execute(text("DELETE FROM documents_fts"))
     docs = db.query(
         Document
@@ -121,6 +169,16 @@ def _rebuild_fts_index(db: Session) -> int:
 def _fts_search(db: Session, fts_query: str, limit: int) -> list[dict]:
     """Execute FTS5 MATCH query and return raw rows."""
     try:
+        if db.bind.dialect.name == "postgresql":
+            rows = (
+                db.execute(
+                    text(_PG_SEARCH_SQL),
+                    {"query": fts_query, "limit": limit},
+                )
+                .mappings()
+                .all()
+            )
+            return [dict(r) for r in rows]
         rows = (
             db.execute(
                 text(_FTS_SEARCH),
@@ -216,7 +274,15 @@ def search_documents(
     _ensure_fts_table(db)
 
     # Auto-sync: rebuild if FTS count differs from documents count
-    fts_count = db.execute(text("SELECT COUNT(*) FROM documents_fts")).scalar() or 0
+    if db.bind.dialect.name == "postgresql":
+        fts_count = (
+            db.execute(
+                text("SELECT COUNT(*) FROM documents WHERE search_vector IS NOT NULL")
+            ).scalar()
+            or 0
+        )
+    else:
+        fts_count = db.execute(text("SELECT COUNT(*) FROM documents_fts")).scalar() or 0
     doc_count = db.query(Document).count()
     if fts_count != doc_count:
         _rebuild_fts_index(db)

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router'
 import { vi, describe, it, expect, beforeEach } from 'vitest'
@@ -14,9 +14,11 @@ vi.mock('react-router', async () => {
 vi.mock('../api/auth', () => ({
   login: vi.fn(),
   getMe: vi.fn(),
+  requestPasswordReset: vi.fn(),
+  OIDC_LOGIN_URL: '/api/v1/auth/oidc/login',
 }))
 
-import { login, getMe } from '../api/auth'
+import { login, getMe, requestPasswordReset } from '../api/auth'
 
 describe('Login', () => {
   beforeEach(() => {
@@ -29,6 +31,25 @@ describe('Login', () => {
     expect(screen.getByLabelText('メールアドレス')).toBeInTheDocument()
     expect(screen.getByLabelText('パスワード')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'ログイン' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /組織アカウントでログイン/ })).toBeInTheDocument()
+  })
+
+  it('opens password reset dialog and submits request', async () => {
+    vi.mocked(requestPasswordReset).mockResolvedValueOnce({
+      message: 'リセット手続きを受け付けました',
+    })
+    const user = userEvent.setup()
+
+    render(<Login />, { wrapper: MemoryRouter })
+    await user.click(screen.getByRole('button', { name: 'パスワードを忘れた場合' }))
+    const dialog = screen.getByRole('dialog', { name: 'パスワード再設定' })
+    await user.type(within(dialog).getByLabelText('メールアドレス'), 'user@example.com')
+    await user.click(screen.getByRole('button', { name: '送信' }))
+
+    await waitFor(() => {
+      expect(requestPasswordReset).toHaveBeenCalledWith('user@example.com')
+      expect(screen.getByRole('status')).toHaveTextContent('リセット手続きを受け付けました')
+    })
   })
 
   it('shows error on failed login', async () => {

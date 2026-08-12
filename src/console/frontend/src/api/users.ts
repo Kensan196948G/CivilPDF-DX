@@ -26,6 +26,7 @@ export interface UpdateUserRequest {
   full_name?: string
   role?: UserRole
   status?: UserStatus
+  unlock?: boolean
 }
 
 export async function listUsers(): Promise<UserResponse[]> {
@@ -45,4 +46,20 @@ export async function updateUser(id: string, data: UpdateUserRequest): Promise<U
 
 export async function deleteUser(id: string): Promise<void> {
   await api.delete(`/users/${id}`)
+}
+
+export async function adminResetPassword(id: string, new_password: string): Promise<void> {
+  await api.post(`/users/${id}/password-reset`, { new_password })
+}
+
+export async function exportPermissionsReport(): Promise<void> {
+  const res = await api.get<Blob>('/users/permissions-report?format=csv', {
+    responseType: 'blob',
+  })
+  const url = URL.createObjectURL(res.data)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = 'permissions-report.csv'
+  a.click()
+  URL.revokeObjectURL(url)
 }

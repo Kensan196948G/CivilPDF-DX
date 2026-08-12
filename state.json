@@ -14,10 +14,10 @@
   "kpi": {
     "ci_success_rate": 1,
     "test_pass_rate": 1,
-    "test_count": 657,
-    "backend_unit_test_count": 368,
+    "test_count": 674,
+    "backend_unit_test_count": 380,
     "backend_e2e_test_count": 20,
-    "frontend_test_count": 266,
+    "frontend_test_count": 268,
     "frontend_e2e_test_count": 3,
     "coverage_percent": 98,
     "review_blocker_count": 0,
@@ -66,6 +66,11 @@
         "オフサイトバックアップ未実装",
         "GET系監査未DB化"
       ]
+    },
+    "phase1_20260812": {
+      "assessment": "Phase 1 中核機能: OIDC SSO・パスワードリセット・ごみ箱/復元・ページネーション・通知センター・権限棚卸し・オフサイトバックアップ・PG全文検索・30分アイドルタイムアウト・E2E拡充",
+      "test_count": 674,
+      "pr": null
     },
     "production_hardening_20260806": {
       "prs": [112, 113],

@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router'
-import { login, getMe } from '../api/auth'
+import { login, getMe, requestPasswordReset, OIDC_LOGIN_URL } from '../api/auth'
 import { loginWithM365, getMe as getM365Me } from '../api/m365Auth'
 import { useAuthStore } from '../store/auth'
 
@@ -20,8 +20,34 @@ export function Login() {
   const [m365Error, setM365Error] = useState('')
   const [m365Loading, setM365Loading] = useState(false)
 
+  // Password reset request dialog
+  const [showReset, setShowReset] = useState(false)
+  const [resetEmail, setResetEmail] = useState('')
+  const [resetMessage, setResetMessage] = useState('')
+  const [resetError, setResetError] = useState('')
+  const [resetLoading, setResetLoading] = useState(false)
+
   const setUser = useAuthStore((s) => s.setUser)
   const navigate = useNavigate()
+
+  // OIDC callback returns tokens in the URL fragment (#access_token=...).
+  useEffect(() => {
+    const fragment = window.location.hash
+    if (!fragment.includes('access_token=')) return
+    const params = new URLSearchParams(fragment.slice(1))
+    const access = params.get('access_token')
+    const refresh = params.get('refresh_token')
+    if (!access) return
+    localStorage.setItem('access_token', access)
+    if (refresh) localStorage.setItem('refresh_token', refresh)
+    getMe()
+      .then((me) => {
+        setUser(me)
+        window.location.hash = ''
+        navigate('/dashboard')
+      })
+      .catch(() => setError('OIDC セッションの取得に失敗しました'))
+  }, [navigate, setUser])
 
   async function handlePasswordSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -58,6 +84,22 @@ export function Login() {
       )
     } finally {
       setM365Loading(false)
+    }
+  }
+
+  async function handleResetSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setResetError('')
+    setResetMessage('')
+    setResetLoading(true)
+    try {
+      const result = await requestPasswordReset(resetEmail)
+      setResetMessage(result.message ?? 'リセット手続きを受け付けました')
+      setResetEmail('')
+    } catch {
+      setResetError('リセット申請に失敗しました。管理者にお問い合わせください。')
+    } finally {
+      setResetLoading(false)
     }
   }
 
@@ -154,6 +196,28 @@ export function Login() {
             >
               {loading ? 'ログイン中...' : 'ログイン'}
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href = OIDC_LOGIN_URL
+              }}
+              className="w-full border border-gray-300 text-gray-700 rounded-lg py-2 text-sm font-semibold hover:bg-gray-50 transition-colors"
+            >
+              組織アカウントでログイン (SSO)
+            </button>
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setResetMessage('')
+                  setResetError('')
+                  setShowReset(true)
+                }}
+                className="text-xs text-blue-600 hover:underline"
+              >
+                パスワードを忘れた場合
+              </button>
+            </div>
           </form>
         )}
 
@@ -212,6 +276,64 @@ export function Login() {
           </form>
         )}
       </div>
+
+      {showReset && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reset-dialog-title"
+          className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50"
+          onClick={() => setShowReset(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="reset-dialog-title" className="text-lg font-bold text-gray-800 mb-2">
+              パスワード再設定
+            </h2>
+            <p className="text-xs text-gray-500 mb-4 leading-relaxed">
+              登録済みメールアドレスを入力してください。管理者経由で再設定手続きを案内します。
+            </p>
+            <form onSubmit={handleResetSubmit} className="space-y-3">
+              <label htmlFor="reset-email" className="block text-sm font-medium text-gray-700">
+                メールアドレス
+              </label>
+              <input
+                id="reset-email"
+                type="email"
+                autoComplete="email"
+                value={resetEmail}
+                onChange={(e) => setResetEmail(e.target.value)}
+                required
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              {resetMessage && (
+                <p role="status" className="text-green-700 text-xs">{resetMessage}</p>
+              )}
+              {resetError && (
+                <p role="alert" className="text-red-600 text-xs">{resetError}</p>
+              )}
+              <div className="flex justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowReset(false)}
+                  className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-100 rounded-lg"
+                >
+                  キャンセル
+                </button>
+                <button
+                  type="submit"
+                  disabled={resetLoading}
+                  className="px-4 py-1.5 text-sm bg-blue-700 hover:bg-blue-800 text-white rounded-lg disabled:opacity-50"
+                >
+                  {resetLoading ? '送信中...' : '送信'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

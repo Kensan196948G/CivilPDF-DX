@@ -40,3 +40,12 @@ export async function updateMe(full_name: string): Promise<UserResponse> {
 export async function changePassword(current_password: string, new_password: string): Promise<void> {
   await api.post('/auth/me/password', { current_password, new_password })
 }
+
+export async function requestPasswordReset(email: string): Promise<{ message: string }> {
+  const res = await api.post<{ message: string }>('/auth/password-reset/request', {
+    email,
+  })
+  return res.data
+}
+
+export const OIDC_LOGIN_URL = '/api/v1/auth/oidc/login'

@@ -7,14 +7,23 @@ import { vi, describe, it, expect, beforeEach } from 'vitest'
 import { Documents } from '../pages/Documents'
 
 vi.mock('../api/documents', () => ({
-  listDocuments: vi.fn(),
+  listDocumentsPaginated: vi.fn(),
+  listTrash: vi.fn().mockResolvedValue([]),
+  restoreDocument: vi.fn(),
   uploadDocument: vi.fn(),
   deleteDocument: vi.fn(),
   fetchDocumentBlob: vi.fn(),
 }))
 vi.mock('../api/projects', () => ({ listProjects: vi.fn() }))
 
-import { listDocuments, deleteDocument, fetchDocumentBlob } from '../api/documents'
+import {
+  listDocumentsPaginated,
+  listTrash,
+  restoreDocument,
+  deleteDocument,
+  fetchDocumentBlob,
+  type DocumentResponse,
+} from '../api/documents'
 import { listProjects } from '../api/projects'
 
 const mockDoc = {
@@ -42,6 +51,16 @@ const mockProject = {
   created_at: '2026-01-01T00:00:00Z',
 }
 
+function pageOf(docs: DocumentResponse[]) {
+  return {
+    items: docs,
+    total: docs.length,
+    page: 1,
+    per_page: 20,
+    pages: Math.max(1, Math.ceil(docs.length / 20)),
+  }
+}
+
 function makeWrapper() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return ({ children }: { children: React.ReactNode }) => (
@@ -57,7 +76,7 @@ describe('Documents', () => {
   })
 
   it('shows loading state initially', () => {
-    vi.mocked(listDocuments).mockReturnValue(new Promise(() => {}))
+    vi.mocked(listDocumentsPaginated).mockReturnValue(new Promise(() => {}))
     vi.mocked(listProjects).mockReturnValue(new Promise(() => {}))
 
     render(<Documents />, { wrapper: makeWrapper() })
@@ -66,7 +85,7 @@ describe('Documents', () => {
   })
 
   it('shows empty state when no documents', async () => {
-    vi.mocked(listDocuments).mockResolvedValueOnce([])
+    vi.mocked(listDocumentsPaginated).mockResolvedValueOnce(pageOf([]))
     vi.mocked(listProjects).mockResolvedValueOnce([])
 
     render(<Documents />, { wrapper: makeWrapper() })
@@ -76,8 +95,34 @@ describe('Documents', () => {
     })
   })
 
+  it('shows trash and restores a document', async () => {
+    vi.mocked(listDocumentsPaginated).mockResolvedValueOnce(pageOf([]))
+    vi.mocked(listProjects).mockResolvedValueOnce([])
+    vi.mocked(listTrash).mockResolvedValueOnce([
+      { ...mockDoc, id: 'doc-trash', title: '削除済み図面', deletion_requested_at: '2026-08-01T00:00:00Z' },
+    ])
+    vi.mocked(restoreDocument).mockResolvedValueOnce({
+      ...mockDoc,
+      id: 'doc-trash',
+      title: '削除済み図面',
+    })
+    const user = userEvent.setup()
+
+    render(<Documents />, { wrapper: makeWrapper() })
+    await user.click(screen.getByRole('button', { name: 'ごみ箱' }))
+
+    await waitFor(() => {
+      expect(screen.getByText('削除済み図面')).toBeInTheDocument()
+    })
+    await user.click(screen.getByRole('button', { name: '復元' }))
+    await waitFor(() => {
+      expect(restoreDocument).toHaveBeenCalled()
+      expect(vi.mocked(restoreDocument).mock.calls[0][0]).toBe('doc-trash')
+    })
+  })
+
   it('shows document list', async () => {
-    vi.mocked(listDocuments).mockResolvedValueOnce([mockDoc])
+    vi.mocked(listDocumentsPaginated).mockResolvedValueOnce(pageOf([mockDoc]))
     vi.mocked(listProjects).mockResolvedValueOnce([])
 
     render(<Documents />, { wrapper: makeWrapper() })
@@ -93,7 +138,7 @@ describe('Documents', () => {
   })
 
   it('shows upload form when button clicked', async () => {
-    vi.mocked(listDocuments).mockResolvedValueOnce([])
+    vi.mocked(listDocumentsPaginated).mockResolvedValueOnce(pageOf([]))
     vi.mocked(listProjects).mockResolvedValueOnce([mockProject])
     const user = userEvent.setup()
 
@@ -109,7 +154,7 @@ describe('Documents', () => {
   })
 
   it('hides upload form when cancel clicked', async () => {
-    vi.mocked(listDocuments).mockResolvedValueOnce([])
+    vi.mocked(listDocumentsPaginated).mockResolvedValueOnce(pageOf([]))
     vi.mocked(listProjects).mockResolvedValueOnce([])
     const user = userEvent.setup()
 
@@ -123,7 +168,7 @@ describe('Documents', () => {
   })
 
   it('shows project options in upload form', async () => {
-    vi.mocked(listDocuments).mockResolvedValueOnce([])
+    vi.mocked(listDocumentsPaginated).mockResolvedValueOnce(pageOf([]))
     vi.mocked(listProjects).mockResolvedValueOnce([mockProject])
     const user = userEvent.setup()
 
@@ -137,7 +182,7 @@ describe('Documents', () => {
   })
 
   it('shows document type options in upload form', async () => {
-    vi.mocked(listDocuments).mockResolvedValueOnce([])
+    vi.mocked(listDocumentsPaginated).mockResolvedValueOnce(pageOf([]))
     vi.mocked(listProjects).mockResolvedValueOnce([])
     const user = userEvent.setup()
 
@@ -155,7 +200,7 @@ describe('Documents', () => {
   })
 
   it('upload button is enabled by default in upload form', async () => {
-    vi.mocked(listDocuments).mockResolvedValueOnce([])
+    vi.mocked(listDocumentsPaginated).mockResolvedValueOnce(pageOf([]))
     vi.mocked(listProjects).mockResolvedValueOnce([])
     const user = userEvent.setup()
 
@@ -168,7 +213,7 @@ describe('Documents', () => {
   })
 
   it('calls deleteDocument after confirmation is clicked', async () => {
-    vi.mocked(listDocuments).mockResolvedValue([mockDoc])
+    vi.mocked(listDocumentsPaginated).mockResolvedValue(pageOf([mockDoc]))
     vi.mocked(listProjects).mockResolvedValue([])
     vi.mocked(deleteDocument).mockResolvedValue(undefined)
     const user = userEvent.setup()
@@ -185,7 +230,7 @@ describe('Documents', () => {
   })
 
   it('does not delete when confirmation is cancelled', async () => {
-    vi.mocked(listDocuments).mockResolvedValue([mockDoc])
+    vi.mocked(listDocumentsPaginated).mockResolvedValue(pageOf([mockDoc]))
     vi.mocked(listProjects).mockResolvedValue([])
     vi.mocked(deleteDocument).mockResolvedValue(undefined)
     const user = userEvent.setup()
@@ -201,7 +246,7 @@ describe('Documents', () => {
   })
 
   it('opens preview modal when preview button clicked', async () => {
-    vi.mocked(listDocuments).mockResolvedValue([mockDoc])
+    vi.mocked(listDocumentsPaginated).mockResolvedValue(pageOf([mockDoc]))
     vi.mocked(listProjects).mockResolvedValue([])
     vi.mocked(fetchDocumentBlob).mockResolvedValue(new Blob(['pdf'], { type: 'application/pdf' }))
     const createUrl = vi.fn(() => 'blob:mock-url')
@@ -225,7 +270,7 @@ describe('Documents', () => {
       mockDoc,
       { ...mockDoc, id: 'doc-2', title: 'トンネル断面図', status: 'pending', document_type: 'specification' },
     ]
-    vi.mocked(listDocuments).mockResolvedValueOnce(docs)
+    vi.mocked(listDocumentsPaginated).mockResolvedValueOnce(pageOf(docs))
     vi.mocked(listProjects).mockResolvedValueOnce([])
 
     render(<Documents />, { wrapper: makeWrapper() })
@@ -237,7 +282,7 @@ describe('Documents', () => {
   })
 
   it('shows search input and filter selects', async () => {
-    vi.mocked(listDocuments).mockResolvedValueOnce([mockDoc])
+    vi.mocked(listDocumentsPaginated).mockResolvedValueOnce(pageOf([mockDoc]))
     vi.mocked(listProjects).mockResolvedValueOnce([])
 
     render(<Documents />, { wrapper: makeWrapper() })
@@ -252,7 +297,7 @@ describe('Documents', () => {
       mockDoc,
       { ...mockDoc, id: 'doc-2', title: 'トンネル断面図', status: 'draft', document_type: 'specification' },
     ]
-    vi.mocked(listDocuments).mockResolvedValueOnce(docs)
+    vi.mocked(listDocumentsPaginated).mockResolvedValueOnce(pageOf(docs))
     vi.mocked(listProjects).mockResolvedValueOnce([])
     const user = userEvent.setup()
 
@@ -274,7 +319,7 @@ describe('Documents', () => {
       mockDoc,
       { ...mockDoc, id: 'doc-2', title: 'トンネル断面図', status: 'draft', document_type: 'specification' },
     ]
-    vi.mocked(listDocuments).mockResolvedValueOnce(docs)
+    vi.mocked(listDocumentsPaginated).mockResolvedValueOnce(pageOf(docs))
     vi.mocked(listProjects).mockResolvedValueOnce([])
     const user = userEvent.setup()
 
@@ -291,7 +336,7 @@ describe('Documents', () => {
   })
 
   it('shows no-match message when filter has no results', async () => {
-    vi.mocked(listDocuments).mockResolvedValueOnce([mockDoc])
+    vi.mocked(listDocumentsPaginated).mockResolvedValueOnce(pageOf([mockDoc]))
     vi.mocked(listProjects).mockResolvedValueOnce([])
     const user = userEvent.setup()
 
@@ -304,7 +349,7 @@ describe('Documents', () => {
   })
 
   it('shows clear button when filters are active', async () => {
-    vi.mocked(listDocuments).mockResolvedValueOnce([mockDoc])
+    vi.mocked(listDocumentsPaginated).mockResolvedValueOnce(pageOf([mockDoc]))
     vi.mocked(listProjects).mockResolvedValueOnce([])
     const user = userEvent.setup()
 
