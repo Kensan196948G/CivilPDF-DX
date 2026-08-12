@@ -6,10 +6,8 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src/console/backend"))
 
 # Production-safety validation must see strong test secrets.
-os.environ.setdefault("SECRET_KEY", "test-secret-key-0123456789abcdef0123456789abcdef")
-os.environ.setdefault(
-    "TIMESTAMP_HMAC_KEY", "test-hmac-key-0123456789abcdef0123456789abcdef"
-)
+os.environ.setdefault("SECRET_KEY", "unit-test-secret-key-value")
+os.environ.setdefault("TIMESTAMP_HMAC_KEY", "unit-test-hmac-key-value")
 
 import pytest
 from fastapi.testclient import TestClient

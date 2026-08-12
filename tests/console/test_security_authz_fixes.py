@@ -305,7 +305,7 @@ class TestProductionSettingsValidation:
             _env_file=None,
             debug=False,
             secret_key="change-this-in-production",
-            timestamp_hmac_key="test-hmac-key-0123456789abcdef0123456789abcdef",
+            timestamp_hmac_key="unit-test-hmac-key-value",
         )
         with pytest.raises(RuntimeError, match="SECRET_KEY"):
             validate_production_settings(cfg)
@@ -316,7 +316,7 @@ class TestProductionSettingsValidation:
         cfg = Settings(
             _env_file=None,
             debug=False,
-            secret_key="0123456789abcdef0123456789abcdef0123456789abcdef",
+            secret_key="unit-test-secret-key-value",
             timestamp_hmac_key="change-me-in-production",
         )
         with pytest.raises(RuntimeError, match="TIMESTAMP_HMAC_KEY"):
@@ -328,7 +328,7 @@ class TestProductionSettingsValidation:
         cfg = Settings(
             _env_file=None,
             debug=False,
-            secret_key="0123456789abcdef0123456789abcdef0123456789abcdef",
-            timestamp_hmac_key="0123456789abcdef0123456789abcdef0123456789abcdef",
+            secret_key="unit-test-secret-key-value",
+            timestamp_hmac_key="unit-test-hmac-key-value",
         )
         validate_production_settings(cfg)
