@@ -69,9 +69,17 @@ export function Login() {
         <p className="text-sm text-gray-500 mb-5">建設業向け図面・書類管理システム</p>
 
         {/* Tab switcher */}
-        <div className="flex rounded-lg overflow-hidden border border-gray-200 mb-5 text-sm">
+        <div
+          role="tablist"
+          aria-label="ログイン方法"
+          className="flex rounded-lg overflow-hidden border border-gray-200 mb-5 text-sm"
+        >
           <button
             type="button"
+            role="tab"
+            id="tab-password"
+            aria-selected={tab === 'password'}
+            aria-controls="panel-password"
             className={`flex-1 py-2 font-medium transition-colors ${
               tab === 'password'
                 ? 'bg-blue-700 text-white'
@@ -79,10 +87,14 @@ export function Login() {
             }`}
             onClick={() => { setTab('password'); setError(''); setM365Error('') }}
           >
-            パスワード
+            ID/パスワード
           </button>
           <button
             type="button"
+            role="tab"
+            id="tab-m365"
+            aria-selected={tab === 'm365'}
+            aria-controls="panel-m365"
             className={`flex-1 py-2 font-medium transition-colors flex items-center justify-center gap-1.5 ${
               tab === 'm365'
                 ? 'bg-blue-700 text-white'
@@ -97,7 +109,13 @@ export function Login() {
 
         {/* Password login form */}
         {tab === 'password' && (
-          <form onSubmit={handlePasswordSubmit} className="space-y-4">
+          <form
+            id="panel-password"
+            role="tabpanel"
+            aria-labelledby="tab-password"
+            onSubmit={handlePasswordSubmit}
+            className="space-y-4"
+          >
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
                 メールアドレス
@@ -105,6 +123,7 @@ export function Login() {
               <input
                 id="email"
                 type="email"
+                autoComplete="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -118,13 +137,16 @@ export function Login() {
               <input
                 id="password"
                 type="password"
+                autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
-            {error && <p className="text-red-600 text-sm">{error}</p>}
+            {error && (
+              <p role="alert" className="text-red-600 text-sm">{error}</p>
+            )}
             <button
               type="submit"
               disabled={loading}
@@ -137,7 +159,13 @@ export function Login() {
 
         {/* Microsoft 365 non-interactive login */}
         {tab === 'm365' && (
-          <form onSubmit={handleM365Submit} className="space-y-4">
+          <form
+            id="panel-m365"
+            role="tabpanel"
+            aria-labelledby="tab-m365"
+            onSubmit={handleM365Submit}
+            className="space-y-4"
+          >
             <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 text-xs text-blue-700 leading-relaxed">
               <strong>非対話式認証</strong>
               <br />
@@ -150,6 +178,7 @@ export function Login() {
               <input
                 id="m365email"
                 type="email"
+                autoComplete="email"
                 value={m365Email}
                 onChange={(e) => setM365Email(e.target.value)}
                 required
@@ -158,7 +187,7 @@ export function Login() {
               />
             </div>
             {m365Error && (
-              <p className="text-red-600 text-xs whitespace-pre-line">{m365Error}</p>
+              <p role="alert" className="text-red-600 text-xs whitespace-pre-line">{m365Error}</p>
             )}
             <button
               type="submit"

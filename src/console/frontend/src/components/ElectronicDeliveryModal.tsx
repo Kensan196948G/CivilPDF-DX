@@ -5,6 +5,7 @@ import {
   downloadDeliveryZip,
   type DeliveryReadinessResponse,
 } from '../api/electronicDelivery'
+import { useModalDialog } from '../hooks/useModalDialog'
 
 interface Props {
   projectId: string
@@ -15,6 +16,7 @@ interface Props {
 
 export function ElectronicDeliveryModal({ projectId, projectName, projectCode, onClose }: Props) {
   const [downloaded, setDownloaded] = useState(false)
+  const dialogRef = useModalDialog(true, onClose)
 
   const readiness = useQuery<DeliveryReadinessResponse>({
     queryKey: ['delivery-readiness', projectId],
@@ -30,6 +32,10 @@ export function ElectronicDeliveryModal({ projectId, projectName, projectCode, o
 
   return (
     <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="delivery-modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       onClick={onClose}
     >
@@ -45,7 +51,7 @@ export function ElectronicDeliveryModal({ projectId, projectName, projectCode, o
           ×
         </button>
 
-        <h2 className="text-lg font-bold text-gray-800 mb-1">📦 電子納品パッケージ生成</h2>
+        <h2 id="delivery-modal-title" className="text-lg font-bold text-gray-800 mb-1">📦 電子納品パッケージ生成</h2>
         <p className="text-sm text-gray-500 mb-4 truncate">{projectName}</p>
 
         {/* Readiness check */}

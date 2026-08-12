@@ -213,6 +213,7 @@ export function Settings() {
               <input
                 id="current-pass"
                 type="password"
+                autoComplete="current-password"
                 className="w-full border rounded px-3 py-2 text-sm"
                 value={currentPass}
                 onChange={(e) => setCurrentPass(e.target.value)}
@@ -228,18 +229,19 @@ export function Settings() {
               <input
                 id="new-pass"
                 type="password"
+                autoComplete="new-password"
                 className="w-full border rounded px-3 py-2 text-sm"
                 value={newPass}
                 onChange={(e) => setNewPass(e.target.value)}
               />
             </div>
             {changePassMutation.error && (
-              <p className="text-red-600 text-xs">
+              <p role="alert" className="text-red-600 text-xs">
                 {String(changePassMutation.error)}
               </p>
             )}
             {changePassMutation.isSuccess && (
-              <p className="text-green-600 text-xs">パスワードを変更しました</p>
+              <p role="status" className="text-green-600 text-xs">パスワードを変更しました</p>
             )}
             <div className="flex gap-2">
               <button

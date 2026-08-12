@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { applyTimestamp, verifyTimestamp, type TimestampVerifyResponse } from '../api/documents'
+import { useModalDialog } from '../hooks/useModalDialog'
 
 interface Props {
   documentId: string
@@ -10,6 +11,7 @@ interface Props {
 
 export function DocumentTimestampModal({ documentId, documentTitle, onClose }: Props) {
   const [applied, setApplied] = useState(false)
+  const dialogRef = useModalDialog(true, onClose)
 
   const verify = useQuery<TimestampVerifyResponse>({
     queryKey: ['timestamp-verify', documentId],
@@ -42,7 +44,14 @@ export function DocumentTimestampModal({ documentId, documentTitle, onClose }: P
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={onClose}>
+    <div
+      ref={dialogRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="timestamp-modal-title"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      onClick={onClose}
+    >
       <div
         className="bg-white rounded-xl shadow-xl w-full max-w-lg p-6 relative"
         onClick={e => e.stopPropagation()}
@@ -55,7 +64,7 @@ export function DocumentTimestampModal({ documentId, documentTitle, onClose }: P
           ×
         </button>
 
-        <h2 className="text-lg font-bold text-gray-800 mb-1">🔏 電子タイムスタンプ</h2>
+        <h2 id="timestamp-modal-title" className="text-lg font-bold text-gray-800 mb-1">🔏 電子タイムスタンプ</h2>
         <p className="text-sm text-gray-500 mb-4 truncate">{documentTitle}</p>
 
         {/* Current status */}

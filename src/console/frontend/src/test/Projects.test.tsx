@@ -187,7 +187,7 @@ describe('Projects', () => {
     expect(screen.queryByRole('button', { name: '削除' })).not.toBeInTheDocument()
   })
 
-  it('calls deleteProject with correct id when delete is clicked', async () => {
+  it('calls deleteProject after confirmation is clicked', async () => {
     vi.mocked(listProjects).mockResolvedValue([mockProjectA])
     vi.mocked(deleteProject).mockResolvedValue(undefined)
     const user = userEvent.setup()
@@ -196,10 +196,26 @@ describe('Projects', () => {
 
     const deleteBtn = await screen.findByRole('button', { name: '削除' })
     await user.click(deleteBtn)
+    await user.click(screen.getByRole('button', { name: '削除する' }))
 
     await waitFor(() => {
       expect(vi.mocked(deleteProject).mock.calls[0]?.[0]).toBe('proj-1')
     })
+  })
+
+  it('does not delete when confirmation is cancelled', async () => {
+    vi.mocked(listProjects).mockResolvedValue([mockProjectA])
+    vi.mocked(deleteProject).mockResolvedValue(undefined)
+    const user = userEvent.setup()
+
+    render(<Projects />, { wrapper: makeWrapper() })
+
+    const deleteBtn = await screen.findByRole('button', { name: '削除' })
+    await user.click(deleteBtn)
+    expect(screen.getByText('削除しますか?')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'キャンセル' }))
+
+    expect(deleteProject).not.toHaveBeenCalled()
   })
 
   it('shows creation form when "+ 新規作成" is clicked', async () => {

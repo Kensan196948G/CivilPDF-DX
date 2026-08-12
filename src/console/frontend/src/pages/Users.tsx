@@ -37,10 +37,14 @@ const initialForm = { email: '', username: '', full_name: '', password: '', role
 export function Users() {
   const qc = useQueryClient()
   const currentUser = useAuthStore((s) => s.user)
-  const { data: users = [], isLoading } = useQuery({ queryKey: ['users'], queryFn: listUsers })
+  const { data: users = [], isLoading, isError, refetch } = useQuery({
+    queryKey: ['users'],
+    queryFn: listUsers,
+  })
 
   const [showForm, setShowForm] = useState(false)
   const [form, setForm] = useState(initialForm)
+  const [confirmDisableId, setConfirmDisableId] = useState<string | null>(null)
 
   const create = useMutation({
     mutationFn: () => createUser(form),
@@ -54,7 +58,10 @@ export function Users() {
   const toggleStatus = useMutation({
     mutationFn: ({ id, status }: { id: string; status: string }) =>
       updateUserStatus(id, status === 'active' ? 'inactive' : 'active'),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['users'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['users'] })
+      setConfirmDisableId(null)
+    },
   })
 
   if (currentUser?.role !== 'admin' && currentUser?.role !== 'manager') {
@@ -86,42 +93,56 @@ export function Users() {
           <h2 className="font-semibold text-gray-700 mb-4">新規ユーザー作成</h2>
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-600 mb-1">メールアドレス</label>
+              <label htmlFor="user-email" className="block text-sm text-gray-600 mb-1">メールアドレス</label>
               <input
+                id="user-email"
                 type="email"
+                required
+                autoComplete="email"
                 className="w-full border rounded px-3 py-2 text-sm"
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">ユーザー名</label>
+              <label htmlFor="user-username" className="block text-sm text-gray-600 mb-1">ユーザー名</label>
               <input
+                id="user-username"
+                required
+                autoComplete="username"
                 className="w-full border rounded px-3 py-2 text-sm"
                 value={form.username}
                 onChange={(e) => setForm({ ...form, username: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">氏名</label>
+              <label htmlFor="user-full-name" className="block text-sm text-gray-600 mb-1">氏名</label>
               <input
+                id="user-full-name"
+                required
+                autoComplete="name"
                 className="w-full border rounded px-3 py-2 text-sm"
                 value={form.full_name}
                 onChange={(e) => setForm({ ...form, full_name: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">パスワード（8文字以上）</label>
+              <label htmlFor="user-password" className="block text-sm text-gray-600 mb-1">パスワード（8文字以上）</label>
               <input
+                id="user-password"
                 type="password"
+                required
+                minLength={8}
+                autoComplete="new-password"
                 className="w-full border rounded px-3 py-2 text-sm"
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
               />
             </div>
             <div>
-              <label className="block text-sm text-gray-600 mb-1">ロール</label>
+              <label htmlFor="user-role" className="block text-sm text-gray-600 mb-1">ロール</label>
               <select
+                id="user-role"
                 className="w-full border rounded px-3 py-2 text-sm"
                 value={form.role}
                 onChange={(e) => setForm({ ...form, role: e.target.value })}
@@ -133,7 +154,7 @@ export function Users() {
             </div>
           </div>
           {create.error && (
-            <p className="text-red-600 text-sm mt-2">{String(create.error)}</p>
+            <p role="alert" className="text-red-600 text-sm mt-2">{String(create.error)}</p>
           )}
           <div className="flex gap-3 mt-4">
             <button
@@ -153,19 +174,34 @@ export function Users() {
         </div>
       )}
 
-      <div className="bg-white rounded-xl shadow">
+      {isError && (
+        <div
+          role="alert"
+          className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-700 flex items-center justify-between gap-3"
+        >
+          <span>ユーザー一覧の読み込みに失敗しました</span>
+          <button
+            onClick={() => void refetch()}
+            className="text-xs px-2 py-1 rounded border border-red-300 hover:bg-red-100"
+          >
+            再試行
+          </button>
+        </div>
+      )}
+
+      <div className="bg-white rounded-xl shadow overflow-x-auto">
         {isLoading ? (
           <p className="p-6 text-gray-400 text-sm">読み込み中...</p>
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[760px]">
             <thead className="border-b">
               <tr className="text-left text-gray-500">
-                <th className="px-4 py-3">名前</th>
-                <th className="px-4 py-3">メールアドレス</th>
-                <th className="px-4 py-3">ロール</th>
-                <th className="px-4 py-3">ステータス</th>
-                <th className="px-4 py-3">最終ログイン</th>
-                {isAdmin && <th className="px-4 py-3"></th>}
+                <th scope="col" className="px-4 py-3">名前</th>
+                <th scope="col" className="px-4 py-3">メールアドレス</th>
+                <th scope="col" className="px-4 py-3">ロール</th>
+                <th scope="col" className="px-4 py-3">ステータス</th>
+                <th scope="col" className="px-4 py-3">最終ログイン</th>
+                {isAdmin && <th scope="col" className="px-4 py-3"></th>}
               </tr>
             </thead>
             <tbody>
@@ -191,16 +227,38 @@ export function Users() {
                   {isAdmin && (
                     <td className="px-4 py-3">
                       {u.id !== currentUser?.id && (
-                        <button
-                          onClick={() => toggleStatus.mutate({ id: u.id, status: u.status })}
-                          className={`text-xs px-2 py-1 rounded border transition-colors ${
-                            u.status === 'active'
-                              ? 'border-red-300 text-red-600 hover:bg-red-50'
-                              : 'border-green-300 text-green-600 hover:bg-green-50'
-                          }`}
-                        >
-                          {u.status === 'active' ? '無効化' : '有効化'}
-                        </button>
+                        confirmDisableId === u.id ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            <span className="text-xs text-gray-500">無効化しますか?</span>
+                            <button
+                              onClick={() => toggleStatus.mutate({ id: u.id, status: u.status })}
+                              disabled={toggleStatus.isPending}
+                              className="text-red-600 hover:text-red-800 text-xs font-semibold disabled:opacity-50"
+                            >
+                              無効化する
+                            </button>
+                            <button
+                              onClick={() => setConfirmDisableId(null)}
+                              className="text-gray-500 hover:text-gray-700 text-xs"
+                            >
+                              キャンセル
+                            </button>
+                          </span>
+                        ) : u.status === 'active' ? (
+                          <button
+                            onClick={() => setConfirmDisableId(u.id)}
+                            className="text-xs px-2 py-1 rounded border border-red-300 text-red-600 hover:bg-red-50 transition-colors"
+                          >
+                            無効化
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => toggleStatus.mutate({ id: u.id, status: u.status })}
+                            className="text-xs px-2 py-1 rounded border border-green-300 text-green-600 hover:bg-green-50 transition-colors"
+                          >
+                            有効化
+                          </button>
+                        )
                       )}
                     </td>
                   )}

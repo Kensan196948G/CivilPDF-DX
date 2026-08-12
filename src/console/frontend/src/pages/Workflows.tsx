@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { listWorkflows, getWorkflow, decideStep, type WorkflowResponse, type ApprovalStep } from '../api/workflows'
 import { useAuthStore } from '../store/auth'
+import { useModalDialog } from '../hooks/useModalDialog'
 
 const statusLabel: Record<string, { label: string; cls: string }> = {
   in_progress: { label: '審査中', cls: 'bg-orange-100 text-orange-700' },
@@ -25,6 +26,7 @@ interface DetailModalProps {
 function WorkflowDetailModal({ workflowId, onClose }: DetailModalProps) {
   const qc = useQueryClient()
   const currentUser = useAuthStore((s) => s.user)
+  const dialogRef = useModalDialog(true, onClose)
   const [comment, setComment] = useState('')
   const [actingStepId, setActingStepId] = useState<string | null>(null)
 
@@ -50,15 +52,17 @@ function WorkflowDetailModal({ workflowId, onClose }: DetailModalProps) {
 
   return (
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
+      aria-labelledby="workflow-modal-title"
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
       onClick={(e) => { if (e.target === e.currentTarget) onClose() }}
     >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b">
-          <h2 className="text-lg font-bold text-gray-800">ワークフロー詳細</h2>
+          <h2 id="workflow-modal-title" className="text-lg font-bold text-gray-800">ワークフロー詳細</h2>
           <button
             onClick={onClose}
             aria-label="閉じる"
@@ -188,7 +192,7 @@ function WorkflowDetailModal({ workflowId, onClose }: DetailModalProps) {
 export function Workflows() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
-  const { data: workflows = [], isLoading } = useQuery({
+  const { data: workflows = [], isLoading, isError, refetch } = useQuery({
     queryKey: ['workflows'],
     queryFn: listWorkflows,
   })
@@ -197,22 +201,37 @@ export function Workflows() {
     <div className="p-8">
       <h1 className="text-2xl font-bold text-gray-800 mb-6">承認ワークフロー</h1>
 
-      <div className="bg-white rounded-xl shadow">
+      {isError && (
+        <div
+          role="alert"
+          className="bg-red-50 border border-red-200 rounded-lg p-3 mb-4 text-sm text-red-700 flex items-center justify-between gap-3"
+        >
+          <span>ワークフローの読み込みに失敗しました</span>
+          <button
+            onClick={() => void refetch()}
+            className="text-xs px-2 py-1 rounded border border-red-300 hover:bg-red-100"
+          >
+            再試行
+          </button>
+        </div>
+      )}
+
+      <div className="bg-white rounded-xl shadow overflow-x-auto">
         {isLoading ? (
           <p className="p-6 text-gray-400 text-sm">読み込み中...</p>
         ) : workflows.length === 0 ? (
           <p className="p-6 text-gray-400 text-sm">ワークフローがありません</p>
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[760px]">
             <thead className="border-b">
               <tr className="text-left text-gray-500">
-                <th className="px-4 py-3">ドキュメント</th>
-                <th className="px-4 py-3">ステータス</th>
-                <th className="px-4 py-3">ステップ数</th>
-                <th className="px-4 py-3">承認待ち</th>
-                <th className="px-4 py-3">作成日</th>
-                <th className="px-4 py-3">完了日</th>
-                <th className="px-4 py-3"></th>
+                <th scope="col" className="px-4 py-3">ドキュメント</th>
+                <th scope="col" className="px-4 py-3">ステータス</th>
+                <th scope="col" className="px-4 py-3">ステップ数</th>
+                <th scope="col" className="px-4 py-3">承認待ち</th>
+                <th scope="col" className="px-4 py-3">作成日</th>
+                <th scope="col" className="px-4 py-3">完了日</th>
+                <th scope="col" className="px-4 py-3"></th>
               </tr>
             </thead>
             <tbody>
