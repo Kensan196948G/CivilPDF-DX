@@ -8,6 +8,18 @@
 
 ## [Unreleased]
 
+### 2026-08-13 — MVP / Prototype 公開（v0.9.0）
+
+- **P0 修正**: `LICENSE` に残っていた未解決の Git 競合マーカーを除去（Copyright を Kensan196948G に一本化。GitHub のライセンス検出が復帰）
+- **セキュリティ**: `python-jose`（ecdsa PYSEC-2026-1325 の影響）→ `PyJWT 2.13` へ移行し、pip-audit の ignore を撤廃（Issue #106 解消）
+- **レート制限**: 認証エンドポイント（`/auth/token`・`/auth/m365/login` 10回/60秒/IP、`/auth/refresh` 30回、パスワード再設定 5回）にスライディングウィンドウ制限を追加（429 + `Retry-After`）
+- **CSV エクスポート**: `GET /documents/export.csv`（RBAC 準拠）と `GET /audit-logs/export.csv`（管理者限定・出力自体を監査）。UTF-8 BOM・数式インジェクション対策済み。WebUI に出力ボタンを追加
+- **MVP ダミーデータ**: `scripts/seed_demo_data.py`（冪等・`--reset` 対応）— 組織6/ユーザー10/プロジェクト5/文書21（PDF実ファイル）/ワークフロー5/通知/監査チェーン/DX同期/同意記録を架空値で投入
+- **MVP 環境**: `docker-compose.mvp.yml`（SQLite + seed 自動投入）、`scripts/mvp-smoke.py`（実 HTTP 15 項目検証）、Cloudflare Tunnel `civilpdf-mvp` を新設
+- **公開 URL**: 本番 https://civilpdf.mirai-dx-platform.com/ / MVP https://civilpdf-mvp.mirai-dx-platform.com/
+- **文書整合**: README・API リファレンス・要件定義書の実装状態・WebUI 画面一覧・Runbook のバージョン表記を実装と同期。`VERSION` 0.9.0
+- **テスト**: バックエンド +9（CSV エクスポート/レート制限）、フロントエンド +2（CSV ダウンロードヘルパー）。conftest のテスト鍵を 32 バイト以上へ
+
 ### 2026-08-12 — 本番適用（systemd / SQLite）
 
 - `alembic upgrade head` を本番DBへ適用（h4x5y6z7a8b9 → **k1l2m3n4o5p6**）:

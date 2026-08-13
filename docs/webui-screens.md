@@ -46,8 +46,8 @@ Enterprise シェルは URL ベースのルートではなく、内部ステー�
 
 ### 図書管理（`documents`）
 
-- `pages/Documents.tsx`。文書一覧・アップロード・削除・タイムスタンプ関連モーダルを提供します。
-- 利用 API: `GET/POST/DELETE /api/v1/documents/...`。
+- `pages/Documents.tsx`。文書一覧・アップロード・削除・ごみ箱/復元・タイムスタンプ関連モーダル・CSV 出力を提供します。
+- 利用 API: `GET/POST/DELETE /api/v1/documents/...`、`GET /api/v1/documents/export.csv`。
 
 ### プロジェクト（`projects`）
 
@@ -61,8 +61,8 @@ Enterprise シェルは URL ベースのルートではなく、内部ステー�
 
 ### 監査（`audit`）
 
-- `pages/AuditLogs.tsx`。監査ログ一覧・チェーン検証を提供します。
-- 利用 API: `GET /api/v1/audit-logs/`、`GET /api/v1/audit-logs/verify`。
+- `pages/AuditLogs.tsx`。監査ログ一覧・チェーン検証・CSV 出力（管理者限定）を提供します。
+- 利用 API: `GET /api/v1/audit-logs/`、`GET /api/v1/audit-logs/verify`、`GET /api/v1/audit-logs/export.csv`。
 
 ### ユーザー管理（`users`）
 
@@ -84,4 +84,4 @@ Enterprise シェルは URL ベースのルートではなく、内部ステー�
 
 - 全シェルビューは認証必須です。
 - 画面内の権限制御は主にフロントエンドで実施しています（例: ユーザー管理は admin / manager 以外を拒否）。
-- バックエンド側の RBAC 強化は別途セキュリティ改善対象です（本ドキュメントは画面構成の実態を記載）。
+- バックエンド側でも RBAC（組織・プロジェクト所属＋ロール）を強制し、未許可は 404 で秘匿します（PR #122 以降）。
