@@ -28,6 +28,7 @@ from api import (
 )
 from middleware import AuditMiddleware, DxSyncMetricsMiddleware
 from middleware.security import SecurityHeadersMiddleware
+from middleware.rate_limit import RateLimitMiddleware
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -68,7 +69,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# Security headers middleware
+# Rate limiter is registered first so it runs innermost: its 429 responses
+# still traverse the security-header and audit layers on the way out.
+app.add_middleware(RateLimitMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,

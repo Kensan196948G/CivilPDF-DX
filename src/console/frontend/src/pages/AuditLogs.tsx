@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { listAuditLogs } from '../api/auditLogs'
+import { listAuditLogs, downloadAuditLogsCsv } from '../api/auditLogs'
 
 const resourceTypeLabel: Record<string, string> = {
   document: '文書',
@@ -24,6 +24,7 @@ export function AuditLogs() {
   const [page, setPage] = useState(1)
   const [actionFilter, setActionFilter] = useState('')
   const [resourceFilter, setResourceFilter] = useState('')
+  const [isExporting, setIsExporting] = useState(false)
 
   const { data, isLoading, isError, refetch } = useQuery({
     queryKey: ['audit-logs', page, actionFilter, resourceFilter],
@@ -75,6 +76,22 @@ export function AuditLogs() {
             合計 {data.total} 件
           </span>
         )}
+        <button
+          type="button"
+          disabled={isExporting}
+          onClick={() => {
+            setIsExporting(true)
+            downloadAuditLogsCsv({
+              action: actionFilter || undefined,
+              resource_type: resourceFilter || undefined,
+            })
+              .catch(() => undefined)
+              .finally(() => setIsExporting(false))
+          }}
+          className="text-sm px-3 py-2 rounded border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+        >
+          {isExporting ? '出力中...' : 'CSV出力'}
+        </button>
       </div>
 
       {isError && (

@@ -1,0 +1,14 @@
+# CivilPDF-DX MVP Cloudflare Tunnel config (reviewer preview environment)
+# civilpdf-mvp.mirai-dx-platform.com -> local vite preview :5183 (/api proxy -> uvicorn :8181)
+# See docs/deployment/mvp-preview-environment.md for the full setup procedure.
+tunnel: <TUNNEL_ID>
+credentials-file: /home/<USER>/.cloudflared/<TUNNEL_ID>.json
+
+originRequest:
+  connectTimeout: 30s
+  noHappyEyeballs: false
+
+ingress:
+  - hostname: civilpdf-mvp.mirai-dx-platform.com
+    service: http://localhost:5183
+  - service: http_status:404

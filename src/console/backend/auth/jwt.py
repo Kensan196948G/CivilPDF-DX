@@ -1,7 +1,8 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 import bcrypt
-from jose import JWTError, jwt
+import jwt
+from jwt import InvalidTokenError
 from fastapi import HTTPException, status
 from config import settings
 
@@ -38,7 +39,7 @@ def decode_token(token: str, expected_type: Optional[str] = None) -> dict:
         payload = jwt.decode(
             token, settings.secret_key, algorithms=[settings.algorithm]
         )
-    except JWTError:
+    except InvalidTokenError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",

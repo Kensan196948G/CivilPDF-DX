@@ -6,8 +6,8 @@ import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src/console/backend"))
 
 # Production-safety validation must see strong test secrets.
-os.environ.setdefault("SECRET_KEY", "unit-test-secret-key-value")
-os.environ.setdefault("TIMESTAMP_HMAC_KEY", "unit-test-hmac-key-value")
+os.environ.setdefault("SECRET_KEY", "unit-test-secret-key-value-32bytes-minimum")
+os.environ.setdefault("TIMESTAMP_HMAC_KEY", "unit-test-hmac-key-value-32bytes-minimum")
 
 import pytest
 from fastapi.testclient import TestClient
@@ -17,6 +17,7 @@ from sqlalchemy.orm import sessionmaker
 from main import app
 from database import Base, get_db
 from auth.jwt import get_password_hash
+from middleware.rate_limit import reset_all
 from models.user import User, UserRole, UserStatus
 
 SQLALCHEMY_TEST_URL = "sqlite:///./test_integration.db"
@@ -25,6 +26,14 @@ engine_test = create_engine(
     SQLALCHEMY_TEST_URL, connect_args={"check_same_thread": False}
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine_test)
+
+
+@pytest.fixture(autouse=True)
+def _reset_rate_limiter_between_tests():
+    """Keep per-IP counters isolated between tests (TestClient shares 127.0.0.1)."""
+    reset_all()
+    yield
+    reset_all()
 
 
 def override_get_db():

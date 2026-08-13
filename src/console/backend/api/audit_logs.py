@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -9,7 +11,8 @@ from models.user import User, UserRole
 from models.audit_log import AuditLog
 from auth.dependencies import get_current_user
 from api.schemas import AuditLogResponse
-from services.audit_chain_service import verify_chain
+from api.csv_export import csv_stream_response
+from services.audit_chain_service import create_chained_audit_log, verify_chain
 
 router = APIRouter(prefix="/audit-logs", tags=["Audit Logs"])
 
@@ -67,6 +70,82 @@ def list_audit_logs(
         "per_page": per_page,
         "pages": math.ceil(total / per_page) if total > 0 else 0,
     }
+
+
+@router.get("/export.csv")
+def export_audit_logs(
+    action: Optional[str] = None,
+    resource_type: Optional[str] = None,
+    resource_id: Optional[str] = None,
+    user_id: Optional[str] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Export (filtered) audit logs as CSV. Admin only; the export itself is audited."""
+    _require_admin(current_user)
+
+    q = db.query(AuditLog)
+    if action:
+        q = q.filter(AuditLog.action == action)
+    if resource_type:
+        q = q.filter(AuditLog.resource_type == resource_type)
+    if resource_id:
+        q = q.filter(AuditLog.resource_id == resource_id)
+    if user_id:
+        q = q.filter(AuditLog.user_id == user_id)
+    if date_from is not None:
+        q = q.filter(AuditLog.created_at >= date_from)
+    if date_to is not None:
+        q = q.filter(AuditLog.created_at <= date_to)
+
+    logs = q.order_by(AuditLog.sequence_number.asc()).all()
+    headers = [
+        "sequence_number",
+        "created_at",
+        "user_id",
+        "action",
+        "resource_type",
+        "resource_id",
+        "detail",
+        "ip_address",
+        "record_hash",
+        "prev_hash",
+    ]
+
+    def rows():
+        for log in logs:
+            created_at = log.created_at
+            if created_at and created_at.tzinfo is None:
+                created_at = created_at.replace(tzinfo=timezone.utc)
+            yield [
+                log.sequence_number,
+                created_at.isoformat() if created_at else "",
+                log.user_id,
+                log.action,
+                log.resource_type,
+                log.resource_id,
+                log.detail,
+                log.ip_address,
+                log.record_hash,
+                log.prev_hash,
+            ]
+
+    create_chained_audit_log(
+        db,
+        user_id=current_user.id,
+        action="audit.exported",
+        resource_type="audit_log",
+        resource_id=None,
+        detail=f"audit log CSV export ({len(logs)} rows)",
+        ip_address=None,
+    )
+    return csv_stream_response(
+        headers,
+        rows(),
+        f"audit-logs-{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}.csv",
+    )
 
 
 class ChainVerifyResponse(BaseModel):

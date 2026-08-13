@@ -138,12 +138,25 @@ https://civilpdf.mirai-dx-platform.com/
 
 ---
 
+### 🧪 MVP / Prototype（評価・デモ用）
+
+本番と完全分離した MVP 環境を公開しています。架空のダミーデータが投入済みで、
+アカウントがあれば主要ユースケースを直ちに操作・評価できます。
+
+```
+https://civilpdf-mvp.mirai-dx-platform.com/
+```
+
+- ログイン例: `admin@demo.civilpdf.example` / `CivilPDF-Demo-2026!`（全ロール共通・架空データ）
+- 手順・データ構成: [docs/deployment/mvp-preview-environment.md](docs/deployment/mvp-preview-environment.md)
+- ローカル起動: `docker compose -f docker-compose.mvp.yml up -d --build` → http://localhost:5183/
+
 ## 📊 システム稼働状況
 
 | 項目                        | 状態                                                                                   |
 | --------------------------- | -------------------------------------------------------------------------------------- |
 | 🟢 **本番稼働**             | 2026-08-06 本番デプロイ済み（Cloudflare Tunnel・systemd 稼働中）                        |
-| 🧪 **テスト網羅率**         | 633 件のテストで品質検証済み（backend 351・e2e 20・frontend vitest 259・playwright 3） |
+| 🧪 **テスト網羅率**         | 691 件（backend 394 + integration 20 + frontend vitest 271 + Playwright 6）・CI 12/12 success |
 | 🔒 **セキュリティスキャン** | CI で毎回自動脆弱性チェック実施中                                                      |
 | 📋 **CI/CD**                | GitHub Actions で自動テスト・ビルド検証                                                |
 | 🔔 **監視**                 | 5 分毎ヘルスチェック＋障害/復旧メール通知、四半期毎バックアップ復元訓練                |
@@ -162,6 +175,7 @@ https://civilpdf.mirai-dx-platform.com/
 | 🚀 **本番デプロイ手順**    | IT担当・インフラ             | [docs/deployment/docker-production-deployment.md](docs/deployment/docker-production-deployment.md) |
 | 📦 **アプリ配信運用**      | IT担当・配布管理             | [docs/deployment/app-distribution.md](docs/deployment/app-distribution.md)                         |
 | 📋 **WebUI 画面一覧**      | PM・現場担当                 | [docs/webui-screens.md](docs/webui-screens.md)                                                     |
+| 🧪 **MVP プレビュー環境**   | 評価者・関係者               | [docs/deployment/mvp-preview-environment.md](docs/deployment/mvp-preview-environment.md)          |
 | 🪟 **Windows 11 展開手順** | IT部門                       | [docs/windows-deployment.md](docs/windows-deployment.md)                                           |
 | 📋 **コンプライアンス**    | 法務・監査                   | [docs/compliance.md](docs/compliance.md)                                                           |
 
@@ -182,4 +196,4 @@ https://civilpdf.mirai-dx-platform.com/
 
 ---
 
-_最終更新: 2026-08-06 | Phase 1 リリース直前整備（Issue #109 migration 修理・依存セキュリティ更新・テスト 633 件体制）_
+_最終更新: 2026-08-13 | MVP/Prototype 公開（v0.9.0）— LICENSE 修復・PyJWT 移行・認証レート制限・CSV 出力・架空ダミーデータ・MVP 用公開 URL_

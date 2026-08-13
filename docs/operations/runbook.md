@@ -18,7 +18,7 @@
 | DB | SQLite `src/console/backend/civilpdf_dev.db`（**移行までの暫定**。スキーマは Alembic 管理、起動前 `alembic upgrade head`。Neon/PostgreSQL 移行手順は [neon-postgresql-migration.md](../deployment/neon-postgresql-migration.md)） |
 | アップロード | `~/civildx/uploads/` |
 | 環境設定 | `~/.config/civilpdf/civilpdf.env`（git 管理外・0600） |
-| バージョン | 正本はリポジトリ `VERSION`（現在 0.8.0）。`APP_VERSION`（`~/.config/civilpdf/civilpdf.env`）でデプロイ時上書き。整合検証は `scripts/verify-version-sync.sh` |
+| バージョン | 正本はリポジトリ `VERSION`（現在 0.9.0）。`APP_VERSION`（`~/.config/civilpdf/civilpdf.env`）でデプロイ時上書き。整合検証は `scripts/verify-version-sync.sh` |
 
 ## 2. デプロイ手順（新リリース）
 

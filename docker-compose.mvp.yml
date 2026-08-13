@@ -1,0 +1,69 @@
+# =============================================================================
+# CivilPDF-DX — MVP / Prototype (reviewer demo environment)
+# =============================================================================
+# 本番構成 (docker-compose.prod.yml) とは完全分離。SQLite + シード済み架空
+# ダミーデータで、ブラウザさえあれば主要ユースケースを一通り操作・評価できる。
+#
+# Usage:
+#   docker compose -f docker-compose.mvp.yml up -d --build
+#   open http://localhost:5183/
+#
+# Demo credentials (all fictional; reserved .example domain):
+#   email    admin@demo.civilpdf.example  (or eng-tokyo / mgr-east / viewer ...)
+#   password CivilPDF-Demo-2026!
+#
+# Data lives in the `mvp_data` volume: ./scripts/seed_demo_data.py is idempotent
+# and re-seeds on every container start without duplicating rows.
+# =============================================================================
+
+services:
+  backend:
+    build:
+      context: src/console/backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: sqlite:////data/civilpdf-mvp.db
+      UPLOAD_DIR: /data/uploads
+      # MVP/demo 専用の明示的ダミー秘密値。本番では絶対に使用しないこと。
+      SECRET_KEY: mvp-demo-secret-key-32bytes-minimum
+      TIMESTAMP_HMAC_KEY: mvp-demo-hmac-key-32bytes-minimum
+      DEBUG: "false"
+      APP_VERSION: 0.9.0
+      CORS_ORIGINS: '["http://localhost:5183","http://127.0.0.1:5183"]'
+      PYTHONPATH: /app
+    volumes:
+      - mvp_data:/data
+      - ./scripts/seed_demo_data.py:/scripts/seed_demo_data.py:ro
+    command: >
+      sh -c "python /scripts/seed_demo_data.py &&
+             uvicorn main:app --host 0.0.0.0 --port 8000"
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  frontend:
+    build:
+      context: src/console/frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      VITE_API_URL: http://backend:8000
+    command: >
+      sh -c "npm run build &&
+             npm run preview -- --host 0.0.0.0 --port 5183 --strictPort"
+    ports:
+      - "5183:5183"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+volumes:
+  mvp_data:
