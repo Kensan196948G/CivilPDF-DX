@@ -154,8 +154,7 @@ jobs:
           python-version: "3.12"
       - run: pip install pip-audit
       - name: Audit dependencies
-        # ecdsa PYSEC-2026-1325 は upstream fix 未リリースのため明示 ignore (Issue #106)
-        run: pip-audit -r src/console/backend/requirements.txt --ignore-vuln PYSEC-2026-1325
+        run: pip-audit -r src/console/backend/requirements.txt
 
   secret-scan:
     name: Secret Scan (gitleaks)

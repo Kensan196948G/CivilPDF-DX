@@ -17,7 +17,8 @@ import logging
 from typing import Any
 
 import httpx
-from jose import JWTError, jwt
+import jwt
+from jwt import InvalidTokenError, PyJWKClient, PyJWKClientError
 
 from config import settings
 
@@ -114,20 +115,13 @@ def exchange_code(code: str, verifier: str) -> dict[str, Any]:
         raise OIDCExchangeError(f"Token exchange failed: {exc}") from exc
 
 
-def _fetch_jwks(jwks_uri: str) -> dict[str, Any]:
-    try:
-        resp = httpx.get(jwks_uri, timeout=10.0)
-        resp.raise_for_status()
-        return resp.json()
-    except Exception as exc:
-        raise OIDCValidationError(f"JWKS fetch failed: {exc}") from exc
-
-
 def validate_id_token(id_token: str, nonce: str) -> dict[str, Any]:
     """Validate the id_token signature/iss/aud/exp/nonce and return claims."""
     meta = _discover()
-    jwks = _fetch_jwks(meta.get("jwks_uri", ""))
-    unverified = jwt.get_unverified_claims(id_token)
+    jwks_uri = meta.get("jwks_uri", "")
+    if not jwks_uri:
+        raise OIDCValidationError("Discovery document has no jwks_uri")
+    unverified = jwt.decode(id_token, options={"verify_signature": False})
     issuer = unverified.get("iss")
     expected_iss = meta.get("issuer")
     if issuer != expected_iss:
@@ -140,14 +134,15 @@ def validate_id_token(id_token: str, nonce: str) -> dict[str, Any]:
     if unverified.get("nonce") != nonce:
         raise OIDCValidationError("id_token nonce mismatch")
     try:
+        signing_key = PyJWKClient(jwks_uri).get_signing_key_from_jwt(id_token)
         claims = jwt.decode(
             id_token,
-            jwks,
+            signing_key.key,
             algorithms=["RS256", "RS384", "RS512", "ES256", "ES384"],
             audience=settings.oidc_client_id,
             issuer=expected_iss,
             options={"verify_at_hash": False},
         )
-    except JWTError as exc:
+    except (InvalidTokenError, PyJWKClientError) as exc:
         raise OIDCValidationError(f"id_token verification failed: {exc}") from exc
     return claims

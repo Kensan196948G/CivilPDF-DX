@@ -7,7 +7,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 from fastapi.security import OAuth2PasswordRequestForm
-from jose import jwt
+import jwt
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.orm import Session
 from database import get_db
