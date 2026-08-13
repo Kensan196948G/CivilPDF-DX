@@ -1,0 +1,12 @@
+[Unit]
+Description=CivilPDF-DX MVP Cloudflare Tunnel (civilpdf-mvp.mirai-dx-platform.com)
+Documentation=https://github.com/Kensan196948G/CivilPDF-DX
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/cloudflared --no-autoupdate --config %h/.cloudflared/civilpdf-mvp-config.yml tunnel run
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

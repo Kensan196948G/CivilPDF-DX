@@ -1,0 +1,24 @@
+[Unit]
+Description=CivilPDF-DX MVP Frontend (vite preview 127.0.0.1:5183)
+Documentation=https://github.com/Kensan196948G/CivilPDF-DX
+After=civilpdf-mvp-backend.service
+Wants=civilpdf-mvp-backend.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/Projects/Mirai-DX-Project/CivilPDF-DX/src/console/frontend
+
+Environment=PATH=%h/.nvm/versions/node/v25.2.1/bin:/usr/local/bin:/usr/bin:/bin
+Environment=VITE_API_URL=http://127.0.0.1:8181
+
+# 起動時に production build を作り直してから配信（ソース更新に追従）
+ExecStartPre=%h/.nvm/versions/node/v25.2.1/bin/npm run build
+ExecStart=%h/.nvm/versions/node/v25.2.1/bin/npm run preview -- --port 5183 --strictPort --host 127.0.0.1
+
+Restart=on-failure
+RestartSec=5s
+NoNewPrivileges=true
+PrivateTmp=true
+
+[Install]
+WantedBy=default.target
