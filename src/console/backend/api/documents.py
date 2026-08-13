@@ -31,6 +31,7 @@ from api.schemas import (
     TimestampResponse,
     TimestampVerifyResponse,
 )
+from api.csv_export import csv_stream_response
 from config import settings
 from services import timestamp_service
 from services.pdfa_validator import validate_pdfa
@@ -107,6 +108,100 @@ def list_trash(
     q = visible_documents_query(db, current_user)
     q = q.filter(Document.deletion_requested_at.is_not(None))
     return q.order_by(Document.deletion_requested_at.desc()).all()
+
+
+@router.get("/export.csv")
+def export_documents(
+    project_id: Optional[str] = Query(None),
+    document_type: Optional[DocumentType] = Query(None),
+    status_filter: Optional[DocumentStatus] = Query(None, alias="status"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Export the visible document list as CSV (RBAC-scoped, Excel-safe)."""
+    q = (
+        visible_documents_query(db, current_user)
+        .filter(Document.deletion_requested_at.is_(None))
+        .join(Project, Document.project_id == Project.id)
+        .join(User, Document.owner_id == User.id)
+    )
+    if project_id:
+        q = q.filter(Document.project_id == project_id)
+    if document_type:
+        q = q.filter(Document.document_type == document_type)
+    if status_filter:
+        q = q.filter(Document.status == status_filter)
+
+    docs = q.order_by(Document.created_at.desc()).all()
+    headers = [
+        "id",
+        "title",
+        "document_type",
+        "status",
+        "revision",
+        "project_code",
+        "project_name",
+        "owner_email",
+        "owner_name",
+        "file_size_bytes",
+        "page_count",
+        "tags",
+        "is_pdfa",
+        "created_at",
+        "updated_at",
+        "retention_expires_at",
+    ]
+
+    def rows():
+        for doc in docs:
+
+            def _iso(value):
+                if not value:
+                    return ""
+                if value.tzinfo is None:
+                    value = value.replace(tzinfo=timezone.utc)
+                return value.isoformat()
+
+            tags = doc.tags or []
+            if isinstance(tags, list):
+                tags_text = " ".join(str(t) for t in tags)
+            else:
+                tags_text = str(tags)
+            yield [
+                doc.id,
+                doc.title,
+                doc.document_type.value
+                if hasattr(doc.document_type, "value")
+                else str(doc.document_type),
+                doc.status.value if hasattr(doc.status, "value") else str(doc.status),
+                doc.revision,
+                doc.project.code,
+                doc.project.name,
+                doc.owner.email,
+                doc.owner.full_name,
+                doc.file_size,
+                doc.page_count,
+                tags_text,
+                "yes" if doc.is_pdfa else "no",
+                _iso(doc.created_at),
+                _iso(doc.updated_at),
+                _iso(doc.retention_expires_at),
+            ]
+
+    create_chained_audit_log(
+        db,
+        user_id=current_user.id,
+        action="document.exported",
+        resource_type="document",
+        resource_id=None,
+        detail=f"document list CSV export ({len(docs)} rows)",
+        ip_address=None,
+    )
+    return csv_stream_response(
+        headers,
+        rows(),
+        f"documents-{datetime.now(timezone.utc):%Y%m%dT%H%M%SZ}.csv",
+    )
 
 
 @router.post("/", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
