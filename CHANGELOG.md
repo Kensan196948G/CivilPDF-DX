@@ -18,7 +18,7 @@
 - **MVP 環境**: `docker-compose.mvp.yml`（SQLite + seed 自動投入）、`scripts/mvp-smoke.py`（実 HTTP 15 項目検証）、Cloudflare Tunnel `civilpdf-mvp` を新設
 - **公開 URL**: 本番 https://civilpdf.mirai-dx-platform.com/ / MVP https://civilpdf-mvp.mirai-dx-platform.com/
 - **文書整合**: README・API リファレンス・要件定義書の実装状態・WebUI 画面一覧・Runbook のバージョン表記を実装と同期。`VERSION` 0.9.0
-- **テスト**: バックエンド +9（CSV エクスポート/レート制限）、フロントエンド +2（CSV ダウンロードヘルパー）。conftest のテスト鍵を 32 バイト以上へ
+- **テスト**: 新規 11 件（レート制限 6 + CSV エクスポート 3 + フロント CSV ヘルパー 2）。conftest のテスト鍵を 32 バイト以上へ。CI 実測 691 件（backend 394 + integration 20 + frontend vitest 271 + Playwright 6）・12/12 success
 
 ### 2026-08-12 — 本番適用（systemd / SQLite）
 

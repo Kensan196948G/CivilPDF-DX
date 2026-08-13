@@ -6,12 +6,12 @@
 
 | ID | 分類 | 改善内容 | 重大度 | 状態 | PR | 完了基準 | 備考 |
 |---|---|---|---|---|---|---|
-| IMP-040 | 法務 | LICENSE の未解決 Git 競合マーカー除去 | P0 | ✅ 完了 | MVP PR | GitHub ライセンス検出復帰 | |
-| IMP-041 | セキュリティ | python-jose → PyJWT 移行（ecdsa CVE 恒久解消・pip-audit ignore 撤廃） | P1 | ✅ 完了 | MVP PR | pip-audit クリーン | Issue #106 解消 |
-| IMP-042 | セキュリティ | 認証系レート制限（429 + Retry-After） | P1 | ✅ 完了 | MVP PR | 単体 4 + 統合 1 テスト | プロセス内メモリ・水平時は Redis |
-| IMP-043 | 帳票 | 監査ログ/文書 CSV エクスポート（RBAC・数式インジェクション対策） | P2 | ✅ 完了 | MVP PR | バックエンド 4 テスト + UI ボタン | IMP-034 の一部 |
-| IMP-044 | 評価環境 | 架空ダミーデータ seed・MVP 用 Compose・公開 URL・スモーク | P2 | ✅ 完了 | MVP PR | `mvp-smoke.py` 15 項目 0 failure | `civilpdf-mvp.mirai-dx-platform.com` |
-| IMP-045 | 文書 | README/API/要件/画面一覧/Runbook を実装と同期 | P2 | ✅ 完了 | MVP PR | verify-version-sync OK | VERSION 0.9.0 |
+| IMP-040 | 法務 | LICENSE の未解決 Git 競合マーカー除去 | P0 | ✅ 完了 | #132 | GitHub ライセンス検出復帰 | |
+| IMP-041 | セキュリティ | python-jose → PyJWT 移行（ecdsa CVE 恒久解消・pip-audit ignore 撤廃） | P1 | ✅ 完了 | #132 | pip-audit クリーン | Issue #106 解消 |
+| IMP-042 | セキュリティ | 認証系レート制限（429 + Retry-After） | P1 | ✅ 完了 | #132 | 単体 5 + 統合 1 テスト | プロセス内メモリ・水平時は Redis |
+| IMP-043 | 帳票 | 監査ログ/文書 CSV エクスポート（RBAC・数式インジェクション対策） | P2 | ✅ 完了 | #132 | バックエンド 3 テスト + UI ボタン | IMP-034 の一部 |
+| IMP-044 | 評価環境 | 架空ダミーデータ seed・MVP 用 Compose・公開 URL・スモーク | P2 | ✅ 完了 | #132 | `mvp-smoke.py` 15 項目 0 failure | `civilpdf-mvp.mirai-dx-platform.com` |
+| IMP-045 | 文書 | README/API/要件/画面一覧/Runbook を実装と同期 | P2 | ✅ 完了 | #132 | verify-version-sync OK | VERSION 0.9.0 |
 
 | ID | 分類 | 改善内容 | 重大度 | 状態 | PR | 完了基準 | 備考 |
 |---|---|---|---|---|---|---|---|

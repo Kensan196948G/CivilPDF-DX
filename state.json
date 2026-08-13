@@ -55,7 +55,8 @@
       "demo_credentials": "admin@demo.civilpdf.example / CivilPDF-Demo-2026!（架空データ）",
       "seed_script": "scripts/seed_demo_data.py",
       "smoke": "scripts/mvp-smoke.py — 15 項目 0 failure（2026-08-13 実測）",
-      "test_counts": "バックエンド +9（CSV/レート制限）・フロントエンド 271 vitest 実測。全体数は CI 検証後に確定",
+      "pr": 132,
+      "test_counts": "CI 実測 691 件（backend 394 + integration 20 + frontend vitest 271 + Playwright 6）・12/12 success",
       "p0_remaining": 0,
       "key_changes": [
         "LICENSE 競合マーカー除去",

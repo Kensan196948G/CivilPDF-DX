@@ -18,6 +18,7 @@
 | frontend lint | 0 error | 0 error | ローカル | ✅ |
 | frontend build | success | success | ローカル | ✅ |
 | Playwright E2E | 3 passed | 3 passed | CI（Frontend E2E） | ✅ |
+| MVP 追加（2026-08-13） | — | backend 394 + integration 20 + vitest 271 + Playwright 6 = **691** | CI 12/12 | ✅ |
 | **合計** | **633** | **657** | — | ✅ |
 | ruff check / format | OK | OK | ローカル | ✅ |
 | pip-audit | 0 critical（ecdsa PYSEC-2026-1325 は ignore 管理） | 同左 | CI | ✅ |
