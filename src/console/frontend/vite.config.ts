@@ -60,8 +60,11 @@ export default defineConfig(({ command }) => {
     preview: {
       port: 4173,
       host: true,
-      // Cloudflare Tunnel 経由の公開ホスト名 (deploy/civilpdf-cloudflared.service)
-      allowedHosts: ["civilpdf.mirai-dx-platform.com"],
+      // Cloudflare Tunnel 経由の公開ホスト名（本番 + MVP プレビュー）
+      allowedHosts: [
+        "civilpdf.mirai-dx-platform.com",
+        "civilpdf-mvp.mirai-dx-platform.com",
+      ],
       proxy: {
         "/api": {
           target: apiTarget,

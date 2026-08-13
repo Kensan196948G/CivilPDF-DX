@@ -45,3 +45,23 @@ export async function listAuditLogs(filters: AuditLogFilters = {}): Promise<Audi
   const res = await api.get<AuditLogListResponse>(`/audit-logs/?${params.toString()}`)
   return res.data
 }
+
+export async function downloadAuditLogsCsv(
+  filters: Pick<AuditLogFilters, 'action' | 'resource_type' | 'user_id'> = {},
+): Promise<void> {
+  const res = await api.get<Blob>('/audit-logs/export.csv', {
+    params: filters,
+    responseType: 'blob',
+  })
+  const disposition = res.headers['content-disposition'] as string | undefined
+  const match = disposition?.match(/filename="?([^";]+)"?/i)
+  const filename = match?.[1] ?? 'audit-logs.csv'
+  const url = URL.createObjectURL(res.data)
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = filename
+  document.body.appendChild(anchor)
+  anchor.click()
+  anchor.remove()
+  URL.revokeObjectURL(url)
+}

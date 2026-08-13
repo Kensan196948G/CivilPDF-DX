@@ -6,6 +6,7 @@ import {
   restoreDocument,
   uploadDocument,
   deleteDocument,
+  downloadDocumentsCsv,
   type DocumentResponse,
 } from '../api/documents'
 import { listProjects } from '../api/projects'
@@ -69,6 +70,7 @@ export function Documents() {
   const [timestampDoc, setTimestampDoc] = useState<DocumentResponse | null>(null)
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [aiResult, setAiResult] = useState<ClassifyResponse | null>(null)
+  const [isExporting, setIsExporting] = useState(false)
   const [searchMode, setSearchMode] = useState<'keyword' | 'semantic'>('keyword')
   const [semanticQuery, setSemanticQuery] = useState('')
   const [searchResult, setSearchResult] = useState<SearchResponse | null>(null)
@@ -139,6 +141,19 @@ export function Documents() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold text-gray-800">ドキュメント</h1>
         <div className="flex gap-2">
+          <button
+            type="button"
+            disabled={isExporting}
+            onClick={() => {
+              setIsExporting(true)
+              downloadDocumentsCsv()
+                .catch(() => undefined)
+                .finally(() => setIsExporting(false))
+            }}
+            className="text-sm px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          >
+            {isExporting ? '出力中...' : 'CSV出力'}
+          </button>
           <button
             type="button"
             onClick={() => {
