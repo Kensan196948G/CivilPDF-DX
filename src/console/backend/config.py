@@ -16,6 +16,12 @@ class Settings(BaseSettings):
     app_version: str = "0.1.0"
     debug: bool = False
 
+    # MVP 公開デモ用のログイン認証バイパス。true のとき、トークン無しの
+    # リクエストをデモ用の管理ユーザーとして扱う（＝ログイン画面を出さない）。
+    # 既定は False で、環境変数 AUTH_BYPASS=true を明示した環境でのみ有効。
+    # 本番構成 (docker-compose.prod.yml) では設定しないこと。
+    auth_bypass: bool = False
+
     # Development default: SQLite (cross-platform, zero config)
     # Production: set DATABASE_URL=postgresql://... in .env
     database_url: str = "sqlite:///./civilpdf_dev.db"

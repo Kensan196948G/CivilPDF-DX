@@ -10,6 +10,9 @@ WorkingDirectory=%h/Projects/Mirai-DX-Project/CivilPDF-DX/src/console/frontend
 
 Environment=PATH=%h/.nvm/versions/node/v25.2.1/bin:/usr/local/bin:/usr/bin:/bin
 Environment=VITE_API_URL=http://127.0.0.1:8181
+# MVP 公開デモ: ログイン画面を出さずに開けるようにする（ビルド時フラグ）。
+# 復旧はこの行を削除して daemon-reload && restart するだけ。
+Environment=VITE_AUTH_BYPASS=true
 
 # 起動時に production build を作り直してから配信（ソース更新に追従）
 ExecStartPre=%h/.nvm/versions/node/v25.2.1/bin/npm run build

@@ -49,7 +49,9 @@ def get_current_user(
     db: Session = Depends(get_db),
 ) -> User:
     # Development bypass: when DEBUG=true and no token supplied, use dev admin.
-    if settings.debug and token is None:
+    # MVP bypass: AUTH_BYPASS=true opens the demo URL without a login screen.
+    # Both are opt-in via environment variables and default to off.
+    if (settings.debug or settings.auth_bypass) and token is None:
         return _get_or_create_dev_user(db)
 
     if token is None:

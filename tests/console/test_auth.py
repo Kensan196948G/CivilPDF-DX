@@ -141,3 +141,39 @@ class TestHealthCheck:
         resp = client.get("/health")
         assert resp.status_code == 200
         assert resp.json()["status"] == "ok"
+
+
+class TestMvpAuthBypass:
+    """MVP 公開デモ用のログイン認証バイパス (AUTH_BYPASS)。
+
+    既定は無効で、明示的に有効化した環境でのみトークン無しの
+    リクエストがデモ用管理ユーザーとして通る。
+    """
+
+    def test_bypass_is_off_by_default(self, client):
+        from config import settings
+
+        assert settings.auth_bypass is False
+        resp = client.get("/api/v1/auth/me")
+        assert resp.status_code == 401
+
+    def test_bypass_allows_anonymous_when_enabled(self, client, monkeypatch):
+        from config import settings
+
+        monkeypatch.setattr(settings, "auth_bypass", True)
+        resp = client.get("/api/v1/auth/me")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["role"] == "admin"
+        assert data["email"] == "dev@civildx.local"
+
+    def test_bypass_does_not_weaken_invalid_tokens(self, client, monkeypatch):
+        """バイパス有効でも、壊れたトークンを送ってきた場合は拒否する。"""
+        from config import settings
+
+        monkeypatch.setattr(settings, "auth_bypass", True)
+        resp = client.get(
+            "/api/v1/auth/me",
+            headers={"Authorization": "Bearer not-a-real-token"},
+        )
+        assert resp.status_code == 401
