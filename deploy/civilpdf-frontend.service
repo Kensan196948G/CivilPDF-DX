@@ -1,5 +1,12 @@
+# =============================================================================
+# ⛔ RETIRED（2026-09-18）: 本番フロントエンドは compose の frontend コンテナ
+# （nginx + SPA + /api/ リバースプロキシ、:18970）が担当する。
+# vite preview は開発用サーバーであり本番配信に用いない方針へ改めた。
+# 新規インストールしないこと。退役手順: docs/operations/runbook.md §2.1
+# =============================================================================
+
 [Unit]
-Description=CivilPDF-DX Console Frontend (vite preview 127.0.0.1:5182)
+Description=CivilPDF-DX Console Frontend (vite preview 127.0.0.1:5182) [RETIRED — use docker compose]
 Documentation=https://github.com/Kensan196948G/CivilPDF-DX
 After=civilpdf-backend.service
 Wants=civilpdf-backend.service

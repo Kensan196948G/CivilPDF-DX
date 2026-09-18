@@ -8,6 +8,106 @@
 
 ## [Unreleased]
 
+### 2026-09-18 (10) — 本番実体（compose スタック）への運用系完全移行・監視/バックアップの実障害修正
+
+#### 🚨 本番実体は compose スタックだった（旧 systemd 構成の残留と Neon の残存を発見・修正）
+- 実測: 公開URL（200）の実体は `civilpdf-dx` docker compose スタック（frontend nginx :18970）。
+  一方 `deploy/` の systemd ユニット（uvicorn 8180 / vite preview 5182 / user cloudflared）は
+  **Neon の失効した DATABASE_URL（2026-08-29 失効）を参照した旧世代のまま残存**していた
+- 旧 `civilpdf-backup.service` は**毎日 02:30 に Neon へ pg_dump して 21日間失敗し続けていた**
+  （本番DB＝compose の db コンテナは一度もバックアップされていなかった）
+- 旧 `civilpdf-monitor.service` は 5 分毎に frontend 5182 を見て失敗し続けていた（DEGRADED）
+- 対応: `deploy/civilpdf-backend.service` 等に **RETIRED 注記**を付し `install-systemd.sh` を
+  compose 運用（backup/monitor/drill/retention のユーザーユニット）へ全面改訂。
+  退役手順を Runbook §2.1 に記録
+
+#### バックアップ（compose モード実装・実測 PASS）
+- `scripts/backup-production.sh` に **CIVILPDF_DEPLOY_MODE（auto/compose/database-url/sqlite）**を追加。
+  compose モードは db コンテナ内 pg_dump（認証情報不要・版数は必然一致）＋ backend コンテナ内
+  uploads の tar 化。auto は稼働中スタックを検出して切替
+- **本番DBの初めての有効バックアップを取得**（42,882バイト・17テーブル・コンテナ内+ホスト両
+  pg_restore で検証）。8/28 の旧ダンプは 21世代前の無効データ
+- 修正前は毎回 60 秒で SIGTERM され **prune が中断して「半分削除されたバックアップ」を残していた**
+  （8/26 世代の dump のみが消えた状態を実測）→ ユニットに `TimeoutStartSec=10min`、
+  半分削除世代は削除して実測
+
+#### 復元訓練（DRILL PASS・2026-09-18 実測）
+- `scripts/restore-drill.sh` を compose バックアップ（uploads.tar.gz）形式へ対応。
+  訓練用DB（civildx_drill・peer 認証）へ復元 → alembic upgrade head（k1l2m3n4o5p6 → o5p6q7r8s9t0）
+  → backend 起動 → ログイン → /auth/me → /projects まで **全段階 PASS**
+- 修正: `alembic` が PATH に無い環境で rc=127 で黙死していたのを `python3 -m alembic` に統一
+
+#### 監視（healthcheck を実本番構成へ）
+- `scripts/healthcheck-civilpdf.sh`: 既定を compose 構成（:18970）へ。DB readiness は
+  **backend コンテナ内で /health/ready を直接検証**（nginx 経由の旧手順は SPA fallback 200 で
+  偽陽性になるため）。compose 稼働検出は自動
+- 実測で「旧 backend コンテナ（8/29 ビルド）に /health/ready が無い」ことを検出
+  （= 新イメージのデプロイが必要なことを監視が正しく指摘）
+
+#### 🐛 frontend コンテナの healthcheck が永久 unhealthy（58,073 回連続失敗）
+- `Dockerfile.prod` の HEALTHCHECK が `localhost`（→ ::1）を叩くが nginx は IPv4 のみ LISTEN
+  のため 2 週間全失敗。**127.0.0.1 を明示**するよう修正
+
+#### 🐛 retention-job.py が依存欠落環境で誤った exit code（1）を返す
+- `--grace-days 0` は exit 2 と文書化されているが、検証がバックエンド import（pydantic_settings 等）
+  の後だったため、依存が無い環境では ImportError の traceback で exit 1 になっていた。
+  **検証を import より前に移動**し、依存の有無と無関係に exit 2 を返すように修正（両環境で実測）
+
+#### 🐛 CSV エクスポートの 413 定数が starlette 0.4x に存在しない
+- `csv_export.py` が `status.HTTP_413_CONTENT_TOO_LARGE`（starlette ≥0.47 の定数）を直接参照し、
+  pip 解決環境（fastapi 0.115/starlette 0.38）で AttributeError になっていた
+  （2 テスト失敗の原因）。requirements の範囲内で動作するよう `documents.py` と同じ
+  `HTTP_413_REQUEST_ENTITY_TOO_LARGE` へ統一
+
+#### 文書の実態同期
+- `docs/operations/runbook.md`: §1 構成一覧・§2 デプロイ手順・§3 復旧手順・§4 監視・
+  保持ポリシー手順を compose 実体へ全面更新
+- `docs/deployment/local-postgresql.md`: 現行本番（compose の db コンテナ）と
+  ホスト直 PostgreSQL（civildx_prod）の関係を明確化し、compose モードの
+  バックアップ/復元/訓練手順を追加
+- `docs/tech-stack.md` / `docs/architecture/system-architecture.md` /
+  `docker-production-deployment.md`: DB 表記を実態へ統一
+- `.gitignore`: ローカル実行成果物（agent ツール設定・バックアップ類）を除外。
+  `.claude/commands/` の新規 2 コマンド（design-sync-check / safe-auto-merge）は
+  プロジェクト標準コマンドとして追跡
+
+#### 検証（2026-09-18 実測）
+- backend: **482 passed / 4 skipped**（486 collected・starlette 修正後。旧環境の 3 失敗を解消）
+- frontend: lint 0 / build OK / **vitest 277 passed** / **Playwright E2E 25 passed**
+- ruff 0.8.6（CI と同版数）: src/console/backend 全チェック PASS・format OK
+- ops: backup 実走 PASS（6.1秒）・restore-drill 実走 PASS・healthcheck は旧イメージの
+  readiness 欠落を正しく検出（= デプロイ待ちの正当な DEGRADED）
+- verify-version-sync: OK
+
+### 2026-09-18 (9) — Neon 設定の削除と、pg_dump/pg_restore 版数不一致の修正
+
+#### Neon 依存の削除（ローカル PostgreSQL へ一本化）
+- `scripts/migrate-sqlite-to-neon.py` → **`scripts/migrate-sqlite-to-postgresql.py`**
+  （実装は元々 DATABASE_URL で任意の PostgreSQL を対象にできる汎用スクリプト。名前のみ Neon 依存だった）
+- `docs/deployment/neon-postgresql-migration.md` → **`docs/deployment/local-postgresql.md`**
+  （構築・バックアップからの移設・バックアップ・復元・ロールバック・残課題を、実施記録付きで全面改訂。
+  旧 Neon 構成は「付録（廃止）」として履歴を保持）
+- 参照と記述を更新: `docs/tech-stack.md`（構成図2箇所・技術表・ADR-001・リンク集）、
+  `docs/architecture/system-architecture.md`、`docs/operations/runbook.md`（構成表・バックアップ・容量・残課題）、
+  `docs/deployment/docker-production-deployment.md`、`docs/deployment/secret-management.md`、
+  `docs/deployment/mvp-preview-environment.md`、`docs/evaluation/…assessment.md`（§10.4 を追加）
+
+> `docs/architecture/CloudflareNeonGitHub自動化仕様.md` は**ワークスペース共通の中央ポリシー**
+> （ホストの MCP 設定を含む）であり、本リポジトリのDB構成とは別の関心事のため対象外とした。
+
+#### 🚨 バックアップが復元できない形式で作られていた（修正）
+- `backup-production.sh` / `restore-drill.sh` は「**インストール済みの最新** pg_dump / pg_restore」を
+  選んでいた。このホストは PATH が混在（`psql` 18 / `pg_dump` 17 / `pg_restore` 16、サーバーは 16）で、
+  **pg_dump 18 が書いたダンプを既定の `pg_restore` 16 が読めず**、文書化された復元手順が失敗した:
+  `pg_restore: エラー: ファイルヘッダ内のバージョン(1.16)はサポートされていません`
+  （2026-08-28 の唯一の有効なバックアップが実際にこの状態だった）
+- 修正: `scripts/pg-tools.sh` を追加し、**サーバーのメジャーバージョンに一致するクライアント**を
+  自動選択（一致しない場合は警告）。`backup-production.sh` はさらに
+  **既定の `pg_restore` でも読めること**を検証してから公開する
+- 実測（修正後）: `/usr/lib/postgresql/16/bin/pg_dump` が選択され、46,543バイトのダンプを
+  **既定の `pg_restore` 16 で読み出せる**ことを確認（同じコマンドで 08-28 のダンプは読めない＝修正前の障害を再現）
+- `bash -n` / `shellcheck -S warning` clean
+
 ### 2026-09-18 (8) — 本番DBを Neon からローカル PostgreSQL へ移行（データ移設・テスト隔離）
 
 ユーザー判断により **Neon を廃止し、ローカル PostgreSQL を本番DBとする**方針へ移行した。

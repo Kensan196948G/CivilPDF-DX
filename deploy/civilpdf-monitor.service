@@ -6,6 +6,7 @@ Documentation=https://github.com/Kensan196948G/CivilPDF-DX
 Type=oneshot
 WorkingDirectory=%h/Projects/Mirai-DX-Project/CivilPDF-DX
 ExecStart=%h/Projects/Mirai-DX-Project/CivilPDF-DX/scripts/monitor-civilpdf.sh
+TimeoutStartSec=5min
 
 NoNewPrivileges=true
 

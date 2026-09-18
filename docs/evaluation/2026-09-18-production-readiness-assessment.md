@@ -238,3 +238,19 @@ OCR（画像からの文字認識）ではない。根拠:
 | CSV export N+1解消 | 未実施 | **解消済み**（実測: 26 SELECT → 件数非依存） |
 | GDPR自動スケジューラ | 未実施 | **実装済み**（`retention-job.py` + timer、オプトイン） |
 | 本番DB接続 | 記載なし | 🚨 **2026-08-29 から認証情報失効で全件500**（`incident-2026-08-29-database-credential.md`） |
+
+### 10.4 本番DBの方針変更（2026-09-18・ユーザー決定）
+
+本書 §3-12 は「Neon PostgreSQL への本番移行完了」を強みとして挙げているが、その後の判断で
+**Neon を廃止し、ローカル PostgreSQL を本番DBとする**方針へ変更した。
+
+- 決定: 本番DBは **ローカル PostgreSQL 16**（`civildx_prod`・Unixソケット peer 認証）。Neon は廃止
+- 理由: 2026-08-29 の認証情報失効で本番が全件 HTTP 500 となり、ホスト側だけでは復旧できなかった。
+  運用を外部サービスへ依存させない
+- データ移設: Neon は直接読めないため、**最新の有効なバックアップ（2026-08-28）**から復元し
+  `alembic upgrade head`（`k1l2m3n4o5p6` → `o5p6q7r8s9t0`）。schema parity OK、管理者1件と
+  `audit_logs` 1件を保持。`/health/ready` 200・誤パスワードで 401 を実測
+- 復旧不能な範囲: Neon 上の 2026-08-29 以降の変更（ただし当該期間は DB 書き込みが失敗していた）
+- 付随して判明: 復元元の時点で `documents` は 0 件。`uploads/` の PDF は DB 行から参照されない
+  **テスト成果物**であり、テストが本番保存先を汚染していた（2026-09-18 に隔離を修正）
+- 詳細: `docs/deployment/local-postgresql.md`（旧 `neon-postgresql-migration.md`）

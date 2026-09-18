@@ -2,7 +2,7 @@
 
 > Linux ホスト上で `docker compose` を用いて CivilPDF-DX を本番運用するための手順書です。
 > Windows ネイティブ展開（NSSM + nginx）は [`windows-deployment.md`](../windows-deployment.md) を参照してください。
-> 現行の SQLite 本番からの移行は [Neon/PostgreSQL 移行ガイド](neon-postgresql-migration.md)、秘密鍵管理は [secret-management.md](secret-management.md) を参照してください。
+> 本番DBの運用（ローカル PostgreSQL の構築・移設・バックアップ・復元）は [ローカル PostgreSQL 運用ガイド](local-postgresql.md)、秘密鍵管理は [secret-management.md](secret-management.md) を参照してください。
 
 このスタックは 3 コンテナで構成されます。
 
@@ -19,7 +19,7 @@ graph LR
 |---|---|---|---|
 | `db` | `postgres:16-alpine` | ❌ 内部のみ | 永続データ（named volume `postgres_data`） |
 | `backend` | `src/console/backend/Dockerfile` | ❌ 内部のみ | FastAPI（uvicorn ×N worker）+ Alembic migration |
-| `frontend` | `src/console/frontend/Dockerfile.prod` | ✅ `${FRONTEND_PORT:-8080}` | SPA 静的配信 + `/api/` リバースプロキシ |
+| `frontend` | `src/console/frontend/Dockerfile.prod` | ✅ `${FRONTEND_PORT:-8080}`（現行本番は 18970） | SPA 静的配信 + `/api/` リバースプロキシ |
 
 > 🔒 **設計方針**: `db` / `backend` のポートはホストに公開しません。外部からの入口は `frontend`（既定 8080）のみで、API は frontend nginx の `/api/` プロキシ経由で到達します。HTTPS は前段の TLS リバースプロキシで終端してください。
 

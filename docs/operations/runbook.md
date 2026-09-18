@@ -1,49 +1,44 @@
 # CivilPDF-DX 運用 Runbook
 
 **文書番号:** CPDF-OPS-001  
-**対象:** 本番ホスト（`civilpdf.mirai-dx-platform.com` / Cloudflare Tunnel + systemd user units）  
-**最終更新:** 2026-08-12
+**対象:** 本番ホスト（`civilpdf.mirai-dx-platform.com` / Docker Compose + Cloudflare Tunnel + systemd 運用ユニット）  
+**最終更新:** 2026-09-18
 
 ---
 
-## 1. 本番構成の一覧
+## 1. 本番構成の一覧（2026-09-18 実測）
 
 | 項目 | 値 |
 |---|---|
 | 公開 URL | `https://civilpdf.mirai-dx-platform.com/` |
 | TLS | Cloudflare（エッジで終端。オリジンは 127.0.0.1 のみバインド） |
-| Backend | uvicorn `127.0.0.1:8180`（`deploy/civilpdf-backend.service`） |
-| Frontend | vite preview `127.0.0.1:5182`（`deploy/civilpdf-frontend.service`、`dist/` 配信） |
-| Tunnel | cloudflared（`deploy/civilpdf-cloudflared.service` / `~/.cloudflared/civilpdf-config.yml`） |
-| DB | SQLite `src/console/backend/civilpdf_dev.db`（**移行までの暫定**。スキーマは Alembic 管理、起動前 `alembic upgrade head`。Neon/PostgreSQL 移行手順は [neon-postgresql-migration.md](../deployment/neon-postgresql-migration.md)） |
-| アップロード | `~/civildx/uploads/` |
-| 環境設定 | `~/.config/civilpdf/civilpdf.env`（git 管理外・0600） |
-| バージョン | 正本はリポジトリ `VERSION`（現在 0.9.0）。`APP_VERSION`（`~/.config/civilpdf/civilpdf.env`）でデプロイ時上書き。整合検証は `scripts/verify-version-sync.sh` |
+| アプリ本体 | **docker compose スタック**（`docker-compose.prod.yml`・db + backend + frontend の3コンテナ） |
+| Frontend | nginx + SPA + `/api/` リバースプロキシ（`127.0.0.1:18970`） |
+| Backend | uvicorn ×N（コンテナ内 8000。起動時に `alembic upgrade head` を適用） |
+| DB | **PostgreSQL 16**（compose `db` コンテナ・named volume・**ホストにポート未公開**）。運用は [local-postgresql.md](../deployment/local-postgresql.md) |
+| アップロード | named volume `uploaded_files`（コンテナ内 `/app/uploads`） |
+| スタック制御 | system unit `civilpdf-dx.service`（`/etc/systemd/system/`） |
+| Tunnel | cloudflared（system unit `civilpdf-dx-cloudflared.service` / `~/.cloudflared/civilpdf-dx-config.yml` → `127.0.0.1:18970`） |
+| 環境設定 | `<production checkout>/.env`（git 管理外・compose 用）＋ `~/.config/civilpdf/civilpdf.env`（運用スクリプト用・0600） |
+| バージョン | 正本はリポジトリ `VERSION`（現在 0.9.0）。`APP_VERSION` でデプロイ時上書き。整合検証は `scripts/verify-version-sync.sh` |
+
+> **旧構成（ホスト直 uvicorn 8180 + vite preview 5182）は 2026-09-18 に退役。**
+> 退役手順は §2.1 を参照。
 
 ## 2. デプロイ手順（新リリース）
 
 0. リリース前確認: `./scripts/verify-version-sync.sh` で `VERSION`・env 例・文書の整合を確認
 1. バックアップ取得: `./scripts/backup-production.sh`
-2. リポジトリを main の検証済み commit へ更新
-3. フロントエンド再ビルド: `cd src/console/frontend && npm ci && npm run build`
-4. systemd ユニット再読込・再起動:
-   ```bash
-   systemctl --user daemon-reload
-   systemctl --user restart civilpdf-backend.service   # ExecStartPre で alembic upgrade head 実行
-   systemctl --user restart civilpdf-frontend.service
-   ```
-5. スモークテスト: `./scripts/healthcheck-civilpdf.sh`
-6. 監査ログ/エラー確認: `journalctl --user -u civilpdf-backend.service -n 100 --no-pager`
+2. リポジトリを main の検証済み commit へ更新（本番チェックアウトは ~/Projects/Mirai-DX-Project/CivilPDF-DX）。以降の手順（イメージ再ビルド docker compose -f docker-compose.prod.yml up -d --build、スモーク ./scripts/healthcheck-civilpdf.sh、ログ確認 docker compose logs --tail 100 backend）は compose 本番構成で実施する。旧構成（ホスト直 uvicorn 8180 / vite preview 5182）は 2026-09-18 に退役: 旧 civilpdf-backend.service は Neon 失効認証情報（2026-08-29 失効）を参照し続け /health が 200 でも DB 依存リクエストが 500 の状態で稼働していた（2026-09-18 実測）、旧 civilpdf-backup.service は 21日間 Neon への pg_dump に失敗し続けていた。退役手順は deploy/civilpdf-backend.service 等の RETIRED 注記を参照。
 
 ## 3. バックアップと復旧
 
 ### バックアップ
 - `deploy/civilpdf-backup.timer` が毎日 02:30 JST に `deploy/civilpdf-backup.service` を起動
 - 保存先: `~/civildx-backups/<UTCタイムスタンプ>/`
-  - PostgreSQL/Neon 運用時: `civilpdf.dump`（`pg_dump --format=custom`）
-  - SQLite 運用時: `civilpdf_dev.db`（SQLite online backup API で一貫性保証）
-  - `uploads/`（アップロードファイル一式）
-  - `civilpdf.env`（シークレット、0600）
+  - compose 本番（現行）: `civilpdf.dump`（db コンテナ内 pg_dump・版数は必然一致）＋ `uploads.tar.gz`（backend コンテナ内 named volume の tar）＋ `civilpdf.env`（compose の .env・0600）
+  - ホスト直 PostgreSQL 運用時: `civilpdf.dump`（pg_dump --format=custom・pg-tools.sh がサーバーと同一メジャーのクライアントを自動選択）＋ `uploads/` ディレクトリ
+  - SQLite 運用時: `civilpdf_dev.db`（SQLite online backup API で一貫性保証）＋ `uploads/` ディレクトリ
 - 保持: 14 日間（`scripts/backup-production.sh` 内 `RETENTION_DAYS`）
 - RPO: 最大 24 時間（timer 起動に失敗した場合に備え、手動実行も可）
 - RTO: 目標 30 分（復旧手順は下記）
@@ -66,14 +61,15 @@
 > [インシデント記録](incident-2026-08-29-database-credential.md) を参照してください。
 
 > ⚠️ **SQLite 暫定期間**の backup は `scripts/backup-production.sh`（online backup）を使用します。
-> 現在の本番は PostgreSQL/Neon（`pg_dump`）です（[移行ガイド](../deployment/neon-postgresql-migration.md) §5 バックアップ運用）。
+> 現在の本番は**ローカル PostgreSQL**（`pg_dump`）です（[ローカル PostgreSQL 運用ガイド](../deployment/local-postgresql.md) §4 バックアップ）。
+> `pg_dump`/`pg_restore` は**サーバーと同じメジャー**が必要です（同ガイド「🔴」節を参照）。
 
-### 復旧手順
-1. `systemctl --user stop civilpdf-backend.service`
-2. DB 復元: `cp ~/civildx-backups/<stamp>/civilpdf_dev.db <repo>/src/console/backend/`
-3. アップロード復元: `rm -rf ~/civildx/uploads && cp -a ~/civildx-backups/<stamp>/uploads/. ~/civildx/uploads/`
-4. `systemctl --user start civilpdf-backend.service`
-5. `./scripts/healthcheck-civilpdf.sh` と主要機能スモーク
+### 復旧手順（compose 本番）
+1. cd <production checkout> && docker compose -f docker-compose.prod.yml stop backend
+2. DB 復元: cat ~/civildx-backups/<stamp>/civilpdf.dump | docker compose -f docker-compose.prod.yml exec -T db pg_restore -U civilpdf -d civilpdf --clean --if-exists --no-owner
+3. uploads 復元: cat ~/civildx-backups/<stamp>/uploads.tar.gz | docker compose -f docker-compose.prod.yml exec -T backend tar xzf - -C /app/uploads
+4. docker compose -f docker-compose.prod.yml start backend
+5. ./scripts/healthcheck-civilpdf.sh と主要機能スモーク
 
 ## 4. 監視
 
@@ -91,14 +87,14 @@
 - 外部アラート: 障害検知時に `scripts/alert-notify.sh` が msmtp（Gmail）でメール通知（既定 30 分間隔のスロットリング付き）。復旧時にも 1 回通知
   - 通知先は `CIVILPDF_ALERT_TO`（`~/.config/civilpdf/civilpdf.env`）で変更可
   - 手動テスト: `./scripts/alert-notify.sh --test`
-- ログ: `journalctl --user -u civilpdf-backend.service` / `-u civilpdf-frontend.service` / `-u civilpdf-cloudflared.service`
+- ログ: `docker compose -f docker-compose.prod.yml logs --tail 100 backend`（frontend/db も同様）。運用ユニットは journalctl --user -u civilpdf-monitor.service 等
 - 監査ログ: WebUI 監査ページ（`/api/v1/audit-logs`）＋ DB `audit_logs` の SHA-256 ハッシュチェーン（`/api/v1/audit-logs/verify`）
 - 監視ログ: `~/.local/state/civildx-monitor/monitor.log`
 
 ### 手動確認コマンド
 ```bash
 # DB 到達性（本番は 200、DB 障害時は 503）
-curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8180/health/ready
+docker compose -f docker-compose.prod.yml exec -T backend python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready', timeout=10)"
 # 総合ヘルスチェック（DB + バックアップ鮮度を含む）
 ./scripts/healthcheck-civilpdf.sh
 ```
@@ -116,7 +112,7 @@ curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8180/health/ready
 - 有効化手順:
   ```bash
   # まず必ず dry-run で対象を確認する（何も変更しない）
-  python3 scripts/retention-job.py --dry-run --grace-days 30
+  cd <production checkout> && docker compose -f docker-compose.prod.yml cp scripts/retention-job.py backend:/tmp/ && docker compose -f docker-compose.prod.yml exec -T backend sh -c 'PYTHONPATH=/app python /tmp/retention-job.py --dry-run --grace-days 30'
   systemctl --user enable --now civilpdf-retention.timer
   ```
 - 安全装置:
@@ -156,8 +152,9 @@ curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8180/health/ready
 
 ## 7. 容量・予算
 
-- 現状: DB 176KB・uploads 7.7MB 程度。SQLite は数 GB まで実用可能だが、本格運用開始時（同時利用者・文書数増加）に PostgreSQL へ移行する
-- 移行パス: `docker-compose.prod.yml`（PostgreSQL 16）+ CI の PostgreSQL migration ジョブが検証済み。Neon を含む移行手順・ロールバック・検証は [neon-postgresql-migration.md](../deployment/neon-postgresql-migration.md)
+- DB: 本番は **PostgreSQL 16（compose の db コンテナ・named volume）**。開発・テストは SQLite（`src/console/backend/civilpdf_dev.db`）を併用
+- スキーマ変更の検証: `docker-compose.prod.yml`（PostgreSQL 16）+ CI の PostgreSQL migration ジョブ
+- 構築・移設・バックアップ・復元・ロールバック: [local-postgresql.md](../deployment/local-postgresql.md)
 - 監視項目: ディスク使用量（`df -h`）、uploads サイズ、DB サイズ、エラー率（journalctl）
 
 ## 7.1 オフサイトバックアップ（Phase 1）
@@ -170,10 +167,12 @@ curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8180/health/ready
 
 ## 8. 既知の制約・残課題
 
-- 🚨 **本番 DB 認証情報の失効（2026-08-29〜・未解決）**: Neon のロール `civildx_owner` の
-  パスワードが無効化され、DB 依存の本番機能が HTTP 500 を返している。復旧には
-  Credential 変更の承認と `DATABASE_URL` 更新が必要。詳細と影響は
-  [インシデント記録](incident-2026-08-29-database-credential.md) 参照
+- ✅ **本番 DB を Neon から脱却（2026-09-18 解決）**: Neon の認証情報失効（2026-08-29）に伴い
+  Neon を廃止した。**本番データは compose スタックの db コンテナ（PostgreSQL 16）**へ保存されて
+  おり、外部DB依存はゼロ。復元訓練（DRILL PASS・2026-09-18 実測）でバックアップ→復元→
+  alembic head・認証フローまで検証済み。ホスト直 `civildx_prod` は移設先の構築例として
+  保持（[local-postgresql.md](../deployment/local-postgresql.md)）。障害の記録は
+  [インシデント記録](incident-2026-08-29-database-credential.md) を参照
 - **checkout が 2 系統に分裂している（要設計判断）**: systemd units は
   `~/Projects/Mirai-DX-Project/CivilPDF-DX`（本番稼働中）を参照している一方、
   別の作業コピー `~/Projects/Mirai-Admin-Platform/CivilPDF-DX` も存在する。

@@ -115,7 +115,7 @@ flowchart TB
 
 | 項目             | 内容                                                                                                                                                                                |
 | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| バージョン       | Neon PostgreSQL 18.4（2026-08-12 移行。開発/テストは SQLite 互換維持）                                                                                                              |
+| バージョン       | **ローカル PostgreSQL 16**（現行は compose スタックの db コンテナ・named volume。2026-09-18 に Neon を廃止しローカルへ完全移行。開発/テストは SQLite）                                                              |
 | 主要テーブル     | `users`, `organizations`, `projects`, `documents`, `document_versions`, `approval_workflows`, `approval_steps`, `audit_logs`, `notifications`, `dx_sync_metrics` 等                 |
 | マイグレーション | Alembic（本番・開発共通）/ テストのみ `Base.metadata.create_all`                                                                                                                    |
 | 接続             | SQLAlchemy 接続プール（`SessionLocal`）                                                                                                                                             |

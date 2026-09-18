@@ -39,6 +39,41 @@ import os
 import sys
 from datetime import datetime, timezone
 
+
+def _fail_fast(message: str, code: int) -> None:
+    """Print an operator-facing error and exit with ``code``.
+
+    Used for argument validation that must run **before** the backend imports
+    (config -> pydantic_settings -> SQLAlchemy). Validating after the imports
+    made the CLI exit 1 with a traceback instead of the intended exit code 2
+    whenever the deployment's Python environment lacks the backend dependencies
+    (the bare ``python3`` of a hardened systemd unit; observed 2026-09-18).
+    """
+    print(f"ERROR: {message}", file=sys.stderr)
+    raise SystemExit(code)
+
+
+def _validate_or_exit(argv: list[str] | None) -> None:
+    """Reject bad arguments before any backend import happens.
+
+    ``parse_known_args`` keeps ``--help`` working (argparse handles it and
+    exits 0 on its own) while still failing fast for invalid values.
+    """
+    probe = argparse.ArgumentParser(add_help=False)
+    probe.add_argument("--apply", action="store_true")
+    probe.add_argument("--dry-run", action="store_true")
+    probe.add_argument("--grace-days", type=int, default=30)
+    probe.add_argument("--json", action="store_true")
+    probe.add_argument("--quiet", action="store_true")
+    known, _rest = probe.parse_known_args(argv)
+    if known.grace_days is not None and known.grace_days < 1:
+        _fail_fast("--grace-days must be >= 1", 2)
+
+
+# Validate only when executed as the CLI entry point. When imported by tests
+# (importlib), argv is empty and validation is re-done inside parse_args.
+_validate_or_exit(sys.argv[1:] if __name__ == "__main__" else [])
+
 sys.path.insert(
     0,
     os.path.join(
@@ -91,7 +126,10 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="Only log warnings and errors.",
     )
-    return parser.parse_args(argv)
+    parsed = parser.parse_args(argv)
+    if parsed.grace_days is not None and parsed.grace_days < 1:
+        _fail_fast("--grace-days must be >= 1", 2)
+    return parsed
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -102,9 +140,8 @@ def main(argv: list[str] | None = None) -> int:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
 
-    if args.grace_days < 1:
-        print("ERROR: --grace-days must be >= 1", file=sys.stderr)
-        return 2
+    # Argument validation already ran at import time (_validate_or_exit) and
+    # inside parse_args below, so a bad --grace-days can no longer reach here.
 
     # --apply wins over --dry-run; the default (neither flag) is a dry-run.
     apply_changes = args.apply and not args.dry_run

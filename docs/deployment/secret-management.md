@@ -10,7 +10,7 @@
 | `TIMESTAMP_HMAC_KEY` | ローカルタイムスタンプ署名のフォールバック鍵 | `openssl rand -hex 32` |
 | `M365_FERNET_KEY` | M365 client_secret の DB 暗号化鍵 | `python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"` |
 | `ANTHROPIC_API_KEY` | Claude API | Anthropic コンソールから発行 |
-| `POSTGRES_PASSWORD` | PostgreSQL / Neon 接続パスワード | `openssl rand -hex 24` |
+| `POSTGRES_PASSWORD` | PostgreSQL 接続パスワード（docker-compose の `db` サービス用）。**systemd 版のローカル PostgreSQL 運用では不要** — Unix ソケット + peer 認証を使うため `DATABASE_URL` にパスワードを含めない | `openssl rand -hex 24` |
 
 ## 保管ルール
 

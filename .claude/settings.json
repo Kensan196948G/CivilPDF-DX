@@ -20,7 +20,11 @@
       "Bash(gh run *)",
       "Bash(gh api *)"
     ],
-    "deny": ["Bash(rm -rf /)", "Bash(git push --force *)", "Bash(git merge *)"]
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(git push --force *)",
+      "Bash(git merge *)"
+    ]
   },
   "env": {
     "PYTHONDONTWRITEBYTECODE": "1",
@@ -74,7 +78,7 @@
     ],
     "SessionStart": [
       {
-        "matcher": "*",
+        "matcher": "startup|resume|clear",
         "hooks": [
           {
             "type": "command",

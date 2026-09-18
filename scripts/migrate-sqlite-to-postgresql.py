@@ -1,5 +1,8 @@
 #!/usr/bin/env python3
-"""SQLite -> PostgreSQL (Neon) データ移行スクリプト（CivilPDF-DX 用）。
+"""SQLite -> PostgreSQL データ移行スクリプト（CivilPDF-DX 用）。
+
+Neon 専用ではなく、任意の PostgreSQL（ローカル PostgreSQL を含む）へ移行できる。
+接続先は DATABASE_URL で指定する。
 
 前提:
   - 対象 PostgreSQL には `alembic upgrade head` でスキーマ作成済み
@@ -8,7 +11,7 @@
   - SQLite FTS5 仮想テーブル（documents_fts 等）は移行しない
 
 使い方:
-  DATABASE_URL='postgresql://...' python3 scripts/migrate-sqlite-to-neon.py \
+  DATABASE_URL='postgresql://...' python3 scripts/migrate-sqlite-to-postgresql.py \
     --sqlite src/console/backend/civilpdf_dev.db [--verify-only]
 
 安全のため本番適用前には必ずバックアップと検証（--verify-only）を実施すること。
