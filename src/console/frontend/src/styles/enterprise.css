@@ -148,6 +148,9 @@
 }
 .ep-nav-btn {
   padding: 4px 6px;
+  /* WCAG 2.5.8 (AA) asks for 24x24 CSS px. Padding alone produced ~24px, which
+     is below the minimum once sub-pixel rounding is accounted for. */
+  min-height: 28px;
   border-radius: 4px;
   font-size: 11px;
   color: var(--muted);
@@ -202,8 +205,10 @@
 .ep-role-switch button { padding: 0 6px; height: 100%; color: var(--muted); font-weight: 500; line-height: 1; }
 .ep-role-switch button.active { background: var(--fg); color: var(--bg); }
 .ep-icon-btn {
-  width: 22px;
-  height: 22px;
+  /* Was 22x22: below the WCAG 2.5.8 (AA) 24x24 minimum, and the phone-sized
+     media query at the end of this file raises it further for touch use. */
+  width: 28px;
+  height: 28px;
   border-radius: 4px;
   display: grid;
   place-items: center;
@@ -1122,3 +1127,26 @@
 .ep-notif-count-badge { display: inline-block; padding: 1px 6px; border-radius: 999px; font-size: 10px; font-weight: 600; background: var(--accent); color: #fff; margin-left: 6px; }
 .ep-notif-item.clickable { cursor: pointer; }
 .ep-notif-arrow { font-size: 16px; color: var(--muted); flex-shrink: 0; margin-left: 4px; }
+
+/* ── Touch targets on phone-sized viewports (WCAG 2.5.5 / 2.5.8) ────────────
+   Measured (e2e/responsive.spec.ts): the shell rendered 22x22 icon buttons and
+   ~24px nav buttons, i.e. below the 24x24 AA minimum and well below the 44x44
+   recommended for a phone used on site. These sizes keep the topbar compact
+   while giving every control a comfortable target. */
+@media (max-width: 640px) {
+  .ep-icon-btn {
+    width: 36px;
+    height: 36px;
+  }
+  .ep-nav-item,
+  .ep-nav-btn {
+    min-height: 32px;
+    padding: 6px 9px;
+  }
+  .ep-nav-groups {
+    gap: 2px;
+  }
+  .ep-topbar-row {
+    padding: 0 10px;
+  }
+}

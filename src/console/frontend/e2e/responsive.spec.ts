@@ -117,5 +117,72 @@ for (const vp of VIEWPORTS) {
         new RegExp(`承認待ち ${STATS.pending_approvals} 件`),
       )
     })
+
+    test(`${vp.label} で操作要素がタップできる大きさを持つ`, async ({ page }) => {
+      // Measured, not assumed: "no horizontal scroll" is not the same as
+      // "usable on a phone". WCAG 2.5.8 (AA) asks for a 24x24 CSS px minimum;
+      // this records the controls that fall below it and names them.
+      const MIN = 24
+      await page.setViewportSize({ width: vp.width, height: vp.height })
+      await setupApp(page)
+      await page.goto('/')
+
+      const offenders = await page.evaluate((min) => {
+        const out: string[] = []
+        const selector =
+          'button, a[href], [role="switch"], [role="tab"], [role="button"], select'
+        document.querySelectorAll<HTMLElement>(selector).forEach((el) => {
+          const rect = el.getBoundingClientRect()
+          const style = getComputedStyle(el)
+          if (style.display === 'none' || style.visibility === 'hidden') return
+          if (rect.width === 0 || rect.height === 0) return
+          if (rect.width < min || rect.height < min) {
+            const cls = (el.className || '').toString().trim().split(/\s+/).slice(0, 2).join('.')
+            const label = (el.getAttribute('aria-label') || el.textContent || '').trim().slice(0, 20)
+            out.push(
+              `${el.tagName.toLowerCase()}${cls ? '.' + cls : ''} "${label}" ${Math.round(rect.width)}x${Math.round(rect.height)}`,
+            )
+          }
+        })
+        return out
+      }, MIN)
+
+      expect(
+        offenders,
+        `${MIN}x${MIN}px 未満の操作要素:\n  ${offenders.join('\n  ')}`,
+      ).toEqual([])
+    })
   })
 }
+
+test.describe('スマホ操作性（実測）', () => {
+  test('主要ナビとアイコンボタンが 32px 以上である', async ({ page }) => {
+    // The AA floor (24px) is checked above; on a site phone the shell's primary
+    // controls are held to a stricter, measured target of 32px.
+    await page.setViewportSize({ width: 390, height: 844 })
+    await setupApp(page)
+    await page.goto('/')
+
+    const sizes = await page.evaluate(() => {
+      const selector = '.ep-icon-btn, .ep-nav-item'
+      const nodes = Array.from(document.querySelectorAll<HTMLElement>(selector))
+      return nodes.map((el) => {
+        const rect = el.getBoundingClientRect()
+        return {
+          label: (el.getAttribute('aria-label') || el.textContent || '')
+            .trim()
+            .slice(0, 16),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+          visible: rect.width > 0 && rect.height > 0,
+        }
+      })
+    })
+
+    const visible = sizes.filter((s) => s.visible)
+    expect(visible.length, '操作要素が見つからない（テストが空振りしている）').toBeGreaterThan(0)
+
+    const tooSmall = visible.filter((s) => s.width < 32 || s.height < 32)
+    expect(tooSmall, `32px 未満の操作要素: ${JSON.stringify(tooSmall)}`).toEqual([])
+  })
+})

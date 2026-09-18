@@ -18,7 +18,7 @@
     "backend_unit_test_count": 439,
     "backend_e2e_test_count": 20,
     "frontend_test_count": 277,
-    "frontend_e2e_test_count": 22,
+    "frontend_e2e_test_count": 25,
     "coverage_percent": 98,
     "review_blocker_count": 0,
     "security_issue_count": 0,
@@ -38,7 +38,7 @@
     "current_session_start_at": "2026-09-18T05:17:51.606Z",
     "last_trigger": "manual",
     "last_cron_session_id": "20260618-010001-CivilPDF-DX",
-    "last_stop_at": "2026-09-18T06:42:50.087Z",
+    "last_stop_at": "2026-09-18T07:03:38.532Z",
     "last_claude_session_id": "4fea8d38-647c-4028-aaef-3c069d7a952e"
   },
   "status": {
@@ -268,6 +268,17 @@
       "defect": "search.py の _is_accessible がヒット1件ごとに文書をSELECT（最大100本/検索）",
       "fix": "visible_documents_query で全ヒットの可視性を1クエリ解決。孤児ヒットは除外",
       "verified": "クエリ数が件数に比例しないことを回帰テストで固定。ミューテーションテストで旧実装は 2件→9 / 12件→19 SELECT と比例してFAIL"
+    },
+    "mobile_touch_targets_20260918": {
+      "status": "実測・是正・常設ゲート化 完了",
+      "measured_violations": "初期表示で11要素が WCAG 2.5.8 (AA) の 24x24 未満。.ep-icon-btn 22x22、.ep-nav-btn 高さ約24px（サブピクセル丸めで24未満）",
+      "fixes": [
+        ".ep-icon-btn 22→28px、.ep-nav-btn に min-height:28px",
+        "enterprise.css に初のモバイル用メディアクエリ(max-width:640px)を追加:.ep-icon-btn 36px、.ep-nav-item/.ep-nav-btn min-height 32px"
+      ],
+      "verified": "24x24未満の操作要素0件（全6ビュー×2ビューポート）、スマホ幅で主要ナビ・アイコンボタン32px以上。E2E 25 passed",
+      "remaining": "文字サイズの可読性・表の可読性・入力フォームのモバイル操作性は未検証",
+      "lesson": "「横スクロールが出ない」は「スマホで使える」を意味しない。測定しないと分からない差であり、実測ゲートを常設した"
     }
   },
   "completed": [
