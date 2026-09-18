@@ -1,7 +1,10 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import logging
+import time
+
+from sqlalchemy import text
 
 from config import settings, validate_production_settings
 from database import engine, Base
@@ -39,9 +42,22 @@ async def lifespan(app: FastAPI):
     if not settings.debug:
         validate_production_settings(settings)
 
-    # Create tables on startup (use Alembic in production)
-    Base.metadata.create_all(bind=engine)
-    logger.info("Database tables created/verified")
+    # Create tables on startup (dev convenience; Alembic owns the schema in any
+    # deployed environment — civilpdf-backend.service runs `alembic upgrade head`
+    # in ExecStartPre). A database outage must NOT stop the process from
+    # starting: refusing to boot turns a recoverable outage into a crash loop
+    # and hides the cause, whereas starting and answering 503 on /health/ready
+    # makes the outage visible to monitoring. Observed on 2026-09-18, when an
+    # invalid PostgreSQL credential made every connection attempt fail.
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables created/verified")
+    except Exception as exc:  # noqa: BLE001 — startup must survive a DB outage
+        logger.error(
+            "Database not reachable at startup (%s). Serving anyway; "
+            "/health/ready will report 503 until the database recovers.",
+            exc,
+        )
 
     if settings.debug:
         # Ensure the dev-bypass admin exists so unauthenticated requests work.
@@ -108,10 +124,41 @@ app.include_router(notifications_router, prefix=API_PREFIX)
 
 @app.get("/health")
 def health_check():
+    """Liveness probe. Deliberately does not touch the database.
+
+    Use ``/health/ready`` to decide whether the service can actually serve
+    requests.
+    """
     return {
         "status": "ok",
         "app": settings.app_name,
         "version": settings.app_version,
+    }
+
+
+@app.get("/health/ready")
+def readiness_check():
+    """Readiness probe: verifies the database answers before reporting healthy.
+
+    A database outage used to be invisible to monitoring, because ``/health``
+    only reports that the process is running. That let production serve HTTP 500
+    for every database-backed request for three weeks while the health check
+    stayed green. This probe fails (503) whenever the database is unreachable.
+    """
+    started = time.monotonic()
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+    except Exception as exc:  # noqa: BLE001 — any failure means "not ready"
+        logger.error("Readiness check failed: %s", exc, exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="database unavailable",
+        )
+    return {
+        "status": "ok",
+        "database": engine.dialect.name,
+        "latency_ms": round((time.monotonic() - started) * 1000, 2),
     }
 
 

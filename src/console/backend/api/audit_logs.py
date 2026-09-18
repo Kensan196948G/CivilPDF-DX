@@ -11,7 +11,11 @@ from models.user import User, UserRole
 from models.audit_log import AuditLog
 from auth.dependencies import get_current_user
 from api.schemas import AuditLogResponse
-from api.csv_export import csv_stream_response
+from api.csv_export import (
+    DEFAULT_CHUNK_ROWS,
+    csv_stream_response,
+    ensure_export_within_limit,
+)
 from services.audit_chain_service import create_chained_audit_log, verify_chain
 
 router = APIRouter(prefix="/audit-logs", tags=["Audit Logs"])
@@ -83,7 +87,13 @@ def export_audit_logs(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Export (filtered) audit logs as CSV. Admin only; the export itself is audited."""
+    """Export (filtered) audit logs as CSV. Admin only; the export itself is audited.
+
+    Audit logs accumulate for the whole retention period, so the export is
+    streamed in bounded batches and refused (413) above ``MAX_EXPORT_ROWS``
+    rather than silently truncated — a partial compliance export that looks
+    complete is a worse failure than a clear error.
+    """
     _require_admin(current_user)
 
     q = db.query(AuditLog)
@@ -100,7 +110,10 @@ def export_audit_logs(
     if date_to is not None:
         q = q.filter(AuditLog.created_at <= date_to)
 
-    logs = q.order_by(AuditLog.sequence_number.asc()).all()
+    row_count = q.count()
+    ensure_export_within_limit(row_count, label="監査ログ")
+
+    logs = q.order_by(AuditLog.sequence_number.asc()).yield_per(DEFAULT_CHUNK_ROWS)
     headers = [
         "sequence_number",
         "created_at",
@@ -138,7 +151,7 @@ def export_audit_logs(
         action="audit.exported",
         resource_type="audit_log",
         resource_id=None,
-        detail=f"audit log CSV export ({len(logs)} rows)",
+        detail=f"audit log CSV export ({row_count} rows)",
         ip_address=None,
     )
     return csv_stream_response(

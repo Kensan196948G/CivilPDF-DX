@@ -23,6 +23,11 @@ cp "$DEPLOY_DIR/civilpdf-monitor.service" "$UNIT_DIR/"
 cp "$DEPLOY_DIR/civilpdf-monitor.timer" "$UNIT_DIR/"
 cp "$DEPLOY_DIR/civilpdf-restore-drill.service" "$UNIT_DIR/"
 cp "$DEPLOY_DIR/civilpdf-restore-drill.timer" "$UNIT_DIR/"
+# Retention / GDPR deletion timer: copied but NOT enabled automatically. It
+# physically deletes documents whose deletion a user requested more than
+# --grace-days ago, so enabling it is a deliberate operator decision.
+cp "$DEPLOY_DIR/civilpdf-retention.service" "$UNIT_DIR/"
+cp "$DEPLOY_DIR/civilpdf-retention.timer" "$UNIT_DIR/"
 
 # Create env file from example if it doesn't exist
 ENV_FILE="$ENV_DIR/civilpdf.env"
@@ -49,6 +54,11 @@ echo ""
 echo "Done. To start now:"
 echo "  systemctl --user start civilpdf-backend civilpdf-frontend civilpdf-cloudflared"
 echo "  systemctl --user start civilpdf-backup.timer civilpdf-monitor.timer civilpdf-restore-drill.timer"
+echo ""
+echo "Retention / GDPR deletion (OPT-IN — physically deletes files):"
+echo "  # dry-run first, then enable:"
+echo "  python3 $DEPLOY_DIR/../scripts/retention-job.py --dry-run"
+echo "  systemctl --user enable --now civilpdf-retention.timer"
 echo ""
 echo "To enable lingering (run without being logged in):"
 echo "  sudo loginctl enable-linger $(id -un)"

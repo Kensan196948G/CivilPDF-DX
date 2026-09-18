@@ -24,12 +24,16 @@ logger = logging.getLogger(__name__)
 DEFAULT_GRACE_DAYS = 30  # configurable; 30-day cooling-off period
 
 
-def run_deletion_job(db: Session, grace_days: int = DEFAULT_GRACE_DAYS) -> dict:
+def run_deletion_job(
+    db: Session, grace_days: int = DEFAULT_GRACE_DAYS, *, dry_run: bool = False
+) -> dict:
     """Execute one pass of the physical deletion job.
 
     Args:
         db: SQLAlchemy session.
         grace_days: Minimum days after deletion_requested_at before physical deletion.
+        dry_run: When True, only report what would be deleted; nothing is
+            removed from disk or changed in the database.
 
     Returns:
         dict with counts: processed, deleted_files, errors.
@@ -44,6 +48,22 @@ def run_deletion_job(db: Session, grace_days: int = DEFAULT_GRACE_DAYS) -> dict:
         )
         .all()
     )
+
+    if dry_run:
+        logger.info(
+            "Deletion job dry-run: %d candidate(s) past %d-day grace",
+            len(candidates),
+            grace_days,
+        )
+        return {
+            "processed": len(candidates),
+            "deleted_files": 0,
+            "errors": 0,
+            "grace_days": grace_days,
+            "dry_run": True,
+            "candidate_ids": [doc.id for doc in candidates],
+            "run_at": datetime.now(timezone.utc).isoformat(),
+        }
 
     deleted_files = 0
     errors = 0
@@ -68,6 +88,7 @@ def run_deletion_job(db: Session, grace_days: int = DEFAULT_GRACE_DAYS) -> dict:
         "deleted_files": deleted_files,
         "errors": errors,
         "grace_days": grace_days,
+        "dry_run": False,
         "run_at": datetime.now(timezone.utc).isoformat(),
     }
 

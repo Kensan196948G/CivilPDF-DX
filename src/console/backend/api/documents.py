@@ -15,7 +15,7 @@ from fastapi import (
     status,
 )
 from fastapi.responses import FileResponse, StreamingResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, contains_eager
 from typing import List, Optional
 import aiofiles
 
@@ -31,7 +31,11 @@ from api.schemas import (
     TimestampResponse,
     TimestampVerifyResponse,
 )
-from api.csv_export import csv_stream_response
+from api.csv_export import (
+    DEFAULT_CHUNK_ROWS,
+    csv_stream_response,
+    ensure_export_within_limit,
+)
 from config import settings
 from services import timestamp_service
 from services.pdfa_validator import validate_pdfa
@@ -118,12 +122,22 @@ def export_documents(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Export the visible document list as CSV (RBAC-scoped, Excel-safe)."""
+    """Export the visible document list as CSV (RBAC-scoped, Excel-safe).
+
+    The result set is streamed in bounded batches and capped at
+    ``MAX_EXPORT_ROWS``. ``contains_eager`` reuses the explicit joins below so
+    the per-row ``doc.project`` / ``doc.owner`` access does not emit one query
+    per document (N+1).
+    """
     q = (
         visible_documents_query(db, current_user)
         .filter(Document.deletion_requested_at.is_(None))
         .join(Project, Document.project_id == Project.id)
         .join(User, Document.owner_id == User.id)
+        .options(
+            contains_eager(Document.project),
+            contains_eager(Document.owner),
+        )
     )
     if project_id:
         q = q.filter(Document.project_id == project_id)
@@ -132,7 +146,10 @@ def export_documents(
     if status_filter:
         q = q.filter(Document.status == status_filter)
 
-    docs = q.order_by(Document.created_at.desc()).all()
+    row_count = q.order_by(None).count()
+    ensure_export_within_limit(row_count, label="文書")
+
+    docs = q.order_by(Document.created_at.desc()).yield_per(DEFAULT_CHUNK_ROWS)
     headers = [
         "id",
         "title",
@@ -194,7 +211,7 @@ def export_documents(
         action="document.exported",
         resource_type="document",
         resource_id=None,
-        detail=f"document list CSV export ({len(docs)} rows)",
+        detail=f"document list CSV export ({row_count} rows)",
         ip_address=None,
     )
     return csv_stream_response(

@@ -8,6 +8,89 @@
 
 ## [Unreleased]
 
+### 2026-09-18 (2) — 本番無音障害の検知修正・PostgreSQL ENUM欠落の修正・可用性ハードニング
+
+初動分析で **本番環境が 21 日間の無音障害状態** にあったことを実測で確認し、その検知・防止と、
+同時に発見した PostgreSQL 専用の P0 欠陥を修正した。詳細は
+`docs/operations/incident-2026-08-29-database-credential.md` 参照。
+
+#### 🚨 本番障害（検知・防止を実装）
+- **無音障害の実測**: Neon PostgreSQL の認証情報が 2026-08-29 頃から無効化され、
+  DB を参照する本番リクエストがすべて **HTTP 500** を返していた。同時に毎日の
+  バックアップが **0 バイトのダンプ** を生成し続けていた（21 日連続失敗）。
+  一方 `/health` は DB を見ないため 200 を返し続け、監視は 21 日間「正常」を報告していた
+  （旧 `healthcheck-civilpdf.sh` は `HEALTHCHECK: OK`）。
+- **readiness 分離**: `GET /health/ready` を追加。`SELECT 1` を実行し DB 不通なら **503** を返す。
+  `/health` は liveness 専用として後方互換を維持。本番 `DATABASE_URL` に対する実測で
+  `/health` 200・`/health/ready` **503** を確認
+- **監視の強化**: `scripts/healthcheck-civilpdf.sh` が `/health/ready` と
+  **バックアップ鮮度**（有効バックアップの経過時間、既定 36 時間）を検査対象に追加。
+  0 バイトのダンプは「有効なバックアップ」として扱わない。実測で旧版 `OK` → 新版 `DEGRADED`（exit 1）
+- **バックアップのアトミック化**: 隠しディレクトリ `.incomplete-<stamp>` に作成し、
+  検証後にのみ公開名へリネーム。失敗時は削除するため、
+  **失敗した run が「バックアップがある」ように見えることがなくなった**
+- **ダンプ検証**: 0 バイト検出に加え `pg_restore --list` で復元可能性を検証してから公開。
+  prune は検証済み成功時のみ実行し、`.incomplete-*` も回収
+- **起動の耐障害化**: DB 不通でもプロセスは起動し `/health/ready` で 503 を返す
+  （クラッシュループ化を回避し、原因を可視化）
+- **接続タイムアウト**: PostgreSQL 接続に `DB_CONNECT_TIMEOUT_SECONDS`（既定 5 秒）を導入し、
+  DB 不通時に probe / リクエストがハングしないようにした
+
+#### 🚨 PostgreSQL ENUM 欠落（本番専用の P0）
+- `documents.status` の **`EDITOR_DRAFT` / `EDITOR_REVIEWED` / `FINALIZED` が PostgreSQL の
+  enum に存在しなかった**。SQLAlchemy の `Enum(PyEnum)` は member **name**（大文字）を永続化するが、
+  migration `f2b3c4d5e6f7` は **value**（小文字）を追加していたため、
+  Editor 連携フロー（sidecar 取込 → `EDITOR_DRAFT`/`EDITOR_REVIEWED`、flatten-check → `FINALIZED`）が
+  PostgreSQL/Neon 本番で `invalid input value for enum documentstatus` により失敗していた。
+  SQLite は Enum を VARCHAR として保存するため CI は緑のままで、全テストが見逃していた
+- migration **`n4o5p6q7r8s9`** で不足していた大文字ラベルを追加（既存データは name 保存のため有効なまま）
+- **回帰防止**: `tests/console/test_enum_parity.py` を追加し、CI の
+  「Backend Migrations (fresh DB)」ジョブが実 PostgreSQL 上で
+  **全 Enum 列の member 名が PG ラベルに存在するか** を検証するようにした
+  （SQLite では自動 skip）。事前修正版のラベル集合を再現して FAIL することを確認する
+  ネガティブテストを含む
+- 実測: 修正前は `INSERT ... 'EDITOR_DRAFT'` が `DataError`、修正後は INSERT/UPDATE ともに成功
+
+#### ⚠️ 可用性・性能（CSV エクスポート）
+- `csv_stream_response` は全行を 1 つの `StringIO` に構築してから `StreamingResponse` に渡しており、
+  **実質ストリーミングではなかった**。`chunk_rows`（既定 500）単位で yield する真のストリーミングに変更
+- `documents/export.csv` は `doc.project` / `doc.owner` を 1 行ずつ遅延ロードしていた（**N+1**）。
+  既存の JOIN を再利用する `contains_eager` に変更し、`Query.yield_per` で逐次取得
+- 両エクスポートに **上限 `MAX_EXPORT_ROWS`（100,000 件）** を導入。超過時は
+  **413 で明示的に失敗**（監査ログは 7 年保持で無制限に成長するため）。
+  黙って切り捨てないのは、法令対応のエクスポートが「完全に見えて欠落している」状態が
+  明示的なエラーより危険なため
+- 実測（Local SQLite, 同一条件）: 修正前は 2 文書→10 SELECT、10 文書→**26 SELECT**（行数比例）。
+  修正後は件数に関わらず一定。ミューテーションテストで N+1 回帰テストが実際に FAIL することを確認
+
+#### ⚠️ コンプライアンス（保持ポリシー / GDPR 削除の自動実行）
+- 保持期限のアーカイブと GDPR 物理削除は**実装・単体テスト済みだったが、スケジューラに接続されておらず
+  本番で一度も実行されていなかった**（管理者が手動で API を叩いた時のみ）
+- `services/retention_service.run_retention_cycle()` に 1 パス分を集約し、
+  `scripts/retention-job.py`（`--apply` 必須・既定は dry-run）と
+  `deploy/civilpdf-retention.service` / `.timer`（毎日 03:30 JST）を追加
+- `run_deletion_job` / `archive_expired_documents` に `dry_run` を追加。
+  管理者 API も `?dry_run=true` に対応
+- **`install-systemd.sh` はこのタイマーを自動有効化しない**（物理削除を伴うため、
+  運用担当の明示的な判断で有効化する設計）
+- 実測（Local PostgreSQL）: dry-run で対象検出のみ・ファイル無変更 → `--apply` で
+  期限切れ文書が `ARCHIVED`、猶予超過文書のファイルが物理削除され `file_path` が NULL 化、
+  猶予期間内の文書は無変更、`gdpr_physical_deletion` が監査チェーンへ追記されることを確認
+
+#### 検証
+- backend: **431 passed / 4 skipped**（新規 31 件: CSV 14・保持 12・health 5。skip は PG 専用 ENUM 検査）
+- ruff check / ruff format --check: clean
+- frontend: `npm run build` 成功、`npm run test` 272 passed（フロント変更なし）
+- Local PostgreSQL: `alembic upgrade head`（`g3c4d5e6f7g8` → `n4o5p6q7r8s9`）後の schema parity OK（16 テーブル）、
+  Read/Write・トランザクション rollback・8 並列での監査チェーン採番衝突なし・
+  `documents(project_id)` のインデックス使用を EXPLAIN で確認
+- `bash -n` / `shellcheck -S warning`: clean
+
+#### 未対応（承認が必要）
+- **Neon の `civildx_owner` パスワード再発行と `DATABASE_URL` 更新**（Credential 変更は承認必須）。
+  これが完了するまで本番の DB 依存機能は復旧しない
+- 復旧後の本番再起動・主要業務フロー実検証・オンデマンドバックアップ・復元訓練
+
 ### 2026-09-18 — 本番運用評価に基づく重大リスク修正（CTO並列監査）
 
 セキュリティ・DB・アーキテクチャ・QA/CI・UI/UX/競合の5観点を並列監査し、証跡ベースで

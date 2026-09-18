@@ -320,6 +320,7 @@ class DeletionJobResponse(BaseModel):
     deleted_files: int
     errors: int
     grace_days: int
+    dry_run: bool = False
     run_at: str
 
 
@@ -330,10 +331,14 @@ class DeletionJobResponse(BaseModel):
     description=(
         "削除フラグ済み文書のうち猶予期間を過ぎたものを物理削除します。"
         "監査ログは保持されます（法的証跡保持義務）。"
+        "dry_run=true の場合は対象件数の確認のみを行い、ファイルもDBも変更しません。"
     ),
 )
 def run_deletion_job_endpoint(
     grace_days: int = Query(30, ge=1, le=365, description="猶予期間（日数）"),
+    dry_run: bool = Query(
+        False, description="true の場合は削除せず対象件数のみを返す（事前確認用）"
+    ),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -344,5 +349,12 @@ def run_deletion_job_endpoint(
         )
     from services.deletion_job import run_deletion_job
 
-    result = run_deletion_job(db, grace_days=grace_days)
-    return DeletionJobResponse(**result)
+    result = run_deletion_job(db, grace_days=grace_days, dry_run=dry_run)
+    return DeletionJobResponse(
+        processed=result["processed"],
+        deleted_files=result["deleted_files"],
+        errors=result["errors"],
+        grace_days=result["grace_days"],
+        dry_run=result.get("dry_run", False),
+        run_at=result["run_at"],
+    )
