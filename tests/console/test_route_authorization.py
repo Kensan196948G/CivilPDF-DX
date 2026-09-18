@@ -16,10 +16,22 @@ level checks remain covered by the per-feature tests (e.g. test_ocr.py,
 test_security_authz_fixes.py).
 """
 
-from fastapi.routing import APIRoute, _IncludedRouter, _EffectiveRouteContext
+from fastapi.routing import APIRoute
 
 from auth.dependencies import get_current_user
 from main import app
+
+# FastAPI >= 0.137 keeps included routers behind lazy wrapper nodes; the names
+# are private so they may be absent on older versions (the CI pins 0.136.3 where
+# app.routes is still flat). Guard the import so the module loads everywhere.
+try:  # pragma: no cover - trivially version-dependent
+    from fastapi.routing import _EffectiveRouteContext, _IncludedRouter
+
+    _HAS_LAZY_INCLUDE = True
+except ImportError:  # fastapi < 0.137
+    _IncludedRouter = None  # type: ignore[assignment,misc]
+    _EffectiveRouteContext = None  # type: ignore[assignment,misc]
+    _HAS_LAZY_INCLUDE = False
 
 # Routes that must work without a bearer token, by design. Every entry is
 # asserted to exist, so a stale entry fails the suite instead of silently
@@ -53,12 +65,12 @@ def _api_routes() -> list[tuple[str, APIRoute]]:
 
     def _walk(entries, prefix: str = "") -> None:
         for entry in entries:
-            if isinstance(entry, _IncludedRouter):
+            if _HAS_LAZY_INCLUDE and isinstance(entry, _IncludedRouter):
                 _walk(
                     entry.effective_candidates(),
                     prefix + entry.include_context.prefix,
                 )
-            elif isinstance(entry, _EffectiveRouteContext):
+            elif _HAS_LAZY_INCLUDE and isinstance(entry, _EffectiveRouteContext):
                 route = entry.original_route
                 if isinstance(route, APIRoute):
                     collected.append((prefix + route.path, route))
