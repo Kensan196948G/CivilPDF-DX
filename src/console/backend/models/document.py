@@ -47,7 +47,7 @@ class Document(Base):
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     title = Column(String, nullable=False)
     document_type = Column(Enum(DocumentType), default=DocumentType.OTHER)
-    status = Column(Enum(DocumentStatus), default=DocumentStatus.DRAFT)
+    status = Column(Enum(DocumentStatus), default=DocumentStatus.DRAFT, index=True)
 
     # File info
     filename = Column(String, nullable=False)
@@ -104,9 +104,9 @@ class Document(Base):
     flattened_verified_at = Column(DateTime(timezone=True), nullable=True)
     flattened_hash = Column(String, nullable=True)
 
-    # Relations
-    project_id = Column(String, ForeignKey("projects.id"), nullable=False)
-    owner_id = Column(String, ForeignKey("users.id"), nullable=False)
+    # Relations (indexed: list_documents/export_documents filter on all three)
+    project_id = Column(String, ForeignKey("projects.id"), nullable=False, index=True)
+    owner_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
 
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())

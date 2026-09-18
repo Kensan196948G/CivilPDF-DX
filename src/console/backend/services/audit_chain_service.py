@@ -11,6 +11,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Optional
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from models.audit_log import AuditLog
@@ -59,14 +60,20 @@ def _compute_record_hash(
     return hashlib.sha256(data).hexdigest()
 
 
-def get_last_record(db: Session) -> Optional[AuditLog]:
-    """Return the most recent AuditLog by sequence_number."""
-    return (
-        db.query(AuditLog)
-        .filter(AuditLog.sequence_number != None)  # noqa: E711
-        .order_by(AuditLog.sequence_number.desc())
-        .first()
-    )
+def get_last_record(db: Session, *, for_update: bool = False) -> Optional[AuditLog]:
+    """Return the most recent AuditLog by sequence_number.
+
+    for_update=True takes a row lock (SELECT ... FOR UPDATE) so concurrent
+    callers serialize on the same row instead of both computing the same
+    next sequence_number. On backends without row-level locking (SQLite,
+    used in tests) this is a no-op; the UNIQUE constraint on
+    sequence_number (migration m3n4o5p6q7r8) is the backstop there and for
+    the case where the table is empty and there is no row to lock yet.
+    """
+    q = db.query(AuditLog).filter(AuditLog.sequence_number != None)  # noqa: E711
+    if for_update:
+        q = q.with_for_update()
+    return q.order_by(AuditLog.sequence_number.desc()).first()
 
 
 def create_chained_audit_log(
@@ -78,45 +85,70 @@ def create_chained_audit_log(
     resource_id: Optional[str] = None,
     detail: Optional[str] = None,
     ip_address: Optional[str] = None,
+    _retries: int = 3,
 ) -> AuditLog:
-    """Create a new AuditLog record with hash chain linkage."""
-    last = get_last_record(db)
-    prev_hash = last.record_hash if (last and last.record_hash) else GENESIS_HASH
-    next_seq = (
-        (last.sequence_number + 1) if (last and last.sequence_number is not None) else 1
-    )
+    """Create a new AuditLog record with hash chain linkage.
 
-    log = AuditLog(
-        user_id=user_id,
-        action=action,
-        resource_type=resource_type,
-        resource_id=resource_id,
-        detail=detail,
-        ip_address=ip_address,
-        sequence_number=next_seq,
-        prev_hash=prev_hash,
-        record_hash="pending",  # placeholder; replaced below after DB assigns created_at
-    )
-    db.add(log)
-    db.flush()  # DB assigns created_at via server_default
-    db.refresh(log)  # reload to get the actual DB-stored created_at
+    Retries once on a UNIQUE-constraint collision on sequence_number, which
+    can only happen when two callers raced to insert the first record (no
+    row to lock via for_update) or against a legacy row inserted before
+    migration m3n4o5p6q7r8. See services/audit_chain_service.py module
+    docstring / that migration's docstring for the full race description.
+    """
+    for attempt in range(_retries):
+        last = get_last_record(db, for_update=True)
+        prev_hash = last.record_hash if (last and last.record_hash) else GENESIS_HASH
+        next_seq = (
+            (last.sequence_number + 1)
+            if (last and last.sequence_number is not None)
+            else 1
+        )
 
-    # Compute hash using the exact created_at value stored in DB
-    record_hash = _compute_record_hash(
-        prev_hash=prev_hash,
-        sequence_number=next_seq,
-        user_id=user_id,
-        action=action,
-        resource_type=resource_type,
-        resource_id=resource_id,
-        detail=detail,
-        ip_address=ip_address,
-        created_at_iso=_normalize_dt(log.created_at),
-    )
-    log.record_hash = record_hash
-    db.commit()
-    db.refresh(log)
-    return log
+        log = AuditLog(
+            user_id=user_id,
+            action=action,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            detail=detail,
+            ip_address=ip_address,
+            sequence_number=next_seq,
+            prev_hash=prev_hash,
+            record_hash="pending",  # placeholder; replaced below after DB assigns created_at
+        )
+        db.add(log)
+        try:
+            db.flush()  # DB assigns created_at via server_default
+        except IntegrityError:
+            db.rollback()
+            if attempt == _retries - 1:
+                raise
+            logger.warning(
+                "audit_chain: sequence_number %s collided, retrying (attempt %s/%s)",
+                next_seq,
+                attempt + 1,
+                _retries,
+            )
+            continue
+        db.refresh(log)  # reload to get the actual DB-stored created_at
+
+        # Compute hash using the exact created_at value stored in DB
+        record_hash = _compute_record_hash(
+            prev_hash=prev_hash,
+            sequence_number=next_seq,
+            user_id=user_id,
+            action=action,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            detail=detail,
+            ip_address=ip_address,
+            created_at_iso=_normalize_dt(log.created_at),
+        )
+        log.record_hash = record_hash
+        db.commit()
+        db.refresh(log)
+        return log
+
+    raise RuntimeError("unreachable")  # loop always returns or raises
 
 
 def verify_chain(db: Session, limit: int = 1000) -> dict:
