@@ -96,4 +96,14 @@ describe("getInitialAuthState (build-mode auth gate, Issue #59)", () => {
     const { useAuthStore: store } = await import("../store/auth");
     expect(store.getState().isAuthenticated).toBe(true);
   });
+
+  it("PROD build with VITE_AUTH_BYPASS=true skips the login screen without a token", async () => {
+    vi.stubEnv("DEV", false);
+    vi.stubEnv("VITE_AUTH_BYPASS", "true");
+    localStorage.clear();
+    vi.resetModules();
+    const { useAuthStore: store } = await import("../store/auth");
+    expect(store.getState().isAuthenticated).toBe(true);
+    expect(localStorage.getItem("access_token")).toBeNull();
+  });
 });

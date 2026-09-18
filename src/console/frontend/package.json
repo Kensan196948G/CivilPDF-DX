@@ -25,6 +25,11 @@
     "react-router": "^8.3.0",
     "zustand": "^5.0.13"
   },
+  "overrides": {
+    "nanoid": "^3.3.18",
+    "browserslist": "^4.28.7",
+    "baseline-browser-mapping": "^2.11.0"
+  },
   "devDependencies": {
     "@emnapi/core": "^1.10.0",
     "@emnapi/runtime": "^1.10.0",

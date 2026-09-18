@@ -30,7 +30,9 @@ class AuditLog(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now(), index=True)
 
     # Hash chain fields (NIS2/ISO 19650/J-SOX)
-    sequence_number = Column(Integer, nullable=True, index=True)  # monotonic sequence
+    sequence_number = Column(
+        Integer, nullable=True, unique=True, index=True
+    )  # monotonic sequence, unique to protect the hash chain (see migration m3n4o5p6q7r8)
     record_hash = Column(String, nullable=True)  # SHA-256 of this record's data
     prev_hash = Column(String, nullable=True)  # SHA-256 of previous record (chain link)
 

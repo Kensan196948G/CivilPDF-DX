@@ -13,24 +13,33 @@ from auth.jwt import decode_token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/token", auto_error=False)
 
 _DEV_USER_ID = "dev-admin-00000000-0000-0000-0000-000000000000"
+_MVP_VIEWER_USER_ID = "mvp-viewer-00000000-0000-0000-0000-000000000000"
 
 
-def _get_or_create_dev_user(db: Session) -> User:
-    """Return (and lazily create) the singleton dev-bypass admin user."""
+def _get_or_create_singleton_user(
+    db: Session,
+    *,
+    user_id: str,
+    email: str,
+    username: str,
+    full_name: str,
+    role: UserRole,
+) -> User:
+    """Return (and lazily create) a singleton bypass user of the given role."""
     from sqlalchemy.exc import IntegrityError
 
-    user = db.query(User).filter(User.id == _DEV_USER_ID).first()
+    user = db.query(User).filter(User.id == user_id).first()
     if user is not None:
         return user
 
     try:
         user = User(
-            id=_DEV_USER_ID,
-            email="dev@civildx.local",
-            username="dev-admin",
-            full_name="Dev Admin (bypass)",
+            id=user_id,
+            email=email,
+            username=username,
+            full_name=full_name,
             hashed_password=None,
-            role=UserRole.ADMIN,
+            role=role,
             status="active",
         )
         db.add(user)
@@ -39,16 +48,59 @@ def _get_or_create_dev_user(db: Session) -> User:
     except IntegrityError:
         # Another worker may have inserted the row concurrently.
         db.rollback()
-        user = db.query(User).filter(User.id == _DEV_USER_ID).first()
+        user = db.query(User).filter(User.id == user_id).first()
 
     return user
+
+
+def _get_or_create_dev_user(db: Session) -> User:
+    """Return (and lazily create) the singleton DEBUG-bypass admin user.
+
+    Only reachable when settings.debug=true (local development), never on the
+    MVP demo bypass path — see _get_or_create_mvp_viewer_user.
+    """
+    return _get_or_create_singleton_user(
+        db,
+        user_id=_DEV_USER_ID,
+        email="dev@civildx.local",
+        username="dev-admin",
+        full_name="Dev Admin (bypass)",
+        role=UserRole.ADMIN,
+    )
+
+
+def _get_or_create_mvp_viewer_user(db: Session) -> User:
+    """Return (and lazily create) the singleton MVP demo bypass user.
+
+    AUTH_BYPASS opens the public MVP demo URL without a login screen. It must
+    grant read-only access only: the demo is reachable by anyone on the
+    internet, so an ADMIN-level bypass would let unauthenticated visitors
+    upload, approve or delete documents.
+    """
+    return _get_or_create_singleton_user(
+        db,
+        user_id=_MVP_VIEWER_USER_ID,
+        email="mvp-demo@civildx.local",
+        username="mvp-demo-viewer",
+        full_name="MVP Demo Viewer (bypass)",
+        role=UserRole.VIEWER,
+    )
 
 
 def get_current_user(
     token: Optional[str] = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ) -> User:
+    # MVP bypass: AUTH_BYPASS=true opens the public demo URL without a login
+    # screen, but only as a VIEWER — the demo is internet-reachable, so it
+    # must never grant write/admin capability to anonymous visitors. Checked
+    # before the DEBUG bypass below so that if both were ever misconfigured
+    # to true at once, the less-privileged path wins (defense in depth).
+    if settings.auth_bypass and token is None:
+        return _get_or_create_mvp_viewer_user(db)
+
     # Development bypass: when DEBUG=true and no token supplied, use dev admin.
+    # Both are opt-in via environment variables and default to off.
     if settings.debug and token is None:
         return _get_or_create_dev_user(db)
 

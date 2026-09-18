@@ -14,6 +14,10 @@ Environment=SECRET_KEY=mvp-demo-secret-key-32bytes-minimum
 Environment=TIMESTAMP_HMAC_KEY=mvp-demo-hmac-key-32bytes-minimum
 Environment=DEBUG=false
 Environment=APP_VERSION=0.9.0
+# MVP 公開デモ: ログイン認証を一時的に無効化する（誰でも閲覧可）。
+# 復旧はこの行を削除して systemctl --user daemon-reload && restart するだけ。
+# 本番 (civilpdf-backend.service) には設定しないこと。
+Environment=AUTH_BYPASS=true
 
 ExecStart=%h/Projects/Mirai-DX-Project/CivilPDF-DX/.venv-mvp/bin/uvicorn main:app --host 127.0.0.1 --port 8181
 

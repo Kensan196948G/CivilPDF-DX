@@ -17,6 +17,12 @@ function getInitialAuthState(): boolean {
   if (import.meta.env.DEV) {
     return true;
   }
+  // MVP 公開デモ: VITE_AUTH_BYPASS=true でビルドした場合はログイン画面を出さない。
+  // バックエンド側も AUTH_BYPASS=true でなければ API が 401 を返すため、
+  // このフラグ単独で本番バンドルが素通しになることはない。
+  if (import.meta.env.VITE_AUTH_BYPASS === "true") {
+    return true;
+  }
   try {
     return !!localStorage.getItem("access_token");
   } catch {

@@ -51,77 +51,92 @@ flowchart TB
 
 ### 2.1 GUIアプリ（Windowsデスクトップ）
 
-| 項目 | 内容 |
-|---|---|
-| 形態 | Windows 実行ファイル (.exe) |
-| 責務 | PDF 閲覧・注釈・OCR・図面比較・電子印鑑・電子納品チェック・AI検索 |
+| 項目       | 内容                                                               |
+| ---------- | ------------------------------------------------------------------ |
+| 形態       | Windows 実行ファイル (.exe)                                        |
+| 責務       | PDF 閲覧・注釈・OCR・図面比較・電子印鑑・電子納品チェック・AI検索  |
 | オフライン | ローカルキャッシュによるオフライン動作対応（同期パネルで競合解決） |
-| 通信 | Backend API へ REST/HTTPS で接続 |
-| 認証 | JWT Bearer トークン（将来: Entra ID OIDC PKCE） |
-| 実装状況 | 計画中（MVP フェーズ外） |
+| 通信       | Backend API へ REST/HTTPS で接続                                   |
+| 認証       | JWT Bearer トークン（将来: Entra ID OIDC PKCE）                    |
+| 実装状況   | 計画中（MVP フェーズ外）                                           |
 
 ### 2.2 管理コンソール（WebUI）
 
-| 項目 | 内容 |
-|---|---|
-| フレームワーク | React 19 + Vite + TypeScript |
-| 状態管理 | Zustand (認証状態) + TanStack Query v5 (サーバー状態) |
-| HTTP クライアント | axios（`/src/console/frontend/src/api/client.ts`） |
-| スタイリング | Tailwind CSS v3 |
-| ルーティング | React Router v6 |
-| 責務 | ユーザー・プロジェクト・ドキュメント・承認ワークフロー管理 |
-| 実装状況 | MVP 完成済み（6 画面） |
+| 項目              | 内容                                                       |
+| ----------------- | ---------------------------------------------------------- |
+| フレームワーク    | React 19 + Vite + TypeScript                               |
+| 状態管理          | Zustand (認証状態) + TanStack Query v5 (サーバー状態)      |
+| HTTP クライアント | axios（`/src/console/frontend/src/api/client.ts`）         |
+| スタイリング      | Tailwind CSS v3                                            |
+| ルーティング      | React Router v6                                            |
+| 責務              | ユーザー・プロジェクト・ドキュメント・承認ワークフロー管理 |
+| 実装状況          | MVP 完成済み（6 画面）                                     |
 
 ### 2.3 Backend API
 
-| 項目 | 内容 |
-|---|---|
-| フレームワーク | FastAPI (Python 3.12) |
-| ORM | SQLAlchemy 2.x（同期モード） |
-| バリデーション | Pydantic v2 |
-| 認証 | JWT (HS256) — `python-jose` + `passlib[bcrypt]` |
-| ファイル処理 | `aiofiles` による非同期 PDF 保存 |
-| API バージョン | `/api/v1/` プレフィックス |
-| CORS | `fastapi.middleware.cors.CORSMiddleware` |
-| ドキュメント | Swagger UI (`/docs`)、ReDoc (`/redoc`) |
-| ヘルスチェック | `GET /health` |
-| 実装状況 | MVP 完成済み |
+| 項目           | 内容                                                                                    |
+| -------------- | --------------------------------------------------------------------------------------- |
+| フレームワーク | FastAPI (Python 3.12)                                                                   |
+| ORM            | SQLAlchemy 2.x（同期モード）                                                            |
+| バリデーション | Pydantic v2                                                                             |
+| 認証           | JWT (HS256) — `PyJWT` + `passlib[bcrypt]`（2026-08 `python-jose` から移行、Issue #106） |
+| ファイル処理   | `aiofiles` による非同期 PDF 保存（`api/documents.py`）                                  |
+| API バージョン | `/api/v1/` プレフィックス                                                               |
+| CORS           | `fastapi.middleware.cors.CORSMiddleware`                                                |
+| ドキュメント   | Swagger UI (`/docs`)、ReDoc (`/redoc`)                                                  |
+| ヘルスチェック | `GET /health`                                                                           |
+| 実装状況       | 本番稼働中（2026-08-06〜）。19 ルーター構成                                             |
 
-**実装済みルーター:**
+**実装済みルーター（2026-09-18 時点、`main.py` の `include_router` 実測。旧版は5件のみ記載しており実態と乖離していたため全件へ更新）:**
 
-| プレフィックス | タグ | 主要エンドポイント |
-|---|---|---|
-| `/api/v1/auth` | Authentication | `POST /token`, `POST /refresh`, `GET /me` |
-| `/api/v1/users` | Users | `GET /`, `GET /{id}`, `POST /`, `PATCH /{id}` |
-| `/api/v1/projects` | Projects | `GET /`, `POST /`, `GET /{id}`, `PATCH /{id}` |
-| `/api/v1/documents` | Documents | `GET /`, `POST /` (multipart), `GET /{id}`, `PATCH /{id}`, `DELETE /{id}` |
-| `/api/v1/workflows` | Approval Workflows | `POST /`, `GET /{id}`, `POST /{id}/steps/{sid}/decide` |
+| プレフィックス          | ルーターファイル                                        | 主要領域                               |
+| ----------------------- | ------------------------------------------------------- | -------------------------------------- |
+| `/api/v1/auth`          | `api/auth.py`                                           | ログイン・トークン更新・プロフィール   |
+| `/api/v1/users`         | `api/users.py`                                          | ユーザー管理（管理者限定）             |
+| `/api/v1/projects`      | `api/projects.py`, `api/electronic_delivery.py`         | プロジェクト管理・電子納品             |
+| `/api/v1/documents`     | `api/documents.py`, `api/editor.py`, `api/revisions.py` | 文書CRUD・CSV出力・Editor連携・版管理  |
+| `/api/v1/workflows`     | `api/workflows.py`                                      | 承認ワークフロー                       |
+| `/api/v1/organizations` | `api/organizations.py`                                  | 組織階層                               |
+| `/api/v1/audit-logs`    | `api/audit_logs.py`                                     | 監査ログ・CSV出力・改ざん検知検証      |
+| `/api/v1/stats`         | `api/stats.py`                                          | ダッシュボード統計・DX同期メトリクス   |
+| `/api/v1/m365`          | `api/m365.py`                                           | Microsoft 365 連携                     |
+| `/api/v1/ocr`           | `api/ocr.py`                                            | OCR                                    |
+| `/api/v1/privacy`       | `api/privacy.py`                                        | GDPR削除権・保持ポリシー               |
+| `/api/v1/ai`            | `api/ai.py`                                             | AI分類・構造化抽出・要約（Claude API） |
+| `/api/v1/ai-config`     | `api/ai_settings.py`                                    | AI利用設定                             |
+| `/api/v1/search`        | `api/search.py`                                         | 全文検索                               |
+| `/api/v1/notifications` | `api/notifications.py`                                  | 通知                                   |
+| `/api/v1/apps`          | `api/apps.py`                                           | PDF Editor Client 配信                 |
+
+`api/csv_export.py` はルーターではなく共有ヘルパー（CSVストリーミング生成・数式インジェクション対策）で、
+`documents.py`/`audit_logs.py` から呼び出される。単独では `include_router` されない設計で正しい。
 
 ### 2.4 PostgreSQL
 
-| 項目 | 内容 |
-|---|---|
-| バージョン | PostgreSQL 15 |
-| 主要テーブル | `users`, `projects`, `documents`, `document_versions`, `approval_workflows`, `approval_steps` |
-| マイグレーション | Alembic（本番）/ `Base.metadata.create_all`（開発時自動） |
-| 接続 | SQLAlchemy 接続プール（`SessionLocal`） |
+| 項目             | 内容                                                                                                                                                                                |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| バージョン       | Neon PostgreSQL 18.4（2026-08-12 移行。開発/テストは SQLite 互換維持）                                                                                                              |
+| 主要テーブル     | `users`, `organizations`, `projects`, `documents`, `document_versions`, `approval_workflows`, `approval_steps`, `audit_logs`, `notifications`, `dx_sync_metrics` 等                 |
+| マイグレーション | Alembic（本番・開発共通）/ テストのみ `Base.metadata.create_all`                                                                                                                    |
+| 接続             | SQLAlchemy 接続プール（`SessionLocal`）                                                                                                                                             |
+| インデックス     | `documents(project_id/owner_id/status)` 追加（migration `l2m3n4o5p6q7`, 2026-09-18）。`audit_logs.sequence_number` を UNIQUE 化し改ざん検知の前提を保証（migration `m3n4o5p6q7r8`） |
 
 ### 2.5 ファイルストレージ
 
-| 項目 | 内容 |
-|---|---|
-| MVP | ローカルファイルシステム（`settings.upload_dir`、デフォルト `./uploads`） |
-| 将来 | S3 互換オブジェクトストレージ（MinIO / AWS S3 / Azure Blob） |
-| 構造 | `uploads/{project_id}/{uuid}.pdf` |
-| 制限 | PDF のみ (`application/pdf`)、最大サイズ `settings.max_file_size_mb` MB |
+| 項目 | 内容                                                                      |
+| ---- | ------------------------------------------------------------------------- |
+| MVP  | ローカルファイルシステム（`settings.upload_dir`、デフォルト `./uploads`） |
+| 将来 | S3 互換オブジェクトストレージ（MinIO / AWS S3 / Azure Blob）              |
+| 構造 | `uploads/{project_id}/{uuid}.pdf`                                         |
+| 制限 | PDF のみ (`application/pdf`)、最大サイズ `settings.max_file_size_mb` MB   |
 
 ### 2.6 AI / Claude API（将来実装）
 
-| 項目 | 内容 |
-|---|---|
-| 用途 | OCR テキスト補正、自然言語検索、文書要約、Q&A、電子納品チェック支援 |
-| 実装予定 | 非同期ワーカー経由で呼び出し（Celery / ARQ） |
-| SDK | Anthropic Python SDK |
+| 項目     | 内容                                                                |
+| -------- | ------------------------------------------------------------------- |
+| 用途     | OCR テキスト補正、自然言語検索、文書要約、Q&A、電子納品チェック支援 |
+| 実装予定 | 非同期ワーカー経由で呼び出し（Celery / ARQ）                        |
+| SDK      | Anthropic Python SDK                                                |
 
 ---
 
@@ -243,24 +258,24 @@ flowchart TD
 
 ### 5.2 ハイブリッド構成（クラウド連携）
 
-| コンポーネント | オンプレ | クラウド |
-|---|---|---|
-| GUIアプリ | Windows クライアント PC | — |
-| Backend API | 社内サーバー / Docker | Azure App Service |
-| PostgreSQL | 社内 DB サーバー | Azure Database for PostgreSQL |
-| ファイルストレージ | NAS / 社内ディスク | Azure Blob / AWS S3 |
-| 認証 | JWT | Entra ID OIDC |
-| AI API | — | Claude API (HTTPS) |
+| コンポーネント     | オンプレ                | クラウド                      |
+| ------------------ | ----------------------- | ----------------------------- |
+| GUIアプリ          | Windows クライアント PC | —                             |
+| Backend API        | 社内サーバー / Docker   | Azure App Service             |
+| PostgreSQL         | 社内 DB サーバー        | Azure Database for PostgreSQL |
+| ファイルストレージ | NAS / 社内ディスク      | Azure Blob / AWS S3           |
+| 認証               | JWT                     | Entra ID OIDC                 |
+| AI API             | —                       | Claude API (HTTPS)            |
 
 ### 5.3 通信セキュリティ
 
-| 経路 | プロトコル | 備考 |
-|---|---|---|
-| WebUI → API | HTTPS (TLS 1.2+) | CORS ホワイトリスト制限 |
-| GUIアプリ → API | HTTPS (TLS 1.2+) | 証明書ピニング（将来） |
+| 経路             | プロトコル              | 備考                         |
+| ---------------- | ----------------------- | ---------------------------- |
+| WebUI → API      | HTTPS (TLS 1.2+)        | CORS ホワイトリスト制限      |
+| GUIアプリ → API  | HTTPS (TLS 1.2+)        | 証明書ピニング（将来）       |
 | API → PostgreSQL | TCP（社内ネットワーク） | 接続プール・暗号化オプション |
-| API → Claude API | HTTPS | API キー認証 |
-| API → Entra ID | HTTPS | JWKS 検証 |
+| API → Claude API | HTTPS                   | API キー認証                 |
+| API → Entra ID   | HTTPS                   | JWKS 検証                    |
 
 ---
 
@@ -288,7 +303,7 @@ services:
 
   frontend:
     build: ./src/console/frontend
-    ports: ["3000:80"]     # nginx で配信
+    ports: ["3000:80"] # nginx で配信
 
   nginx:
     image: nginx:alpine
@@ -314,14 +329,14 @@ Namespace: civilpdf-dx
 
 ### 6.3 環境変数（必須設定）
 
-| 変数名 | 用途 | 例 |
-|---|---|---|
-| `DATABASE_URL` | PostgreSQL 接続文字列 | `postgresql://user:pass@db:5432/civilpdf` |
-| `SECRET_KEY` | JWT 署名鍵 | 32 バイト以上のランダム文字列 |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | JWT 有効期限 | `30` |
-| `REFRESH_TOKEN_EXPIRE_DAYS` | リフレッシュトークン有効期限 | `7` |
-| `UPLOAD_DIR` | PDF 保存ディレクトリ | `/app/uploads` |
-| `MAX_FILE_SIZE_MB` | PDF 最大サイズ | `100` |
-| `CORS_ORIGINS` | CORS 許可オリジン | `https://console.example.com` |
-| `CLAUDE_API_KEY` | Claude API キー（将来） | `sk-ant-...` |
-| `AZURE_CLIENT_ID` | Entra ID クライアント ID（将来） | `xxxxxxxx-...` |
+| 変数名                        | 用途                             | 例                                        |
+| ----------------------------- | -------------------------------- | ----------------------------------------- |
+| `DATABASE_URL`                | PostgreSQL 接続文字列            | `postgresql://user:pass@db:5432/civilpdf` |
+| `SECRET_KEY`                  | JWT 署名鍵                       | 32 バイト以上のランダム文字列             |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | JWT 有効期限                     | `30`                                      |
+| `REFRESH_TOKEN_EXPIRE_DAYS`   | リフレッシュトークン有効期限     | `7`                                       |
+| `UPLOAD_DIR`                  | PDF 保存ディレクトリ             | `/app/uploads`                            |
+| `MAX_FILE_SIZE_MB`            | PDF 最大サイズ                   | `100`                                     |
+| `CORS_ORIGINS`                | CORS 許可オリジン                | `https://console.example.com`             |
+| `CLAUDE_API_KEY`              | Claude API キー（将来）          | `sk-ant-...`                              |
+| `AZURE_CLIENT_ID`             | Entra ID クライアント ID（将来） | `xxxxxxxx-...`                            |
