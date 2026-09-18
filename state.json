@@ -38,7 +38,7 @@
     "current_session_start_at": "2026-09-18T05:17:51.606Z",
     "last_trigger": "manual",
     "last_cron_session_id": "20260618-010001-CivilPDF-DX",
-    "last_stop_at": "2026-09-18T06:28:15.110Z",
+    "last_stop_at": "2026-09-18T06:42:50.087Z",
     "last_claude_session_id": "4fea8d38-647c-4028-aaef-3c069d7a952e"
   },
   "status": {
@@ -255,6 +255,19 @@
         "WebUI: Viewer 未選択時の架空メタ情報（AutoCAD 2024 / OCR完了 等）を削除"
       ],
       "remaining": "OCRエンジン（Tesseract等）の導入と画像PDFの文字認識は未対応。依存追加を伴う設計判断のため要承認。"
+    },
+    "authz_audit_and_guard_20260918": {
+      "status": "完了（欠落は OCR のみ・修正済み。機械的検査を常設化）",
+      "audit_result": "api/*.py 全ルーターを棚卸し。認可欠落は /ocr/* のみだった",
+      "guard_added": "tests/console/test_route_authorization.py — /api/** の全ルートが許可リストまたは get_current_user を満たすことをFastAPIのルート表と依存ツリーから機械検証。実HTTPプローブは行わない",
+      "guard_found": "POST /api/v1/auth/m365/login が未認可として検出された。設計上の公開（M365_ALLOWED_NETWORKS による default-deny・レート制限・全件監査）のため、理由コメント付きで許可リストへ明示追加",
+      "residual_limit": "本検査は『認証依存の欠落』を検出する。認証はあるがリソース可視性チェックを欠く欠陥（OCRの事例）はendpoint本体の処理のため検出できない。そちらは機能別テストで担保する"
+    },
+    "search_n_plus_1_20260918": {
+      "status": "修正・検証済み",
+      "defect": "search.py の _is_accessible がヒット1件ごとに文書をSELECT（最大100本/検索）",
+      "fix": "visible_documents_query で全ヒットの可視性を1クエリ解決。孤児ヒットは除外",
+      "verified": "クエリ数が件数に比例しないことを回帰テストで固定。ミューテーションテストで旧実装は 2件→9 / 12件→19 SELECT と比例してFAIL"
     }
   },
   "completed": [

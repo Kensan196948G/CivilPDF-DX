@@ -13,7 +13,7 @@ from auth.dependencies import get_current_user
 from database import get_db
 from models.document import Document
 from models.user import User, UserRole
-from services.access_control import document_visible
+from services.access_control import visible_documents_query
 
 router = APIRouter(prefix="/search", tags=["Search"])
 
@@ -253,10 +253,29 @@ def _build_fts_query(terms: list[str], mode: str) -> str:
 # ── Access filter helper ───────────────────────────────────────────────────────
 
 
-def _is_accessible(doc_row: dict, current_user: User, db: Session) -> bool:
-    """True if the user can see this document hit (owner or project member)."""
-    doc = db.query(Document).filter(Document.id == doc_row["document_id"]).first()
-    return document_visible(doc, current_user)
+def _accessible_document_ids(
+    db: Session, document_ids: list[str], current_user: User
+) -> set[str]:
+    """Return which of these documents the caller may read.
+
+    Uses the same canonical RBAC filter as every other document read
+    (``visible_documents_query``) but resolves all hits in **one** query. The
+    previous implementation called ``document_visible`` once per hit, which
+    issued up to ``limit`` (≤100) extra SELECTs on a hot read path.
+
+    Hits whose document row no longer exists are excluded: the full-text index
+    can outlive a document, and returning a hit for a document the caller cannot
+    load is not useful (the old per-hit helper treated a missing row as visible).
+    """
+    if not document_ids:
+        return set()
+    rows = (
+        visible_documents_query(db, current_user)
+        .filter(Document.id.in_(document_ids))
+        .with_entities(Document.id)
+        .all()
+    )
+    return {row[0] for row in rows}
 
 
 # ── Endpoints ─────────────────────────────────────────────────────────────────
@@ -306,6 +325,9 @@ def search_documents(
                 return []
         return []
 
+    accessible_ids = _accessible_document_ids(
+        db, [r["document_id"] for r in rows], current_user
+    )
     hits = [
         SearchHit(
             document_id=r["document_id"],
@@ -318,7 +340,7 @@ def search_documents(
             tags=_parse_tags(r.get("tags")),
         )
         for r in rows
-        if _is_accessible(r, current_user, db)
+        if r["document_id"] in accessible_ids
     ]
 
     return SearchResponse(
