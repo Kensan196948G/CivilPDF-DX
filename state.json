@@ -14,8 +14,8 @@
   "kpi": {
     "ci_success_rate": 1,
     "test_pass_rate": 1,
-    "test_count": 739,
-    "backend_unit_test_count": 439,
+    "test_count": 780,
+    "backend_unit_test_count": 458,
     "backend_e2e_test_count": 20,
     "frontend_test_count": 277,
     "frontend_e2e_test_count": 25,
@@ -38,7 +38,7 @@
     "current_session_start_at": "2026-09-18T05:17:51.606Z",
     "last_trigger": "manual",
     "last_cron_session_id": "20260618-010001-CivilPDF-DX",
-    "last_stop_at": "2026-09-18T07:03:38.532Z",
+    "last_stop_at": "2026-09-18T07:12:36.939Z",
     "last_claude_session_id": "4fea8d38-647c-4028-aaef-3c069d7a952e"
   },
   "status": {
@@ -279,6 +279,34 @@
       "verified": "24x24未満の操作要素0件（全6ビュー×2ビューポート）、スマホ幅で主要ナビ・アイコンボタン32px以上。E2E 25 passed",
       "remaining": "文字サイズの可読性・表の可読性・入力フォームのモバイル操作性は未検証",
       "lesson": "「横スクロールが出ない」は「スマホで使える」を意味しない。測定しないと分からない差であり、実測ゲートを常設した"
+    },
+    "final_verification_20260918": {
+      "date": "2026-09-18T07:12:36.939Z",
+      "backend_console": "458 passed / 4 skipped",
+      "backend_integration": "20 passed",
+      "frontend_unit": "277 passed",
+      "frontend_e2e_playwright": "25 passed",
+      "frontend_lint_build": "exit 0 / exit 0",
+      "runtime_main_flow": "27/27 PASS（実HTTP + Local PostgreSQL、監査チェーン chain_valid=true）",
+      "runtime_delivery": "12/12 PASS（ごみ箱除外・0バイトPDFなし・INDEX.XML整合・バージョン一致）",
+      "local_postgresql": "alembic head o5p6q7r8s9t0, schema parity OK(17テーブル), 検証データ撤去済み",
+      "ci_equivalent_local": "CI 12ジョブのうちローカル再現可能なものはすべて実測済み",
+      "not_verified": [
+        "GitHub Actions 上での CI 実行（push 未承認）",
+        "Windows ジョブ（GitHub Actions 上のみ）",
+        "本番デプロイとデプロイ後 Health Check（本番DB失効のため不可）",
+        "本番 Runtime 主要フロー（同上）"
+      ]
+    },
+    "blocked_final": {
+      "reason": "完了条件のうち PR確認・CI確認・Deployment確認・Deployment時Health Check・本番Runtime主要フローが実施不能。原因は (1) push がオペレータにより拒否され承認が無い、(2) 本番 Neon PostgreSQL の認証情報が失効しており Credential 変更の承認が得られない（本セッションは承認プロンプト無効）。いずれもセッション内では解消できない。",
+      "since_round": 1,
+      "rounds_persisted": 8,
+      "human_action_required": [
+        "push / PR 作成の承認（branch: fix/production-reliability-hardening-20260918、7 commits）",
+        "Neon の civildx_owner パスワード再発行と DATABASE_URL 更新（復旧手順はdocs/operations/incident-2026-08-29-database-credential.md 参照）",
+        "OCRエンジン導入の可否判断（依存追加を伴う設計判断）"
+      ]
     }
   },
   "completed": [
