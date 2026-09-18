@@ -1,4 +1,5 @@
 """Authentication API tests."""
+
 from models.user import User
 
 
@@ -48,7 +49,9 @@ class TestLogin:
             data={"username": "admin@example.com", "password": "Admin1234!"},
         )
         refresh_token = login_resp.json()["refresh_token"]
-        resp = client.post("/api/v1/auth/refresh", json={"refresh_token": refresh_token})
+        resp = client.post(
+            "/api/v1/auth/refresh", json={"refresh_token": refresh_token}
+        )
         assert resp.status_code == 200
         assert "access_token" in resp.json()
 
@@ -65,6 +68,7 @@ class TestLogin:
 
     def test_refresh_token_inactive_user(self, client, admin_user, db_session):
         from models.user import UserStatus
+
         login_resp = client.post(
             "/api/v1/auth/token",
             data={"username": "admin@example.com", "password": "Admin1234!"},
@@ -76,7 +80,9 @@ class TestLogin:
         user.status = UserStatus.INACTIVE
         db_session.commit()
 
-        resp = client.post("/api/v1/auth/refresh", json={"refresh_token": refresh_token})
+        resp = client.post(
+            "/api/v1/auth/refresh", json={"refresh_token": refresh_token}
+        )
         assert resp.status_code == 401
 
 
@@ -161,6 +167,28 @@ class TestMvpAuthBypass:
         from config import settings
 
         monkeypatch.setattr(settings, "auth_bypass", True)
+        resp = client.get("/api/v1/auth/me")
+        assert resp.status_code == 200
+        data = resp.json()
+        # The public MVP demo is internet-reachable, so the bypass user must
+        # be a read-only VIEWER, never an admin — see dependencies.py
+        # _get_or_create_mvp_viewer_user.
+        assert data["role"] == "viewer"
+        assert data["email"] == "mvp-demo@civildx.local"
+
+    def test_bypass_user_cannot_reach_admin_endpoints(self, client, monkeypatch):
+        """バイパス有効でも、匿名ユーザーは管理者専用APIへ到達できない。"""
+        from config import settings
+
+        monkeypatch.setattr(settings, "auth_bypass", True)
+        resp = client.get("/api/v1/users")
+        assert resp.status_code == 403
+
+    def test_debug_bypass_is_independent_of_auth_bypass(self, client, monkeypatch):
+        """DEBUG バイパスは従来通り admin のまま(開発体験を維持)。"""
+        from config import settings
+
+        monkeypatch.setattr(settings, "debug", True)
         resp = client.get("/api/v1/auth/me")
         assert resp.status_code == 200
         data = resp.json()
