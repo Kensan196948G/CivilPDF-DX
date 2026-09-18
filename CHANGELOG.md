@@ -8,6 +8,38 @@
 
 ## [Unreleased]
 
+### 2026-09-18 — 本番運用評価に基づく重大リスク修正（CTO並列監査）
+
+セキュリティ・DB・アーキテクチャ・QA/CI・UI/UX/競合の5観点を並列監査し、証跡ベースで
+重大リスクを特定・修正した。詳細は `docs/evaluation/2026-09-18-production-readiness-assessment.md` 参照。
+
+- **セキュリティ P0**: MVP公開デモ用認証バイパス（`AUTH_BYPASS`, 未pushのローカルコミット
+  7a22585 で導入）が無条件で ADMIN 権限を発行していた不備を修正。`_get_or_create_mvp_viewer_user`
+  を新設し、バイパス時は VIEWER 権限のみ付与（書き込み/管理系APIは403で拒否）。DEBUGバイパス
+  （開発用、常にADMIN）とは経路を分離。テスト4件追加（`tests/console/test_auth.py`）
+- **データ整合性 P0**: `audit_logs.sequence_number` に UNIQUE 制約を追加（migration
+  `m3n4o5p6q7r8`）し、`create_chained_audit_log()` に行ロック(`SELECT...FOR UPDATE`)＋衝突時
+  リトライを実装。改ざん検知（ハッシュチェーン）の前提だった一意な連番を、DB制約とロックの
+  二重で保証（従来はアプリ側の非ロックな読み取り→採番のみで、同時書込みによる連番衝突・
+  チェーン破断の余地があった）
+- **性能**: `documents(project_id/owner_id/status)` にインデックス追加（migration
+  `l2m3n4o5p6q7`）。`list_documents`/`export_documents` が全件フルスキャンしていた状態を解消
+- **開発体験**: `config.py` の `Settings` に `extra="ignore"` を追加。リポジトリ直下 `.env`
+  （docker-compose用キーを含む）が原因でリポジトリrootからの `pytest` 実行が
+  `ValidationError` で即落ちしていた問題を修正
+- **セキュリティ（CI）**: frontend の `nanoid`（GHSA-2v37-7h3g-55p8, High）・`browserslist`
+  （GHSA-c83g-rgw3-j3cx 等, High）を `package.json` の `overrides` で修正版に固定。直近main CI
+  （2026-08-15, run #31864267636）が `npm audit --audit-level=high` で失敗していた原因を解消
+  （ローカル再現で exit code 0 を確認。実際のCI再グリーン化は次回push後に確認予定）
+- **文書修正**: README「CI 12/12 success」表記が実態（直近main 11/12・1か月未実行）と乖離して
+  いたため実態表記へ訂正。`docs/architecture/system-architecture.md` の実装済みルーター一覧を
+  5件→実装済み19件へ全面更新（`aiofiles`は使用中、`celery`/`redis`は依存宣言のみで未使用と
+  実コードで確認）。`docs/deployment/mvp-preview-environment.md` に AUTH_BYPASS の実態
+  （VIEWER権限化）と MVP環境が502で到達不可である事実を追記
+- **検証**: 上記変更に対し `tests/console/test_auth.py`（22件）・`alembic upgrade/downgrade`
+  往復・frontend vitest（271件）で回帰なしを確認。backend全体テストはローカル環境の実行速度
+  制約でフル完走未確認（別途CI経由での確認を推奨、既知の制約として記録）
+
 ### 2026-08-13 — MVP / Prototype 公開（v0.9.0）
 
 - **P0 修正**: `LICENSE` に残っていた未解決の Git 競合マーカーを除去（Copyright を Kensan196948G に一本化。GitHub のライセンス検出が復帰）

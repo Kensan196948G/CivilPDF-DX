@@ -153,13 +153,14 @@ https://civilpdf-mvp.mirai-dx-platform.com/
 
 ## 📊 システム稼働状況
 
-| 項目                        | 状態                                                                                   |
-| --------------------------- | -------------------------------------------------------------------------------------- |
-| 🟢 **本番稼働**             | 2026-08-06 本番デプロイ済み（Cloudflare Tunnel・systemd 稼働中）                        |
-| 🧪 **テスト網羅率**         | 691 件（backend 394 + integration 20 + frontend vitest 271 + Playwright 6）・CI 12/12 success |
-| 🔒 **セキュリティスキャン** | CI で毎回自動脆弱性チェック実施中                                                      |
-| 📋 **CI/CD**                | GitHub Actions で自動テスト・ビルド検証                                                |
-| 🔔 **監視**                 | 5 分毎ヘルスチェック＋障害/復旧メール通知、四半期毎バックアップ復元訓練                |
+| 項目                        | 状態                                                                                                                                                                                                  |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 🟢 **本番稼働**             | 2026-08-06 本番デプロイ済み（Cloudflare Tunnel・systemd 稼働中）。外形監視 200 OK（2026-09-18 確認）                                                                                                  |
+| 🟠 **MVPデモ環境**          | https://civilpdf-mvp.mirai-dx-platform.com/ は 502（到達不可、2026-09-18 確認）。復旧作業中。本番への影響なし                                                                                         |
+| 🧪 **テスト網羅率**         | 691 件（backend 394 + integration 20 + frontend vitest 271 + Playwright 6）。frontend vitest 271/271 実測一致（2026-09-18）                                                                           |
+| ⚠️ **CI/CD 直近状態**       | main 直近実行（2026-08-15）は 11/12（`Frontend Dependency Audit (npm audit)` が nanoid 等の依存脆弱性で失敗）。以後 1 か月 CI 未実行。「12/12 success」の表記は撤回し実態に合わせて修正（2026-09-18） |
+| 🔒 **セキュリティスキャン** | CI で自動脆弱性チェックを構成（gitleaks・pip-audit・npm audit）。直近 CI 実行時点で npm audit 検出分は未解消（上記）                                                                                  |
+| 🔔 **監視**                 | 5 分毎ヘルスチェック＋障害/復旧メール通知、四半期毎バックアップ復元訓練（初回 2026-08-06 PASS。継続実施は今後の実績を要蓄積）                                                                         |
 
 ---
 
@@ -175,7 +176,7 @@ https://civilpdf-mvp.mirai-dx-platform.com/
 | 🚀 **本番デプロイ手順**    | IT担当・インフラ             | [docs/deployment/docker-production-deployment.md](docs/deployment/docker-production-deployment.md) |
 | 📦 **アプリ配信運用**      | IT担当・配布管理             | [docs/deployment/app-distribution.md](docs/deployment/app-distribution.md)                         |
 | 📋 **WebUI 画面一覧**      | PM・現場担当                 | [docs/webui-screens.md](docs/webui-screens.md)                                                     |
-| 🧪 **MVP プレビュー環境**   | 評価者・関係者               | [docs/deployment/mvp-preview-environment.md](docs/deployment/mvp-preview-environment.md)          |
+| 🧪 **MVP プレビュー環境**  | 評価者・関係者               | [docs/deployment/mvp-preview-environment.md](docs/deployment/mvp-preview-environment.md)           |
 | 🪟 **Windows 11 展開手順** | IT部門                       | [docs/windows-deployment.md](docs/windows-deployment.md)                                           |
 | 📋 **コンプライアンス**    | 法務・監査                   | [docs/compliance.md](docs/compliance.md)                                                           |
 
