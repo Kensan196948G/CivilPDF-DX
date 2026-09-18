@@ -229,4 +229,22 @@ describe("ViewerView", () => {
       expect(screen.getByTestId("extract-btn")).toBeInTheDocument();
     });
   });
+
+  it("does not show fabricated document metadata when nothing is selected", async () => {
+    // Regression: the empty state used to render a made-up document
+    // (県道○○号_詳細図_Rev04.dwg / 218 MB / AutoCAD 2024 / OCR 処理: 完了 (日本語))
+    // as if it were real properties.
+    vi.mocked(listDocuments).mockResolvedValue([]);
+    render(<ViewerView {...makeProps()} />);
+
+    // Metadata lives behind the メタ情報 tab.
+    fireEvent.click(await screen.findByRole("tab", { name: /メタ情報/ }));
+    await waitFor(() => {
+      expect(screen.getByText("選択された文書はありません")).toBeInTheDocument();
+    });
+    expect(screen.queryByText(/県道○○号_詳細図/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/AutoCAD 2024/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/完了 \(日本語\)/)).not.toBeInTheDocument();
+    expect(screen.queryByText("218 MB")).not.toBeInTheDocument();
+  });
 });

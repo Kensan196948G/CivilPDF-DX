@@ -8,6 +8,52 @@
 
 ## [Unreleased]
 
+### 2026-09-18 (5) — OCR API の認可欠落の修正・ジョブ永続化・「OCRでないもの」をOCRと表示しない
+
+コード・設定の棚卸しで、`/api/v1/ocr/*` が **OCR を実装していない**こと、加えて
+**認可チェックが一切無い**ことを確認し、修正した。
+
+#### 🚨 認可欠落（クロステナントの文書テキスト漏洩）
+- `api/ocr.py` の3エンドポイントは `assert_document_visible` を**一度も呼んでいなかった**
+  （他の文書系エンドポイント11箇所はすべて呼んでいる）。このため **どの認証ユーザーでも
+  任意の `document_id` を指定して他組織の文書テキストを抽出できた**。
+  ジョブ取得系も所有者・可視性の検証が無かった
+- 修正: `POST /ocr/process` に文書可視性チェックを追加。ジョブ取得系は
+  ジョブ→文書を辿って可視性を検証（漏れた job id も無効化）
+- 回帰テスト: viewer が非メンバーの文書を 404、他ユーザーのジョブを 404
+
+#### 🚨 マルチワーカーで動作しないジョブストア
+- OCR ジョブが `api/ocr.py` の**プロセス内 dict** に保持されていた。
+  `docker-compose.prod.yml` は `uvicorn ... --workers ${UVICORN_WORKERS:-4}`（`.env` は 2）で
+  起動するため、`GET /ocr/jobs/{job_id}` は**別ワーカーに当たると 404**、
+  再起動で結果は消えていた
+- 修正: `ocr_jobs` テーブル（model + migration `o5p6q7r8s9t0`）へ永続化。
+  `status` は PostgreSQL enum ではなく String にした（enum ラベルのドリフトは
+  本セッションで既に P0 を起こしているため）
+- migration は `has_table` ガード付き（create_all 期のDBでも二重作成しない。
+  このガードを入れ忘れて既存の移行テスト2件が落ち、修正済み）
+
+#### 🟡 「OCR ではないもの」を OCR として提示しない
+- 実装は pypdf による**テキストレイヤ抽出**で、OCR エンジンは依存に無い。
+  画像のみのPDFでは `(no extractable text — may be image-only PDF)` という
+  **結果に見える文字列**を返していた
+- 修正: `engine` をレスポンスに追加（現在は `pypdf-text-layer`）。テキストレイヤが無い場合は
+  `status="unsupported"` + 理由を返し、`pages` は空にする（プレースホルダを返さない）。
+  壊れたPDFは `status="failed"` として区別
+- `language` / `enable_vertical` は受け取って**そのまま返す**ようにし、
+  現行エンジンが使用しないことを API ドキュメントに明記
+- WebUI: 「Tesseract (jpn) で全ページをOCR処理」という**虚偽の説明**を修正し、
+  処理オプションがサーバーへ送信されない未実装機能であることを画面に明記。
+  Viewer の未選択時に**架空の文書メタ情報**（`県道○○号_詳細図_Rev04.dwg` / 218 MB /
+  AutoCAD 2024 / `OCR 処理: 完了 (日本語)`）を実データのように表示していた問題も修正
+
+#### 検証
+- backend: `test_ocr.py` **17 passed**（新規・書き直し）、`test_migrations.py` 含め全体で再実行
+- migration: fresh SQLite / 既存 local PostgreSQL の双方で `o5p6q7r8s9t0` へ upgrade し
+  schema parity OK（17 テーブル）
+- frontend: **277 passed**（新規2件: 処理オプション未実装の明示、架空メタ情報の不在）、
+  lint / build exit 0、Playwright E2E 22 passed
+
 ### 2026-09-18 (4) — WebUI の偽データ表示の修正とレスポンシブ検証ゲートの追加
 
 #### 🚨 承認待ちバッジが偽データ（ハードコード `7`）だった

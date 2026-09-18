@@ -17,7 +17,7 @@
     "test_count": 739,
     "backend_unit_test_count": 439,
     "backend_e2e_test_count": 20,
-    "frontend_test_count": 275,
+    "frontend_test_count": 277,
     "frontend_e2e_test_count": 22,
     "coverage_percent": 98,
     "review_blocker_count": 0,
@@ -38,7 +38,7 @@
     "current_session_start_at": "2026-09-18T05:17:51.606Z",
     "last_trigger": "manual",
     "last_cron_session_id": "20260618-010001-CivilPDF-DX",
-    "last_stop_at": "2026-09-18T06:08:25.072Z",
+    "last_stop_at": "2026-09-18T06:28:15.110Z",
     "last_claude_session_id": "4fea8d38-647c-4028-aaef-3c069d7a952e"
   },
   "status": {
@@ -234,7 +234,7 @@
     },
     "ocr_not_ocr_20260918": {
       "severity": "高（機能の実体が名称と一致しない／マルチワーカーで動作しない）",
-      "status": "所見記録のみ（修正は次アクション・エンジン導入は承認要）",
+      "status": "修正・検証済み（エンジン導入のみ未対応）",
       "evidence": [
         "requirements.txt に OCR エンジン依存が無い",
         "api/ocr.py は pypdf の extract_text（テキストレイヤ抽出）のみ。画像のみPDFでは「結果に見える」プレースホルダ文字列を返す",
@@ -245,7 +245,16 @@
         "OCRエンジン導入は依存追加を伴う設計判断 → 要承認",
         "ジョブストアのDB永続化は承認不要で実施可能",
         "language/enable_vertical を実装するか契約から外す"
-      ]
+      ],
+      "fixes": [
+        "認可欠落の修正: /ocr/process に assert_document_visible、ジョブ取得系はジョブ→文書の可視性検証",
+        "ジョブストアを ocr_jobs テーブルへ永続化（migration o5p6q7r8s9t0、has_table ガード付き）",
+        "テキストレイヤ無しは status=unsupported + pages=[]（プレースホルダ文字列を返さない）",
+        "engine フィールド追加（pypdf-text-layer）、language/enable_vertical をエコーバック",
+        "WebUI: 「Tesseract (jpn) で全ページをOCR処理」の虚偽表記を修正、処理オプション未実装を明記",
+        "WebUI: Viewer 未選択時の架空メタ情報（AutoCAD 2024 / OCR完了 等）を削除"
+      ],
+      "remaining": "OCRエンジン（Tesseract等）の導入と画像PDFの文字認識は未対応。依存追加を伴う設計判断のため要承認。"
     }
   },
   "completed": [

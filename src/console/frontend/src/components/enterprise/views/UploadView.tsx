@@ -38,7 +38,10 @@ const INITIAL_OPTIONS: ProcessingOption[] = [
   {
     id: "ocr",
     label: "OCR テキスト抽出",
-    description: "Tesseract (jpn) で全ページをOCR処理",
+    // Used to claim "Tesseract (jpn) で全ページをOCR処理". No OCR engine is a
+    // dependency of this console (see api/ocr.py) and this toggle is never sent
+    // to the server, so the description now states what actually exists.
+    description: "画像PDFの文字認識（未実装・テキストレイヤ抽出のみ対応）",
     value: true,
   },
   {
@@ -504,6 +507,11 @@ export function UploadView({ onNavigate, onShowToast }: ViewProps) {
             </span>
           </div>
           <div className="ep-panel-body">
+            {/* These toggles are local state only: uploadDocument() does not
+                receive them, so nothing here changes what the server does. */}
+            <p style={{ fontSize: 11, color: "var(--muted)", margin: "0 0 8px" }}>
+              ⚠️ これらの処理オプションは現在未実装です（サーバーへは送信されません）。
+            </p>
             {options.map((opt) => (
               <div key={opt.id} className="ep-opt-row">
                 <div className="lbl">
