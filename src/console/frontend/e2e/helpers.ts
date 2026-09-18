@@ -69,6 +69,19 @@ const DELIVERY_READINESS = {
   warnings: [],
 }
 
+// The shell renders the workflow badge from /stats/ pending_approvals, so the
+// value here is deliberately different from the old hardcoded "7".
+export const STATS = {
+  total_documents: 2,
+  pending_approvals: 3,
+  active_users: 5,
+  approved_this_month: 1,
+  uploaded_this_week: 1,
+  total_file_size_bytes: 204800,
+  by_type: { drawing: 1, report: 1 },
+  by_status: { approved: 2 },
+}
+
 interface SetupOptions {
   documents?: unknown[]
   projects?: unknown[]
@@ -134,6 +147,7 @@ export async function setupApp(page: Page, opts: SetupOptions = {}): Promise<voi
     }
     if (pathname.endsWith('/timestamp/verify')) return json(TIMESTAMP_VERIFY)
     if (pathname.endsWith('/timestamp') && method === 'POST') return json(TIMESTAMP_APPLY)
+    if (pathname === '/api/v1/stats/') return json(STATS)
     if (pathname.endsWith('/electronic-delivery/check')) return json(DELIVERY_READINESS)
     if (pathname.endsWith('/electronic-delivery') && method === 'POST') {
       return route.fulfill({ contentType: 'application/zip', body: 'PK-e2e-zip-bytes' })

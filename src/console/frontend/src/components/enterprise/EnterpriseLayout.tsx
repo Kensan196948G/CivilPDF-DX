@@ -19,6 +19,7 @@ import { AuditLogs } from '../../pages/AuditLogs'
 import { Settings as SettingsPage } from '../../pages/Settings'
 import { Users } from '../../pages/Users'
 import { useAuthStore } from '../../store/auth'
+import { getStats } from '../../api/stats'
 import type { UserResponse } from '../../api/auth'
 import {
   listNotifications,
@@ -141,6 +142,7 @@ export const EnterpriseLayout: FC = () => {
   const [toasts, setToasts] = useState<Toast[]>([])
   const [modal, setModal] = useState<ModalContent | null>(null)
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
+  const [pendingApprovals, setPendingApprovals] = useState<number | null>(null)
   const [showNotif, setShowNotif] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const [showPalette, setShowPalette] = useState(false)
@@ -157,7 +159,11 @@ export const EnterpriseLayout: FC = () => {
   const profileRef = useRef<HTMLDivElement>(null)
   const paletteInputRef = useRef<HTMLInputElement>(null)
 
-  // ── Notification polling (30s) ───────────────────────────────────────
+  // ── Notification + counter polling (30s) ─────────────────────────────
+  // The workflow badge used to be a hardcoded "7", so every user saw a fake
+  // pending-approval count. It now comes from the same stats endpoint the
+  // dashboard uses. Both requests share one interval so a phone on a site
+  // network does not open two polling timers.
   useEffect(() => {
     if (!user) return
     let cancelled = false
@@ -167,6 +173,12 @@ export const EnterpriseLayout: FC = () => {
         if (!cancelled) setNotifications(page.items)
       } catch {
         // keep current list on transient errors
+      }
+      try {
+        const stats = await getStats()
+        if (!cancelled) setPendingApprovals(stats.pending_approvals ?? 0)
+      } catch {
+        // keep the previous count; the badge simply stays as it was
       }
     }
     void refresh()
@@ -486,18 +498,31 @@ export const EnterpriseLayout: FC = () => {
             {NAV_GROUPS.map((group) => (
               <div key={group.label} className="ep-nav-group">
                 <span className="ep-nav-group-label">{group.label}</span>
-                {group.items.map((item) => (
-                  <button
-                    key={item.id}
-                    className={`ep-nav-item${currentView === item.id ? ' active' : ''}`}
-                    onClick={() => navigate(item.id)}
-                  >
-                    {item.label}
-                    {item.id === 'workflow' && (
-                      <span className="ep-nav-badge">7</span>
-                    )}
-                  </button>
-                ))}
+                {group.items.map((item) => {
+                  const badgeCount =
+                    item.id === 'workflow' ? (pendingApprovals ?? 0) : 0
+                  return (
+                    <button
+                      key={item.id}
+                      className={`ep-nav-item${currentView === item.id ? ' active' : ''}`}
+                      onClick={() => navigate(item.id)}
+                      // The badge would otherwise join the accessible name as
+                      // "ワークフロー7"; expose the count as words instead.
+                      aria-label={
+                        badgeCount > 0
+                          ? `${item.label}（承認待ち ${badgeCount} 件）`
+                          : undefined
+                      }
+                    >
+                      {item.label}
+                      {badgeCount > 0 && (
+                        <span className="ep-nav-badge" aria-hidden="true">
+                          {badgeCount}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             ))}
           </nav>

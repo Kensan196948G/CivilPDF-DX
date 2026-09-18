@@ -186,3 +186,52 @@
 | CSV export N+1解消               | 未実施                                                                                  | Issue化・Phase1対応                                                                      |
 | GDPR自動スケジューラ             | 未実施                                                                                  | celery/redis活用を検討・Phase1対応                                                       |
 | デスクトップGUIアプリ            | 既にIssue #62で追跡中（着手前ユーザー承認必須、数週間規模・別リポジトリ推奨と明記済み） | Issue #62の着手可否をユーザーに確認                                                      |
+
+---
+
+## 10. 追記（同日 実測による訂正と追加所見）
+
+本書の一部はコード検索による**推測**であり、その後の実測で訂正・追加が生じた。監査の前提が
+変わるため、以下を本書の訂正として記録する。
+
+### 10.1 訂正: レスポンシブ対応は「実測」では横スクロールしない
+
+- 本書 §4-11 は「レスポンシブ対応が tsx 51ファイル中1件のみ」としたが、これは Tailwind の
+  レスポンシブ接頭辞（`sm:` 等）の**使用数**からの推測であり、実描画の測定ではなかった。
+- 実測（`e2e/responsive.spec.ts`、mobile 390x844 / tablet 768x1024、主要6ビュー）:
+  **横スクロールは発生しない（22/22 PASS）**。`enterprise.css` に `@media` が無く
+  `.ep-topbar-row` が折り返さないことは事実だが、実際には破綻しなかった。
+- ただし「横スクロールが出ない」は**スマホ可読性の十分条件ではない**。タップ領域の大きさ
+  （WCAG 2.5.5 / 44px 目安）、文字サイズ、表の可読性は未検証であり、残課題とする。
+- 併せて、リポジトリ内で唯一の `@media` 規則を含んでいた `src/App.css` は
+  どこからも import されていない**死んだCSS**だったため削除した（監査を誤らせる原因）。
+
+### 10.2 追加所見: 「OCR」は OCR を実装していない（コード・設定ベースの所見）
+
+`GET/POST /api/v1/ocr/*` は存在するが、実装は pypdf による **PDF テキストレイヤ抽出**であり、
+OCR（画像からの文字認識）ではない。根拠:
+
+1. `src/console/backend/requirements.txt` に OCR エンジン依存が無い
+   （tesseract / pytesseract / easyocr / paddleocr / クラウドOCR いずれも無し）
+2. `api/ocr.py::_extract_text_with_pypdf` は `pypdf.PdfReader.extract_text()` を呼ぶだけ。
+   スキャン画像のみの PDF（建設図面の主要ケース）では
+   `(no extractable text — may be image-only PDF)` という**結果に見える文字列**を返す
+3. `OcrJobRequest` の `language`（既定 `jpn`）と `enable_vertical` は**受け取るが一切使われない**
+4. OCRジョブのストアが**プロセス内 dict** (`_jobs`) のため、
+   `docker-compose.prod.yml` の `uvicorn ... --workers ${UVICORN_WORKERS:-4}`（`.env` は 2）では
+   `GET /ocr/jobs/{job_id}` が**別ワーカーに当たると 404** になり得る。再起動でも結果が消える
+
+**次アクション**: (a) OCR エンジン導入は依存追加を伴う設計判断のため要承認、
+(b) ジョブストアのDB永続化は承認不要で実施可能、
+(c) `language`/`enable_vertical` は実装するか契約から外すか、いずれかに揃える。
+
+### 10.3 本書 §9 の更新
+
+| 項目 | 本書の記載 | 実測後 |
+| --- | --- | --- |
+| feat/mvp-auth-bypass の push/PR/CI | 未実施 | **PR #134 としてマージ済み**（CI 12/12 success, run 35306477313） |
+| MVP環境(502) | 502で到達不可 | **200 で稼働中**（本セッションで実測） |
+| backend全体テストのフル完走 | 未実施 | **完走済み**（439 passed / 4 skipped） |
+| CSV export N+1解消 | 未実施 | **解消済み**（実測: 26 SELECT → 件数非依存） |
+| GDPR自動スケジューラ | 未実施 | **実装済み**（`retention-job.py` + timer、オプトイン） |
+| 本番DB接続 | 記載なし | 🚨 **2026-08-29 から認証情報失効で全件500**（`incident-2026-08-29-database-credential.md`） |

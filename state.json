@@ -17,8 +17,8 @@
     "test_count": 739,
     "backend_unit_test_count": 439,
     "backend_e2e_test_count": 20,
-    "frontend_test_count": 274,
-    "frontend_e2e_test_count": 6,
+    "frontend_test_count": 275,
+    "frontend_e2e_test_count": 22,
     "coverage_percent": 98,
     "review_blocker_count": 0,
     "security_issue_count": 0,
@@ -38,7 +38,7 @@
     "current_session_start_at": "2026-09-18T05:17:51.606Z",
     "last_trigger": "manual",
     "last_cron_session_id": "20260618-010001-CivilPDF-DX",
-    "last_stop_at": "2026-09-18T05:57:23.108Z",
+    "last_stop_at": "2026-09-18T06:08:25.072Z",
     "last_claude_session_id": "4fea8d38-647c-4028-aaef-3c069d7a952e"
   },
   "status": {
@@ -214,6 +214,38 @@
         "WebUI: 読み取れない文書と理由、409理由を表示"
       ],
       "verified": "実HTTP/実PostgreSQL 12/12 PASS、backend 電子納品 26 passed、frontend 274 passed、E2E 6 passed"
+    },
+    "frontend_fake_data_and_responsive_20260918": {
+      "severity": "一部 P0（偽データ表示）/ 一部 検証追加",
+      "status": "修正・検証済み",
+      "defects": [
+        "ナビのワークフローバッジが 7 固定の偽データだった（実データは GET /stats/ の pending_approvals）",
+        "バッジの数字がアクセシブル名に連結され「ワークフロー7」と読み上げられていた",
+        "src/App.css がどこからも import されていない死んだCSSで、リポジトリ唯一の @media 規則を含んでいた（監査を誤らせた）"
+      ],
+      "fixes": [
+        "既存の30秒ポーリングに getStats() を相乗りさせて実データ表示（0件時は非表示）",
+        "バッジに aria-hidden、ボタンに aria-label=\"ワークフロー（承認待ち N 件）\"",
+        "死んだ App.css を削除",
+        "e2e/responsive.spec.ts を追加（2ビューポート×6ビューの横スクロール実測＋主要コンテンツ可視性＋バッジ実データ）"
+      ],
+      "verified": "frontend 275 passed / E2E 22 passed / lint・build exit 0",
+      "correction": "評価書の「レスポンシブ対応が tsx 51ファイル中1件のみ」は推測であり、実測では 390px/768px で横スクロールは発生しない。ただしタップ領域・文字サイズ・表の可読性は未検証の残課題。docs/evaluation/... §10 に追記"
+    },
+    "ocr_not_ocr_20260918": {
+      "severity": "高（機能の実体が名称と一致しない／マルチワーカーで動作しない）",
+      "status": "所見記録のみ（修正は次アクション・エンジン導入は承認要）",
+      "evidence": [
+        "requirements.txt に OCR エンジン依存が無い",
+        "api/ocr.py は pypdf の extract_text（テキストレイヤ抽出）のみ。画像のみPDFでは「結果に見える」プレースホルダ文字列を返す",
+        "language / enable_vertical が未使用（契約が嘘をついている）",
+        "OCRジョブがプロセス内 dict。docker-compose.prod.yml は --workers ${UVICORN_WORKERS:-4}（.env は 2）のため、別ワーカーに当たると /ocr/jobs/{id} が 404 になり得る"
+      ],
+      "next_actions": [
+        "OCRエンジン導入は依存追加を伴う設計判断 → 要承認",
+        "ジョブストアのDB永続化は承認不要で実施可能",
+        "language/enable_vertical を実装するか契約から外す"
+      ]
     }
   },
   "completed": [
