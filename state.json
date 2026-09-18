@@ -14,10 +14,10 @@
   "kpi": {
     "ci_success_rate": 1,
     "test_pass_rate": 1,
-    "test_count": 723,
-    "backend_unit_test_count": 431,
+    "test_count": 739,
+    "backend_unit_test_count": 439,
     "backend_e2e_test_count": 20,
-    "frontend_test_count": 272,
+    "frontend_test_count": 274,
     "frontend_e2e_test_count": 6,
     "coverage_percent": 98,
     "review_blocker_count": 0,
@@ -38,7 +38,7 @@
     "current_session_start_at": "2026-09-18T05:17:51.606Z",
     "last_trigger": "manual",
     "last_cron_session_id": "20260618-010001-CivilPDF-DX",
-    "last_stop_at": "2026-09-18T05:31:18.514Z",
+    "last_stop_at": "2026-09-18T05:57:23.108Z",
     "last_claude_session_id": "4fea8d38-647c-4028-aaef-3c069d7a952e"
   },
   "status": {
@@ -193,6 +193,27 @@
       "note": "CI の 12 ジョブ相当のうち、ローカルで再現できるものはすべて実測済み。GitHub Actions 上の Windows ジョブと実際の CI 実行は push が承認されるまで未実施",
       "frontend_dependency_check": "npm audit --audit-level=high exit 0 / npm ci exit 0（lock同期）/ 再install後 build exit 0",
       "unused_dependencies_removed": "@tanstack/react-router（宣言のみ・import 0・bundle 非含有・他パッケージ参照0）を削除"
+    },
+    "electronic_delivery_integrity_20260918": {
+      "severity": "P0（コンプライアンス納品物のデータ整合性）",
+      "status": "修正・検証済み",
+      "defects_found": [
+        "削除申請済み（ごみ箱/GDPR消去待ち）の文書が納品パッケージとINDEX.XMLに混入していた",
+        "ファイル喪失文書が0バイトPDFとして梱包される一方、INDEX.XMLはDBのfile_sizeを宣言し続けていた（HTTP 200で無音）",
+        "readinessが欠損ファイルを検出せず ready=true を返していた",
+        "INDEX.XMLのソフトウェアバージョンが v0.7.0 にハードコード（実態 0.9.0）",
+        "納品パッケージ生成が監査チェーンに記録されていなかった"
+      ],
+      "fixes": [
+        "deliverable_documents(): deletion_requested_at IS NULL のみ対象化、created_at/id の明示順序で採番を再現可能に",
+        "find_unreadable_documents() + readiness の unreadable_documents と ready 意味変更",
+        "既定 fail-closed（409、原因文書名を明示）。allow_partial=true で読み取れる分のみ生成し、0バイトPDFを排除",
+        "INDEX.XMLのサイズは実際に梱包したバイト数、バージョンは settings.app_version",
+        "electronic_delivery.generated を監査チェーンへ記録（梱包件数・省略件数・省略ID）",
+        "X-CivilPDF-Omitted-Documents ヘッダで部分納品をプロトコルレベルで通知",
+        "WebUI: 読み取れない文書と理由、409理由を表示"
+      ],
+      "verified": "実HTTP/実PostgreSQL 12/12 PASS、backend 電子納品 26 passed、frontend 274 passed、E2E 6 passed"
     }
   },
   "completed": [

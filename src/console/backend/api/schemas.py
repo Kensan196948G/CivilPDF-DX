@@ -262,11 +262,21 @@ class NonPdfaDocumentInfo(BaseModel):
     filename: str
 
 
+class UnreadableDocumentInfo(BaseModel):
+    id: str
+    title: str
+    filename: str
+    reason: str
+
+
 class ElectronicDeliveryCheckResponse(BaseModel):
     ready: bool
     document_count: int
     pdfa_compliant_count: int
     non_pdfa_documents: List[NonPdfaDocumentInfo]
+    # Documents whose stored file cannot be read: they would be packaged as
+    # 0-byte PDFs, so they are reported separately and make ready=false.
+    unreadable_documents: List[UnreadableDocumentInfo] = []
     warnings: List[str]
 
 

@@ -8,6 +8,49 @@
 
 ## [Unreleased]
 
+### 2026-09-18 (3) — 電子納品パッケージのデータ整合性修正（ごみ箱混入・マニフェスト矛盾・無音の破損）
+
+主要業務フロー（国交省 CALS/EC 電子納品）の実HTTP/実PostgreSQL検証で、納品パッケージが
+**自らのマニフェストと矛盾し、利用者が削除した文書を納品していた**ことを実測で確認し修正した。
+
+#### 🚨 ごみ箱（削除申請済み）文書が納品パッケージに混入
+- 納品対象の抽出が `project_id` のみで絞られており、**利用者が削除した文書（ごみ箱／GDPR Art.17
+  で消去待ち・消去済み）まで 国交省への納品物に含まれていた**。INDEX.XML のファイル数にも計上
+- 実測: 2件中1件を削除後も `document_count=2`、ZIP に `DRAW_0002.PDF` が入り
+  INDEX.XML は `ファイル数="2"` を宣言
+- 修正: `deliverable_documents()` を新設し `deletion_requested_at IS NULL` の文書のみを対象化。
+  併せて `created_at, id` の明示的順序で DRAW_0001… の採番を**再現可能**にした
+
+#### 🚨 納品パッケージが自らのマニフェストと矛盾（0 バイト PDF の無音混入）
+- ファイルが失われた文書（`file_path` は残存）は **0 バイトの PDF** として ZIP に入る一方、
+  INDEX.XML は DB の `file_size`（例 2048）を宣言し続けていた。受領側の検証で必ず不一致となり、
+  かつ API は **HTTP 200 成功**を返していた
+- 修正:
+  - `find_unreadable_documents()` で読み取れない文書を検出し、readiness に
+    `unreadable_documents`（理由付き）を追加。`ready` は「そのまま梱包可能か」を意味するよう変更
+  - **既定は fail-closed（409）**。読み取れない文書名と理由を明示し、復元を促す
+  - 明示指定 `allow_partial=true` で「読み取れる分のみ」のパッケージを生成。この場合
+    読み取れない文書は **ZIP と INDEX.XML の両方から除外**され、パッケージは常に内部整合。
+    省略件数は `X-CivilPDF-Omitted-Documents` ヘッダ・readiness・監査チェーンで通知
+  - INDEX.XML のファイルサイズは **実際に梱包したバイト数**を宣言（DB の値ではなく）
+- 実測（Local PostgreSQL + 実HTTP）: readiness `ready=false` → 既定 **409**（文書名付き）→
+  `allow_partial=true` で 200・**0 バイト PDF なし**・`X-CivilPDF-Omitted-Documents: 1`・
+  INDEX.XML のファイル名/サイズが実体と完全一致
+
+#### 🟡 その他の整合性
+- INDEX.XML の `ソフトウェアバージョン` が **`v0.7.0` にハードコード**されていた（実際は 0.9.0）。
+  `settings.app_version` を参照するよう修正
+- 納品パッケージ生成は監査チェーンに記録されていなかった → `electronic_delivery.generated`
+  として、梱包件数・省略件数・省略 ID・パッケージサイズを記録
+- WebUI: 読み取れない文書と理由を表示し、409 の理由（どの文書が原因か）をエラー表示に反映。
+  axios が `responseType: 'blob'` のためエラー本文も Blob で届く点を `deliveryErrorMessage()` で処理
+
+#### 検証
+- 実HTTP/実PostgreSQL の納品フロー検証 **12/12 PASS**（上記の実測を含む）
+- backend 電子納品テスト **26 passed**（新規 9 件: fail-closed・部分納品・ごみ箱除外・
+  マニフェスト整合・バージョン・監査記録・採番の再現性）
+- frontend **274 passed**（新規 2 件: 読み取れない文書の表示・409 理由の表示）
+
 ### 2026-09-18 (2) — 本番無音障害の検知修正・PostgreSQL ENUM欠落の修正・可用性ハードニング
 
 初動分析で **本番環境が 21 日間の無音障害状態** にあったことを実測で確認し、その検知・防止と、

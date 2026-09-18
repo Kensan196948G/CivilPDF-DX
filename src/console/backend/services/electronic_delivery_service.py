@@ -13,6 +13,9 @@ from pathlib import Path
 from typing import Any
 from xml.etree import ElementTree as ET
 
+from sqlalchemy.orm import Session
+
+from config import settings
 from models.document import Document, DocumentType
 from models.user import Project
 
@@ -35,6 +38,76 @@ def _sanitize_code(code: str) -> str:
     return sanitized[:16]
 
 
+def package_filename(project: Project, generated_at: datetime | None = None) -> str:
+    """Return the download filename for a delivery package."""
+    generated = generated_at or datetime.now(timezone.utc)
+    return f"{_sanitize_code(project.code)}_{generated:%Y%m%d}.zip"
+
+
+def deliverable_documents(db: Session, project_id: str) -> list[Document]:
+    """Return the documents eligible to be packaged for electronic delivery.
+
+    Soft-deleted documents are excluded. A document whose deletion a user has
+    requested (ごみ箱 / GDPR Art.17, including ones already physically erased)
+    must never be handed to a third party as part of an official deliverable —
+    previously the package and INDEX.XML both included them, so a document the
+    user had deleted was still delivered to MLIT.
+
+    Ordering is explicit (``created_at``, then ``id``) so the DRAW_0001 /
+    PHOT_0001 numbering in INDEX.XML and in the ZIP is reproducible across runs.
+    """
+    return (
+        db.query(Document)
+        .filter(
+            Document.project_id == project_id,
+            Document.deletion_requested_at.is_(None),
+        )
+        .order_by(Document.created_at.asc(), Document.id.asc())
+        .all()
+    )
+
+
+def find_unreadable_documents(documents: list[Document]) -> list[dict[str, str]]:
+    """Return documents whose stored file cannot be packaged.
+
+    An aborted upload, a manually removed upload directory or a half-finished
+    restore leaves ``file_path`` set while the file is gone. Packaging such a
+    document silently produced a 0-byte PDF that INDEX.XML still described with
+    the original size, so the deliverable contradicted its own manifest.
+    """
+    unreadable: list[dict[str, str]] = []
+    for doc in documents:
+        if not doc.file_path:
+            unreadable.append(
+                {
+                    "id": doc.id,
+                    "title": doc.title,
+                    "filename": doc.filename,
+                    "reason": "ファイルの保存先が登録されていません",
+                }
+            )
+            continue
+        try:
+            path = Path(doc.file_path)
+            if not path.is_file():
+                reason = "ファイルが存在しません"
+            elif path.stat().st_size == 0:
+                reason = "ファイルが空です"
+            else:
+                continue
+        except OSError as exc:
+            reason = f"ファイルを読み取れません ({exc.__class__.__name__})"
+        unreadable.append(
+            {
+                "id": doc.id,
+                "title": doc.title,
+                "filename": doc.filename,
+                "reason": reason,
+            }
+        )
+    return unreadable
+
+
 def _sub(parent: ET.Element, tag: str, text: str) -> ET.Element:
     el = ET.SubElement(parent, tag)
     el.text = text
@@ -45,8 +118,14 @@ def _build_index_xml(
     project: Project,
     by_folder: dict[str, list[Document]],
     generated_at: datetime,
+    packaged_size: dict[str, int],
 ) -> bytes:
-    """Build INDEX.XML per MLIT electronic delivery standard."""
+    """Build INDEX.XML per MLIT electronic delivery standard.
+
+    ``packaged_size`` maps document id -> bytes actually written into the ZIP so
+    the manifest always describes the artefact rather than the stale value in
+    the database.
+    """
     root = ET.Element("工事管理情報")
 
     basic = ET.SubElement(root, "基本情報")
@@ -54,7 +133,7 @@ def _build_index_xml(
     _sub(basic, "工事名称", project.name)
     _sub(basic, "作成日", generated_at.strftime("%Y%m%d"))
     _sub(basic, "ソフトウェア名", "CivilPDF-DX")
-    _sub(basic, "ソフトウェアバージョン", "v0.7.0")
+    _sub(basic, "ソフトウェアバージョン", f"v{settings.app_version.lstrip('v')}")
 
     outcomes = ET.SubElement(root, "成果品情報")
     for folder_name, docs in sorted(by_folder.items()):
@@ -68,7 +147,7 @@ def _build_index_xml(
             file_el = ET.SubElement(folder_el, "ファイル情報")
             _sub(file_el, "ファイル名", f"{prefix}_{i:04d}.PDF")
             _sub(file_el, "タイトル", doc.title)
-            _sub(file_el, "ファイルサイズ", str(doc.file_size))
+            _sub(file_el, "ファイルサイズ", str(packaged_size.get(doc.id, 0)))
             _sub(file_el, "PDF_A準拠", "1" if doc.is_pdfa else "0")
 
     declaration = '<?xml version="1.0" encoding="UTF-8"?>\n'
@@ -94,17 +173,26 @@ def check_delivery_readiness(
         for d in documents
         if not d.is_pdfa
     ]
+    unreadable = find_unreadable_documents(documents)
     warnings: list[str] = []
     if not documents:
         warnings.append("プロジェクトに文書が1件もありません")
     if non_pdfa:
         warnings.append(f"PDF/A 非準拠ファイルが {len(non_pdfa)} 件あります")
+    if unreadable:
+        warnings.append(
+            f"ファイルを読み取れない文書が {len(unreadable)} 件あります"
+            "（そのままでは納品パッケージを生成できません）"
+        )
 
     return {
-        "ready": len(documents) > 0,
+        # "ready" means "this can be packaged as-is": a document whose file is
+        # missing blocks packaging (409) unless a partial package is requested.
+        "ready": len(documents) > 0 and not unreadable,
         "document_count": len(documents),
         "pdfa_compliant_count": pdfa_count,
         "non_pdfa_documents": non_pdfa,
+        "unreadable_documents": unreadable,
         "warnings": warnings,
     }
 
@@ -125,10 +213,15 @@ def generate_delivery_zip(project: Project, documents: list[Document]) -> bytes:
     root_dir = f"{proj_code}_{date_str}"
 
     by_folder = _group_by_folder(documents)
+    # Sizes are computed up front so INDEX.XML can stay the first ZIP entry, as
+    # it was before, while still describing the bytes actually packaged.
+    packaged_size = {
+        doc.id: _packaged_size(doc) for docs in by_folder.values() for doc in docs
+    }
 
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
-        index_xml = _build_index_xml(project, by_folder, generated_at)
+        index_xml = _build_index_xml(project, by_folder, generated_at, packaged_size)
         zf.writestr(f"{root_dir}/INDEX.XML", index_xml)
 
         for folder_name, docs in sorted(by_folder.items()):
@@ -136,10 +229,19 @@ def generate_delivery_zip(project: Project, documents: list[Document]) -> bytes:
             for i, doc in enumerate(docs, start=1):
                 dest_name = f"{prefix}_{i:04d}.PDF"
                 dest_path = f"{root_dir}/{folder_name}/{dest_name}"
-                file_bytes = _read_file(doc)
-                zf.writestr(dest_path, file_bytes)
+                zf.writestr(dest_path, _read_file(doc))
 
     return buf.getvalue()
+
+
+def _packaged_size(doc: Document) -> int:
+    """Bytes that will be written for this document (0 when unreadable)."""
+    if not doc.file_path:
+        return 0
+    try:
+        return Path(doc.file_path).stat().st_size
+    except OSError:
+        return 0
 
 
 def _read_file(doc: Document) -> bytes:

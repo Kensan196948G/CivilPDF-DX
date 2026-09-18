@@ -81,8 +81,12 @@ https://<your-domain>/api/v1/
 | GET | `/api/v1/projects/{project_id}` | プロジェクト詳細 |
 | POST | `/api/v1/projects/{project_id}/members/{user_id}` | メンバー追加 |
 | DELETE | `/api/v1/projects/{project_id}/members/{user_id}` | メンバー削除 |
-| GET | `/api/v1/projects/{project_id}/electronic-delivery/check` | 電子納品チェック |
-| POST | `/api/v1/projects/{project_id}/electronic-delivery` | 電子納品 ZIP 生成 |
+| GET | `/api/v1/projects/{project_id}/electronic-delivery/check` | 電子納品チェック（`ready` は「そのまま梱包可能か」。読み取れない文書は `unreadable_documents` に列挙） |
+| POST | `/api/v1/projects/{project_id}/electronic-delivery` | 電子納品 ZIP 生成。読み取れない文書があると **409**（fail-closed）。`?allow_partial=true` で読み取れる分のみ生成（省略件数は `X-CivilPDF-Omitted-Documents` ヘッダ） |
+
+**電子納品パッケージの対象**: 削除申請済み（ごみ箱／GDPR 消去）の文書は常に除外されます。
+生成されるパッケージは常に内部整合（INDEX.XML のファイル名・サイズが ZIP 実体と一致）で、
+0 バイトの PDF は含まれません。生成は `electronic_delivery.generated` として監査チェーンに記録されます。
 
 ### 監査ログ / 統計
 

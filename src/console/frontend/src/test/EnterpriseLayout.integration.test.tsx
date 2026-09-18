@@ -33,6 +33,7 @@ vi.mock('../api/projects', () => ({
   deleteProject: vi.fn(),
 }))
 vi.mock('../api/electronicDelivery', () => ({
+  deliveryErrorMessage: vi.fn().mockResolvedValue('ZIP 生成に失敗しました。'),
   checkDeliveryReadiness: vi.fn().mockResolvedValue({
     ready: true,
     document_count: 3,
