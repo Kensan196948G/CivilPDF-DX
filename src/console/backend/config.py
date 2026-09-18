@@ -10,7 +10,10 @@ _DEFAULT_UPLOAD_DIR = str(Path.home() / "civildx" / "uploads")
 
 
 class Settings(BaseSettings):
-    model_config = SettingsConfigDict(env_file=".env")
+    # extra="ignore": .env is shared with docker-compose (POSTGRES_DB,
+    # FRONTEND_PORT, UVICORN_WORKERS, etc.) and Settings should not fail to
+    # load just because compose-only keys are present alongside app keys.
+    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     app_name: str = "CivilPDF-DX"
     app_version: str = "0.1.0"
