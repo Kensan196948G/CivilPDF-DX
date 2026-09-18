@@ -91,16 +91,18 @@ def get_current_user(
     token: Optional[str] = Depends(oauth2_scheme),
     db: Session = Depends(get_db),
 ) -> User:
+    # MVP bypass: AUTH_BYPASS=true opens the public demo URL without a login
+    # screen, but only as a VIEWER — the demo is internet-reachable, so it
+    # must never grant write/admin capability to anonymous visitors. Checked
+    # before the DEBUG bypass below so that if both were ever misconfigured
+    # to true at once, the less-privileged path wins (defense in depth).
+    if settings.auth_bypass and token is None:
+        return _get_or_create_mvp_viewer_user(db)
+
     # Development bypass: when DEBUG=true and no token supplied, use dev admin.
     # Both are opt-in via environment variables and default to off.
     if settings.debug and token is None:
         return _get_or_create_dev_user(db)
-
-    # MVP bypass: AUTH_BYPASS=true opens the public demo URL without a login
-    # screen, but only as a VIEWER — the demo is internet-reachable, so it
-    # must never grant write/admin capability to anonymous visitors.
-    if settings.auth_bypass and token is None:
-        return _get_or_create_mvp_viewer_user(db)
 
     if token is None:
         raise HTTPException(

@@ -35,6 +35,16 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_documents_status", table_name="documents")
-    op.drop_index("ix_documents_owner_id", table_name="documents")
-    op.drop_index("ix_documents_project_id", table_name="documents")
+    # Only drop indexes this migration's upgrade() actually owns creating
+    # (guarded the same way as upgrade(), in case a partial run left some
+    # already present).
+    bind = op.get_bind()
+    inspector = sa.inspect(bind)
+    existing = {ix["name"] for ix in inspector.get_indexes("documents")}
+
+    if "ix_documents_status" in existing:
+        op.drop_index("ix_documents_status", table_name="documents")
+    if "ix_documents_owner_id" in existing:
+        op.drop_index("ix_documents_owner_id", table_name="documents")
+    if "ix_documents_project_id" in existing:
+        op.drop_index("ix_documents_project_id", table_name="documents")

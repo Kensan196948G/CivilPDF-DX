@@ -6,7 +6,7 @@
 
 ## 0. AUTH_BYPASS（未ログイン時の自動閲覧）について
 
-`deploy/civilpdf-mvp-backend.service` / `civilpdf-mvp-frontend.service` にのみ
+`deploy/civilpdf-mvp-backend.service` / `deploy/civilpdf-mvp-frontend.service` にのみ
 `AUTH_BYPASS=true` / `VITE_AUTH_BYPASS=true` を設定できます（本番 `civilpdf-backend/frontend.service`
 には設定しないこと。設定されていないことを都度確認）。
 

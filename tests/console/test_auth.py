@@ -195,6 +195,18 @@ class TestMvpAuthBypass:
         assert data["role"] == "admin"
         assert data["email"] == "dev@civildx.local"
 
+    def test_both_bypasses_enabled_prefers_viewer(self, client, monkeypatch):
+        """DEBUGとAUTH_BYPASSが両方有効な誤設定でも、より権限の弱いVIEWER側が勝つ。"""
+        from config import settings
+
+        monkeypatch.setattr(settings, "debug", True)
+        monkeypatch.setattr(settings, "auth_bypass", True)
+        resp = client.get("/api/v1/auth/me")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["role"] == "viewer"
+        assert data["email"] == "mvp-demo@civildx.local"
+
     def test_bypass_does_not_weaken_invalid_tokens(self, client, monkeypatch):
         """バイパス有効でも、壊れたトークンを送ってきた場合は拒否する。"""
         from config import settings

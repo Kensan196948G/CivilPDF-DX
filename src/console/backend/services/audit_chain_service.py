@@ -89,11 +89,17 @@ def create_chained_audit_log(
 ) -> AuditLog:
     """Create a new AuditLog record with hash chain linkage.
 
-    Retries once on a UNIQUE-constraint collision on sequence_number, which
-    can only happen when two callers raced to insert the first record (no
-    row to lock via for_update) or against a legacy row inserted before
-    migration m3n4o5p6q7r8. See services/audit_chain_service.py module
-    docstring / that migration's docstring for the full race description.
+    Retries up to _retries times on a UNIQUE-constraint collision on
+    sequence_number, which can only happen when two callers raced to insert
+    the first record (no row to lock via for_update) or against a legacy
+    row inserted before migration m3n4o5p6q7r8. See
+    services/audit_chain_service.py module docstring / that migration's
+    docstring for the full race description.
+
+    A collision is recovered via a SAVEPOINT (db.begin_nested()) rather than
+    db.rollback(), so only this function's own insert is undone — any
+    changes the caller already made on the same session (e.g. the resource
+    this audit entry is about, if not yet committed) survive the retry.
     """
     for attempt in range(_retries):
         last = get_last_record(db, for_update=True)
@@ -115,11 +121,11 @@ def create_chained_audit_log(
             prev_hash=prev_hash,
             record_hash="pending",  # placeholder; replaced below after DB assigns created_at
         )
-        db.add(log)
         try:
-            db.flush()  # DB assigns created_at via server_default
+            with db.begin_nested():
+                db.add(log)
+                db.flush()  # DB assigns created_at via server_default
         except IntegrityError:
-            db.rollback()
             if attempt == _retries - 1:
                 raise
             logger.warning(
