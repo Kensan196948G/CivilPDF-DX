@@ -18,13 +18,15 @@
     "backend_unit_test_count": 431,
     "backend_e2e_test_count": 20,
     "frontend_test_count": 272,
-    "frontend_e2e_test_count": 3,
+    "frontend_e2e_test_count": 6,
     "coverage_percent": 98,
     "review_blocker_count": 0,
     "security_issue_count": 0,
     "security_prod_vuln_count": 0,
     "security_dev_vuln_note": "npm audit: 本番依存0件・dev依存0件（PR #68 vitest v2→v4 upgrade + npm audit fix により完全解消）。/ 2026-06-17: backend pip-audit 6件（python-multipart/starlette/cryptography の新規 CVE-2026-*）を fix 版へ更新し解消（PR #47 merged）。pip-audit クリーン。/ 2026-06-20: vitest@4 で peer vite@^8 解消 + vite 8.0.16・react-router-dom 7.18.0・undici/form-data 更新（PR #68）。/ 2026-08-06: react-router v8.3.0 + axios 1.19.0 移行と npm audit fix により npm audit 0 再達成（本番/開発両方）。",
-    "frontend_build_max_chunk_kb": 187
+    "frontend_build_max_chunk_kb": 187,
+    "open_warnings": 5,
+    "known_tech_debt": "api/stats.py の SQLAlchemy 2.0 Subquery 警告は解消（テスト警告 11→5、残りは starlette/httpx 依存側）。未使用依存 @tanstack/react-router を削除。残課題: react-router は実使用中で重複ではない（評価書の指摘は誤り）"
   },
   "execution": {
     "max_duration_minutes": 300,
@@ -36,7 +38,7 @@
     "current_session_start_at": "2026-09-18T05:17:51.606Z",
     "last_trigger": "manual",
     "last_cron_session_id": "20260618-010001-CivilPDF-DX",
-    "last_stop_at": "2026-09-18T05:17:51.606Z",
+    "last_stop_at": "2026-09-18T05:31:18.514Z",
     "last_claude_session_id": "4fea8d38-647c-4028-aaef-3c069d7a952e"
   },
   "status": {
@@ -157,6 +159,40 @@
       "summary": "documents.status の EDITOR_DRAFT/EDITOR_REVIEWED/FINALIZED が PostgreSQL enum に存在せず、Editor連携フローが本番で失敗していた。SQLite ベースのCIでは検知不能だった。",
       "fix": "migration n4o5p6q7r8s9 で不足ラベルを追加＋CI に PG ENUM parity 検査を追加",
       "verified": "PostgreSQL 実測で INSERT/UPDATE 成功、parity テスト4件PASS（SQLiteではskip）"
+    },
+    "runtime_verification_20260918": {
+      "scope": "主要業務フローの実HTTP/実PostgreSQL検証",
+      "result": "27/27 PASS",
+      "environment": "backend を localhost:18899 で Local PostgreSQL(civildx, alembic n4o5p6q7r8s9) に対して起動、DEBUG=false",
+      "flows_verified": [
+        "/health 200 と /health/ready 200（database=postgresql）",
+        "4ロール login → /auth/me",
+        "RBAC: viewer の project 作成 403 / engineer の sidecar 取込 403 / viewer の監査CSV 403",
+        "PDF 実アップロード（201）→ 一覧取得",
+        "Editor連携: review-sidecar → editor_reviewed / editor_draft、flatten-check → finalized（PostgreSQL ENUM修正の実証）",
+        "承認ワークフロー: 起票(201) → 承認決定(200, wf=approved) → 通知取得",
+        "全文検索 + reindex + stats",
+        "CSV エクスポート（documents / audit-logs、ストリーミング）",
+        "ごみ箱（DELETE 204 → trash 収載）→ 復元 200",
+        "監査ハッシュチェーン verify: chain_valid=true, records_checked=15"
+      ],
+      "observations": [
+        "復元時に status が DRAFT に戻るのは実装どおり（restore_document が明示的に設定）。仕様として未文書化",
+        "サーバログに 500 / SAWarning / 例外なし"
+      ]
+    },
+    "local_verification_20260918": {
+      "backend_console": "431 passed / 4 skipped",
+      "backend_integration": "20 passed",
+      "frontend_vitest": "272 passed",
+      "frontend_playwright_e2e": "6 passed (exit 0, production build via vite preview)",
+      "ruff": "check / format --check clean",
+      "shell": "bash -n + shellcheck -S warning clean",
+      "local_postgresql": "alembic head n4o5p6q7r8s9, schema parity OK, 8並列採番衝突0, index使用確認",
+      "runtime_main_flow": "27/27 PASS (実HTTP + Local PostgreSQL)",
+      "note": "CI の 12 ジョブ相当のうち、ローカルで再現できるものはすべて実測済み。GitHub Actions 上の Windows ジョブと実際の CI 実行は push が承認されるまで未実施",
+      "frontend_dependency_check": "npm audit --audit-level=high exit 0 / npm ci exit 0（lock同期）/ 再install後 build exit 0",
+      "unused_dependencies_removed": "@tanstack/react-router（宣言のみ・import 0・bundle 非含有・他パッケージ参照0）を削除"
     }
   },
   "completed": [

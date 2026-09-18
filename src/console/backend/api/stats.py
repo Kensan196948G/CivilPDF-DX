@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func
+from sqlalchemy import func, select
 from datetime import datetime, timedelta, timezone
 
 from database import get_db
@@ -40,12 +40,16 @@ def get_stats(
 
     visible_docs = visible_documents_query(db, current_user)
     total_documents = visible_docs.count() or 0
+    # in_() needs a Select: handing it a bare Subquery is deprecated in
+    # SQLAlchemy 2.0 ("Coercing Subquery object into a select()") and removed in
+    # 2.1. Wrapping the subquery column keeps the generated SQL identical.
     visible_doc_ids = visible_docs.with_entities(Document.id).subquery()
+    visible_doc_id_select = select(visible_doc_ids.c.id)
     pending_approvals = (
         db.query(func.count(ApprovalWorkflow.id))
         .filter(ApprovalWorkflow.status == "pending")
         .join(Document, ApprovalWorkflow.document_id == Document.id)
-        .filter(Document.id.in_(visible_doc_ids))
+        .filter(Document.id.in_(visible_doc_id_select))
         .scalar()
         or 0
     )
@@ -70,7 +74,7 @@ def get_stats(
     )
     total_file_size = (
         db.query(func.sum(Document.file_size))
-        .filter(Document.id.in_(visible_doc_ids))
+        .filter(Document.id.in_(visible_doc_id_select))
         .scalar()
         or 0
     )

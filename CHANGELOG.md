@@ -77,8 +77,32 @@
   期限切れ文書が `ARCHIVED`、猶予超過文書のファイルが物理削除され `file_path` が NULL 化、
   猶予期間内の文書は無変更、`gdpr_physical_deletion` が監査チェーンへ追記されることを確認
 
+#### 🟡 技術的負債（SQLAlchemy 2.1 互換 / 未使用依存）
+- `api/stats.py` が `Document.id.in_(subquery)` に `Subquery` を直接渡しており、SQLAlchemy 2.0 の
+  `SAWarning: Coercing Subquery object into a select()` が出ていた（2.1 で削除予定）。
+  `select(subquery.c.id)` を明示的に渡すよう修正し、生成 SQL は同一のまま警告を解消
+  （テスト実行時の警告が 11 件 → 5 件に減少）
+- **未使用依存 `@tanstack/react-router` を削除**。`package.json` に宣言されているが
+  `src/` `e2e/` のどこからも import されておらず、ビルド成果物にも含まれていなかった
+  （`router-*.js` チャンクは `react-router` のみで構成）。他パッケージからの参照も無し。
+  併用している `@tanstack/react-query` は現役のため残置。lock から 97 エントリを削減
+
 #### 検証
+- **Runtime 主要業務フロー実検証（Local PostgreSQL + 実 HTTP、27/27 PASS）**:
+  `/health` `/health/ready` → 4ロール login → `/auth/me` → RBAC 拒否（viewer の project 作成 403、
+  engineer の sidecar 取込 403、viewer の監査CSV 403）→ project 作成 → **PDF 実アップロード** →
+  **Editor連携（review-sidecar → `editor_reviewed`/`editor_draft`、flatten-check → `finalized`）** →
+  承認ワークフロー起票 → 承認（`approved`）→ 通知 → 全文検索 + reindex → stats →
+  CSV エクスポート2種 → ごみ箱/復元 → **監査ハッシュチェーン `chain_valid: true`（15 レコード）**。
+  実 HTTP 経由で PostgreSQL ENUM 修正が機能することを実証（修正前は同経路が 500）
 - backend: **431 passed / 4 skipped**（新規 31 件: CSV 14・保持 12・health 5。skip は PG 専用 ENUM 検査）
+- integration: **20 passed**
+- frontend: `npm run test` **272 passed**、**Playwright E2E 6 passed**、`npm run lint` / `npm run build` 成功
+  （E2E は `vite preview` の本番ビルドに対して実行。ローカルの Playwright ブラウザが
+  バージョン不一致だったため `npx playwright install chromium` で導入してから実行）
+- 依存変更後の再検証: `npm audit --audit-level=high` **exit 0**、`npm ci` **exit 0**
+  （＝ `package.json` と `package-lock.json` が同期している。CI と同じ条件）、
+  再インストール後の `npm run build` も成功
 - ruff check / ruff format --check: clean
 - frontend: `npm run build` 成功、`npm run test` 272 passed（フロント変更なし）
 - Local PostgreSQL: `alembic upgrade head`（`g3c4d5e6f7g8` → `n4o5p6q7r8s9`）後の schema parity OK（16 テーブル）、
