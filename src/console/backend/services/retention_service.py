@@ -93,9 +93,20 @@ def get_expired_documents(db: Session) -> list[Document]:
     )
 
 
-def archive_expired_documents(db: Session) -> int:
-    """Archive all documents past their retention expiry. Returns count archived."""
+def archive_expired_documents(db: Session, *, dry_run: bool = False) -> int:
+    """Archive all documents past their retention expiry. Returns count archived.
+
+    With ``dry_run=True`` the matching documents are counted but nothing is
+    written, which is what the scheduled retention job uses to report intent
+    before it is allowed to mutate the database.
+    """
     expired = get_expired_documents(db)
+    if dry_run:
+        logger.info(
+            "Retention dry-run: %d document(s) past retention expiry", len(expired)
+        )
+        return len(expired)
+
     now = datetime.now(timezone.utc)
     for doc in expired:
         doc.is_archived = True
@@ -108,6 +119,51 @@ def archive_expired_documents(db: Session) -> int:
         )
     db.commit()
     return len(expired)
+
+
+def run_retention_cycle(
+    db: Session,
+    *,
+    grace_days: int = 30,
+    dry_run: bool = False,
+) -> dict:
+    """Run one full retention pass: seed policies, archive expiries, purge deletions.
+
+    This is the entry point the scheduled job (``scripts/retention-job.py``)
+    calls. Auditing that the code *can* enforce retention is not the same as
+    retention actually happening, so the pass is packaged here where it can be
+    tested and scheduled, rather than only reachable through admin HTTP calls.
+
+    Args:
+        db: SQLAlchemy session.
+        grace_days: Cooling-off period after a deletion request before the file
+            is physically removed (GDPR Art.17 / 電子帳簿保存法).
+        dry_run: Report what would change without writing anything.
+
+    Returns:
+        JSON-serialisable summary of the pass.
+    """
+    from services.deletion_job import run_deletion_job
+
+    started_at = datetime.now(timezone.utc)
+
+    seeded = 0 if dry_run else seed_default_policies(db)
+    archived = archive_expired_documents(db, dry_run=dry_run)
+    deletion = run_deletion_job(db, grace_days=grace_days, dry_run=dry_run)
+
+    summary = {
+        "dry_run": dry_run,
+        "grace_days": grace_days,
+        "seeded_policies": seeded,
+        "expired_documents": archived,
+        "deletion_processed": deletion["processed"],
+        "deletion_deleted_files": deletion["deleted_files"],
+        "deletion_errors": deletion["errors"],
+        "started_at": started_at.isoformat(),
+        "finished_at": datetime.now(timezone.utc).isoformat(),
+    }
+    logger.info("Retention cycle %s", summary)
+    return summary
 
 
 def seed_default_policies(db: Session) -> int:

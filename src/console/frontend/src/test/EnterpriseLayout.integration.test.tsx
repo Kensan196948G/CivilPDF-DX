@@ -33,6 +33,7 @@ vi.mock('../api/projects', () => ({
   deleteProject: vi.fn(),
 }))
 vi.mock('../api/electronicDelivery', () => ({
+  deliveryErrorMessage: vi.fn().mockResolvedValue('ZIP 生成に失敗しました。'),
   checkDeliveryReadiness: vi.fn().mockResolvedValue({
     ready: true,
     document_count: 3,
@@ -41,6 +42,9 @@ vi.mock('../api/electronicDelivery', () => ({
     warnings: [],
   }),
   downloadDeliveryZip: vi.fn().mockResolvedValue(undefined),
+}))
+vi.mock('../api/stats', () => ({
+  getStats: vi.fn().mockResolvedValue({ pending_approvals: 4 }),
 }))
 vi.mock('../api/ai', () => ({ classifyDocument: vi.fn() }))
 vi.mock('../api/search', () => ({ searchDocuments: vi.fn() }))
@@ -196,5 +200,21 @@ describe('EnterpriseLayout — functional page integration', () => {
     await waitFor(() => {
       expect(within(main).getByText('橋梁設計図')).toBeInTheDocument()
     })
+  })
+
+  it('shows the real pending-approval count, not a hardcoded badge', async () => {
+    // Regression: the workflow nav badge used to be a literal "7", so every user
+    // saw a fake pending-approval count regardless of the underlying data.
+    vi.mocked(listDocumentsPaginated).mockResolvedValue(pageOf([]))
+    vi.mocked(listProjects).mockResolvedValue([])
+
+    renderShell()
+
+    const workflow = await screen.findByRole('button', { name: /ワークフロー/ })
+    await waitFor(() => {
+      expect(within(workflow).getByText('4')).toBeInTheDocument()
+    })
+    // The count is announced as words instead of being glued to the label.
+    expect(workflow).toHaveAttribute('aria-label', expect.stringContaining('承認待ち 4 件'))
   })
 })

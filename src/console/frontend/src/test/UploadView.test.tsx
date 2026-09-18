@@ -142,4 +142,14 @@ describe("UploadView", () => {
 
     expect(screen.getByText("4/7 有効")).toBeInTheDocument();
   });
+
+  it("states that the processing options are not implemented", async () => {
+    // The OCR/table toggles are local state only (uploadDocument never receives
+    // them) and the OCR description used to claim Tesseract processing.
+    renderView();
+    expect(
+      screen.getByText(/これらの処理オプションは現在未実装です/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Tesseract/)).not.toBeInTheDocument();
+  });
 });

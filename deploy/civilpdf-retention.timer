@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily CivilPDF-DX retention / GDPR deletion pass (03:30 JST, after the backup)
+Documentation=https://github.com/Kensan196948G/CivilPDF-DX
+
+[Timer]
+OnCalendar=*-*-* 03:30:00 Asia/Tokyo
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

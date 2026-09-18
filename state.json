@@ -14,17 +14,19 @@
   "kpi": {
     "ci_success_rate": 1,
     "test_pass_rate": 1,
-    "test_count": 674,
-    "backend_unit_test_count": 380,
+    "test_count": 780,
+    "backend_unit_test_count": 458,
     "backend_e2e_test_count": 20,
-    "frontend_test_count": 268,
-    "frontend_e2e_test_count": 3,
+    "frontend_test_count": 277,
+    "frontend_e2e_test_count": 25,
     "coverage_percent": 98,
     "review_blocker_count": 0,
     "security_issue_count": 0,
     "security_prod_vuln_count": 0,
     "security_dev_vuln_note": "npm audit: 本番依存0件・dev依存0件（PR #68 vitest v2→v4 upgrade + npm audit fix により完全解消）。/ 2026-06-17: backend pip-audit 6件（python-multipart/starlette/cryptography の新規 CVE-2026-*）を fix 版へ更新し解消（PR #47 merged）。pip-audit クリーン。/ 2026-06-20: vitest@4 で peer vite@^8 解消 + vite 8.0.16・react-router-dom 7.18.0・undici/form-data 更新（PR #68）。/ 2026-08-06: react-router v8.3.0 + axios 1.19.0 移行と npm audit fix により npm audit 0 再達成（本番/開発両方）。",
-    "frontend_build_max_chunk_kb": 187
+    "frontend_build_max_chunk_kb": 187,
+    "open_warnings": 5,
+    "known_tech_debt": "api/stats.py の SQLAlchemy 2.0 Subquery 警告は解消（テスト警告 11→5、残りは starlette/httpx 依存側）。未使用依存 @tanstack/react-router を削除。残課題: react-router は実使用中で重複ではない（評価書の指摘は誤り）"
   },
   "execution": {
     "max_duration_minutes": 300,
@@ -33,10 +35,10 @@
     "ci_retry_limit": 15,
     "same_error_limit": 3,
     "session_start": "2026-05-11T00:00:00+09:00",
-    "current_session_start_at": "2026-08-04T23:53:55.279Z",
+    "current_session_start_at": "2026-09-18T05:17:51.606Z",
     "last_trigger": "manual",
     "last_cron_session_id": "20260618-010001-CivilPDF-DX",
-    "last_stop_at": "2026-08-04T13:51:11.231Z",
+    "last_stop_at": "2026-09-18T07:12:36.939Z",
     "last_claude_session_id": "4fea8d38-647c-4028-aaef-3c069d7a952e"
   },
   "status": {
@@ -68,7 +70,12 @@
     },
     "evaluation_20260812": {
       "assessment": "条件付き利用可（パイロット拡大可）。18項目平均 56.4→65.4、セキュリティ 35→76、代替率 54%→62%（予測74%）",
-      "prs": [120, 121, 122, 123],
+      "prs": [
+        120,
+        121,
+        122,
+        123
+      ],
       "merged_at": "2026-08-12T08:30:00Z",
       "test_count": 657,
       "critical_fixed": [
@@ -92,7 +99,10 @@
       "pr": null
     },
     "production_hardening_20260806": {
-      "prs": [112, 113],
+      "prs": [
+        112,
+        113
+      ],
       "merged_at": "2026-08-06T00:35:00Z",
       "deployed_at": "2026-08-06T00:29:59Z",
       "alembic_head": "h4x5y6z7a8b9",
@@ -120,7 +130,184 @@
     "cto_production_ready_at": "2026-06-03T12:31:55Z",
     "cto_declaration": "Phase 8 全完了。Phase 9 で Phase 8 機能のシェル統合・到達性を E2E 検証。全テスト397件・CI 全8ジョブ pass・本番依存脆弱性0・blocker 0。Production Ready 維持。",
     "mock_webui_url": "http://192.168.0.143:5180/ (dev:mock セッション内プロセス・任意資格情報でログイン可)",
-    "dev_cycle11_2026_06_21": "development フェーズ: 直前 monitor handoff の P3「lp/upload/privacy 実API接続」を調査 → 3 view は既に結線済み(privacy=GDPR API・upload=uploadDocument/listProjects・lp=静的)で、真のギャップは『接続済みだが未検証』と判定。過剰実装を回避し PrivacyView 7件/UploadView 6件/LandingView 4件=計17件のテストを追加(PR #79)。test 229pass/lint0/build0・max chunk 366KB不変。Release Ready 維持。"
+    "dev_cycle11_2026_06_21": "development フェーズ: 直前 monitor handoff の P3「lp/upload/privacy 実API接続」を調査 → 3 view は既に結線済み(privacy=GDPR API・upload=uploadDocument/listProjects・lp=静的)で、真のギャップは『接続済みだが未検証』と判定。過剰実装を回避し PrivacyView 7件/UploadView 6件/LandingView 4件=計17件のテストを追加(PR #79)。test 229pass/lint0/build0・max chunk 366KB不変。Release Ready 維持。",
+    "incident_20260829": {
+      "severity": "P0",
+      "status": "検知・防止実装済み／本番復旧は未対応（Credential変更の承認待ち）",
+      "detected_at": "2026-09-18",
+      "impact_window": "2026-08-29 〜 2026-09-18（21日間）",
+      "summary": "Neon PostgreSQL の認証情報失効により、DB依存の本番リクエストが全件HTTP 500、毎日のバックアップが0バイトのダンプを生成し続けた。/healthがDBを見ていなかったため監視は21日間緑のままだった。",
+      "evidence": [
+        "本番 /api/v1/auth/token -> HTTP 500（sqlalchemy OperationalError: password authentication failed for user 'civildx_owner'）",
+        "~/civildx-backups/20260829..20260917 の civilpdf.dump がすべて0バイト（最新有効は2026-08-28）",
+        "旧 healthcheck-civilpdf.sh -> HEALTHCHECK: OK（誤った緑）",
+        "新 healthcheck-civilpdf.sh -> DEGRADED（/health/ready とバックアップ鮮度を検知）"
+      ],
+      "fixes_in_this_release": [
+        "GET /health/ready（DB到達性、不通時503）",
+        "healthcheck に /health/ready とバックアップ鮮度（既定36時間）検査を追加",
+        "backup-production.sh のアトミック公開＋0バイト検出＋pg_restore --list 検証＋prune安全化",
+        "起動時にDB不通でも停止しない（クラッシュループ回避）",
+        "PostgreSQL connect_timeout（既定5秒）"
+      ],
+      "docs": "docs/operations/incident-2026-08-29-database-credential.md",
+      "requires_approval": "Neon の civildx_owner パスワード再発行と DATABASE_URL 更新"
+    },
+    "enum_defect_20260918": {
+      "severity": "P0",
+      "status": "修正・検証済み",
+      "summary": "documents.status の EDITOR_DRAFT/EDITOR_REVIEWED/FINALIZED が PostgreSQL enum に存在せず、Editor連携フローが本番で失敗していた。SQLite ベースのCIでは検知不能だった。",
+      "fix": "migration n4o5p6q7r8s9 で不足ラベルを追加＋CI に PG ENUM parity 検査を追加",
+      "verified": "PostgreSQL 実測で INSERT/UPDATE 成功、parity テスト4件PASS（SQLiteではskip）"
+    },
+    "runtime_verification_20260918": {
+      "scope": "主要業務フローの実HTTP/実PostgreSQL検証",
+      "result": "27/27 PASS",
+      "environment": "backend を localhost:18899 で Local PostgreSQL(civildx, alembic n4o5p6q7r8s9) に対して起動、DEBUG=false",
+      "flows_verified": [
+        "/health 200 と /health/ready 200（database=postgresql）",
+        "4ロール login → /auth/me",
+        "RBAC: viewer の project 作成 403 / engineer の sidecar 取込 403 / viewer の監査CSV 403",
+        "PDF 実アップロード（201）→ 一覧取得",
+        "Editor連携: review-sidecar → editor_reviewed / editor_draft、flatten-check → finalized（PostgreSQL ENUM修正の実証）",
+        "承認ワークフロー: 起票(201) → 承認決定(200, wf=approved) → 通知取得",
+        "全文検索 + reindex + stats",
+        "CSV エクスポート（documents / audit-logs、ストリーミング）",
+        "ごみ箱（DELETE 204 → trash 収載）→ 復元 200",
+        "監査ハッシュチェーン verify: chain_valid=true, records_checked=15"
+      ],
+      "observations": [
+        "復元時に status が DRAFT に戻るのは実装どおり（restore_document が明示的に設定）。仕様として未文書化",
+        "サーバログに 500 / SAWarning / 例外なし"
+      ]
+    },
+    "local_verification_20260918": {
+      "backend_console": "431 passed / 4 skipped",
+      "backend_integration": "20 passed",
+      "frontend_vitest": "272 passed",
+      "frontend_playwright_e2e": "6 passed (exit 0, production build via vite preview)",
+      "ruff": "check / format --check clean",
+      "shell": "bash -n + shellcheck -S warning clean",
+      "local_postgresql": "alembic head n4o5p6q7r8s9, schema parity OK, 8並列採番衝突0, index使用確認",
+      "runtime_main_flow": "27/27 PASS (実HTTP + Local PostgreSQL)",
+      "note": "CI の 12 ジョブ相当のうち、ローカルで再現できるものはすべて実測済み。GitHub Actions 上の Windows ジョブと実際の CI 実行は push が承認されるまで未実施",
+      "frontend_dependency_check": "npm audit --audit-level=high exit 0 / npm ci exit 0（lock同期）/ 再install後 build exit 0",
+      "unused_dependencies_removed": "@tanstack/react-router（宣言のみ・import 0・bundle 非含有・他パッケージ参照0）を削除"
+    },
+    "electronic_delivery_integrity_20260918": {
+      "severity": "P0（コンプライアンス納品物のデータ整合性）",
+      "status": "修正・検証済み",
+      "defects_found": [
+        "削除申請済み（ごみ箱/GDPR消去待ち）の文書が納品パッケージとINDEX.XMLに混入していた",
+        "ファイル喪失文書が0バイトPDFとして梱包される一方、INDEX.XMLはDBのfile_sizeを宣言し続けていた（HTTP 200で無音）",
+        "readinessが欠損ファイルを検出せず ready=true を返していた",
+        "INDEX.XMLのソフトウェアバージョンが v0.7.0 にハードコード（実態 0.9.0）",
+        "納品パッケージ生成が監査チェーンに記録されていなかった"
+      ],
+      "fixes": [
+        "deliverable_documents(): deletion_requested_at IS NULL のみ対象化、created_at/id の明示順序で採番を再現可能に",
+        "find_unreadable_documents() + readiness の unreadable_documents と ready 意味変更",
+        "既定 fail-closed（409、原因文書名を明示）。allow_partial=true で読み取れる分のみ生成し、0バイトPDFを排除",
+        "INDEX.XMLのサイズは実際に梱包したバイト数、バージョンは settings.app_version",
+        "electronic_delivery.generated を監査チェーンへ記録（梱包件数・省略件数・省略ID）",
+        "X-CivilPDF-Omitted-Documents ヘッダで部分納品をプロトコルレベルで通知",
+        "WebUI: 読み取れない文書と理由、409理由を表示"
+      ],
+      "verified": "実HTTP/実PostgreSQL 12/12 PASS、backend 電子納品 26 passed、frontend 274 passed、E2E 6 passed"
+    },
+    "frontend_fake_data_and_responsive_20260918": {
+      "severity": "一部 P0（偽データ表示）/ 一部 検証追加",
+      "status": "修正・検証済み",
+      "defects": [
+        "ナビのワークフローバッジが 7 固定の偽データだった（実データは GET /stats/ の pending_approvals）",
+        "バッジの数字がアクセシブル名に連結され「ワークフロー7」と読み上げられていた",
+        "src/App.css がどこからも import されていない死んだCSSで、リポジトリ唯一の @media 規則を含んでいた（監査を誤らせた）"
+      ],
+      "fixes": [
+        "既存の30秒ポーリングに getStats() を相乗りさせて実データ表示（0件時は非表示）",
+        "バッジに aria-hidden、ボタンに aria-label=\"ワークフロー（承認待ち N 件）\"",
+        "死んだ App.css を削除",
+        "e2e/responsive.spec.ts を追加（2ビューポート×6ビューの横スクロール実測＋主要コンテンツ可視性＋バッジ実データ）"
+      ],
+      "verified": "frontend 275 passed / E2E 22 passed / lint・build exit 0",
+      "correction": "評価書の「レスポンシブ対応が tsx 51ファイル中1件のみ」は推測であり、実測では 390px/768px で横スクロールは発生しない。ただしタップ領域・文字サイズ・表の可読性は未検証の残課題。docs/evaluation/... §10 に追記"
+    },
+    "ocr_not_ocr_20260918": {
+      "severity": "高（機能の実体が名称と一致しない／マルチワーカーで動作しない）",
+      "status": "修正・検証済み（エンジン導入のみ未対応）",
+      "evidence": [
+        "requirements.txt に OCR エンジン依存が無い",
+        "api/ocr.py は pypdf の extract_text（テキストレイヤ抽出）のみ。画像のみPDFでは「結果に見える」プレースホルダ文字列を返す",
+        "language / enable_vertical が未使用（契約が嘘をついている）",
+        "OCRジョブがプロセス内 dict。docker-compose.prod.yml は --workers ${UVICORN_WORKERS:-4}（.env は 2）のため、別ワーカーに当たると /ocr/jobs/{id} が 404 になり得る"
+      ],
+      "next_actions": [
+        "OCRエンジン導入は依存追加を伴う設計判断 → 要承認",
+        "ジョブストアのDB永続化は承認不要で実施可能",
+        "language/enable_vertical を実装するか契約から外す"
+      ],
+      "fixes": [
+        "認可欠落の修正: /ocr/process に assert_document_visible、ジョブ取得系はジョブ→文書の可視性検証",
+        "ジョブストアを ocr_jobs テーブルへ永続化（migration o5p6q7r8s9t0、has_table ガード付き）",
+        "テキストレイヤ無しは status=unsupported + pages=[]（プレースホルダ文字列を返さない）",
+        "engine フィールド追加（pypdf-text-layer）、language/enable_vertical をエコーバック",
+        "WebUI: 「Tesseract (jpn) で全ページをOCR処理」の虚偽表記を修正、処理オプション未実装を明記",
+        "WebUI: Viewer 未選択時の架空メタ情報（AutoCAD 2024 / OCR完了 等）を削除"
+      ],
+      "remaining": "OCRエンジン（Tesseract等）の導入と画像PDFの文字認識は未対応。依存追加を伴う設計判断のため要承認。"
+    },
+    "authz_audit_and_guard_20260918": {
+      "status": "完了（欠落は OCR のみ・修正済み。機械的検査を常設化）",
+      "audit_result": "api/*.py 全ルーターを棚卸し。認可欠落は /ocr/* のみだった",
+      "guard_added": "tests/console/test_route_authorization.py — /api/** の全ルートが許可リストまたは get_current_user を満たすことをFastAPIのルート表と依存ツリーから機械検証。実HTTPプローブは行わない",
+      "guard_found": "POST /api/v1/auth/m365/login が未認可として検出された。設計上の公開（M365_ALLOWED_NETWORKS による default-deny・レート制限・全件監査）のため、理由コメント付きで許可リストへ明示追加",
+      "residual_limit": "本検査は『認証依存の欠落』を検出する。認証はあるがリソース可視性チェックを欠く欠陥（OCRの事例）はendpoint本体の処理のため検出できない。そちらは機能別テストで担保する"
+    },
+    "search_n_plus_1_20260918": {
+      "status": "修正・検証済み",
+      "defect": "search.py の _is_accessible がヒット1件ごとに文書をSELECT（最大100本/検索）",
+      "fix": "visible_documents_query で全ヒットの可視性を1クエリ解決。孤児ヒットは除外",
+      "verified": "クエリ数が件数に比例しないことを回帰テストで固定。ミューテーションテストで旧実装は 2件→9 / 12件→19 SELECT と比例してFAIL"
+    },
+    "mobile_touch_targets_20260918": {
+      "status": "実測・是正・常設ゲート化 完了",
+      "measured_violations": "初期表示で11要素が WCAG 2.5.8 (AA) の 24x24 未満。.ep-icon-btn 22x22、.ep-nav-btn 高さ約24px（サブピクセル丸めで24未満）",
+      "fixes": [
+        ".ep-icon-btn 22→28px、.ep-nav-btn に min-height:28px",
+        "enterprise.css に初のモバイル用メディアクエリ(max-width:640px)を追加:.ep-icon-btn 36px、.ep-nav-item/.ep-nav-btn min-height 32px"
+      ],
+      "verified": "24x24未満の操作要素0件（全6ビュー×2ビューポート）、スマホ幅で主要ナビ・アイコンボタン32px以上。E2E 25 passed",
+      "remaining": "文字サイズの可読性・表の可読性・入力フォームのモバイル操作性は未検証",
+      "lesson": "「横スクロールが出ない」は「スマホで使える」を意味しない。測定しないと分からない差であり、実測ゲートを常設した"
+    },
+    "final_verification_20260918": {
+      "date": "2026-09-18T07:12:36.939Z",
+      "backend_console": "458 passed / 4 skipped",
+      "backend_integration": "20 passed",
+      "frontend_unit": "277 passed",
+      "frontend_e2e_playwright": "25 passed",
+      "frontend_lint_build": "exit 0 / exit 0",
+      "runtime_main_flow": "27/27 PASS（実HTTP + Local PostgreSQL、監査チェーン chain_valid=true）",
+      "runtime_delivery": "12/12 PASS（ごみ箱除外・0バイトPDFなし・INDEX.XML整合・バージョン一致）",
+      "local_postgresql": "alembic head o5p6q7r8s9t0, schema parity OK(17テーブル), 検証データ撤去済み",
+      "ci_equivalent_local": "CI 12ジョブのうちローカル再現可能なものはすべて実測済み",
+      "not_verified": [
+        "GitHub Actions 上での CI 実行（push 未承認）",
+        "Windows ジョブ（GitHub Actions 上のみ）",
+        "本番デプロイとデプロイ後 Health Check（本番DB失効のため不可）",
+        "本番 Runtime 主要フロー（同上）"
+      ]
+    },
+    "blocked_final": {
+      "reason": "完了条件のうち PR確認・CI確認・Deployment確認・Deployment時Health Check・本番Runtime主要フローが実施不能。原因は (1) push がオペレータにより拒否され承認が無い、(2) 本番 Neon PostgreSQL の認証情報が失効しており Credential 変更の承認が得られない（本セッションは承認プロンプト無効）。いずれもセッション内では解消できない。",
+      "since_round": 1,
+      "rounds_persisted": 8,
+      "human_action_required": [
+        "push / PR 作成の承認（branch: fix/production-reliability-hardening-20260918、7 commits）",
+        "Neon の civildx_owner パスワード再発行と DATABASE_URL 更新（復旧手順はdocs/operations/incident-2026-08-29-database-credential.md 参照）",
+        "OCRエンジン導入の可否判断（依存追加を伴う設計判断）"
+      ]
+    }
   },
   "completed": [
     "FastAPI バックエンド基盤",
@@ -237,12 +424,12 @@
           "last_used": "2026-06-21T00:19:51.538Z",
           "last_description": "PDF Editor Client 完成度監査"
         },
-        "_total_agent_calls": 9,
-        "_last_agent_call_at": "2026-06-21T01:09:16.064Z",
+        "_total_agent_calls": 14,
+        "_last_agent_call_at": "2026-09-18T02:49:22.219Z",
         "architect": {
-          "call_count": 1,
-          "last_used": "2026-06-20T23:53:38.286Z",
-          "last_description": "M3/M4 マイルストーン設計"
+          "call_count": 2,
+          "last_used": "2026-09-18T02:48:57.589Z",
+          "last_description": "アーキテクチャ・コード品質・性能監査"
         },
         "dev-ui": {
           "call_count": 3,
@@ -253,6 +440,26 @@
           "call_count": 1,
           "last_used": "2026-06-21T01:09:16.064Z",
           "last_description": "配信ページを実リリース整合"
+        },
+        "security-reviewer": {
+          "call_count": 1,
+          "last_used": "2026-09-18T02:48:37.362Z",
+          "last_description": "認証バイパス・セキュリティ総合監査"
+        },
+        "database-reviewer": {
+          "call_count": 1,
+          "last_used": "2026-09-18T02:48:48.286Z",
+          "last_description": "DB設計・データ品質・バックアップ復旧監査"
+        },
+        "qa": {
+          "call_count": 1,
+          "last_used": "2026-09-18T02:49:06.922Z",
+          "last_description": "テスト・CI/CD・可用性監視監査"
+        },
+        "general-purpose": {
+          "call_count": 1,
+          "last_used": "2026-09-18T02:49:22.219Z",
+          "last_description": "UI/UX・業務適合性・競合比較調査"
         }
       },
       "skills": {
@@ -461,6 +668,610 @@
         "src/console/frontend/vite.config.ts"
       ],
       "truncated": false
+    },
+    {
+      "at": "2026-09-18T02:49:32.775Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 22 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "scripts/migrate-sqlite-to-neon.py",
+        "scripts/mvp-smoke.py",
+        "scripts/seed_demo_data.py",
+        "src/console/backend/api/audit_logs.py",
+        "src/console/backend/api/auth.py",
+        "src/console/backend/api/csv_export.py",
+        "src/console/backend/api/documents.py",
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/auth/jwt.py",
+        "src/console/backend/config.py",
+        "src/console/backend/middleware/rate_limit.py",
+        "src/console/backend/services/oidc.py",
+        "src/console/frontend/src/api/auditLogs.ts",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/pages/AuditLogs.tsx",
+        "src/console/frontend/src/pages/Documents.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "src/console/frontend/vite.config.ts",
+        "tests/console/conftest.py",
+        "tests/console/test_auth.py",
+        "tests/console/test_exports_rate_limit.py",
+        "tests/integration/conftest.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T02:50:25.748Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 22 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "scripts/migrate-sqlite-to-neon.py",
+        "scripts/mvp-smoke.py",
+        "scripts/seed_demo_data.py",
+        "src/console/backend/api/audit_logs.py",
+        "src/console/backend/api/auth.py",
+        "src/console/backend/api/csv_export.py",
+        "src/console/backend/api/documents.py",
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/auth/jwt.py",
+        "src/console/backend/config.py",
+        "src/console/backend/middleware/rate_limit.py",
+        "src/console/backend/services/oidc.py",
+        "src/console/frontend/src/api/auditLogs.ts",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/pages/AuditLogs.tsx",
+        "src/console/frontend/src/pages/Documents.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "src/console/frontend/vite.config.ts",
+        "tests/console/conftest.py",
+        "tests/console/test_auth.py",
+        "tests/console/test_exports_rate_limit.py",
+        "tests/integration/conftest.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T02:50:35.081Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 22 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "scripts/migrate-sqlite-to-neon.py",
+        "scripts/mvp-smoke.py",
+        "scripts/seed_demo_data.py",
+        "src/console/backend/api/audit_logs.py",
+        "src/console/backend/api/auth.py",
+        "src/console/backend/api/csv_export.py",
+        "src/console/backend/api/documents.py",
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/auth/jwt.py",
+        "src/console/backend/config.py",
+        "src/console/backend/middleware/rate_limit.py",
+        "src/console/backend/services/oidc.py",
+        "src/console/frontend/src/api/auditLogs.ts",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/pages/AuditLogs.tsx",
+        "src/console/frontend/src/pages/Documents.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "src/console/frontend/vite.config.ts",
+        "tests/console/conftest.py",
+        "tests/console/test_auth.py",
+        "tests/console/test_exports_rate_limit.py",
+        "tests/integration/conftest.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T02:50:56.763Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 22 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "scripts/migrate-sqlite-to-neon.py",
+        "scripts/mvp-smoke.py",
+        "scripts/seed_demo_data.py",
+        "src/console/backend/api/audit_logs.py",
+        "src/console/backend/api/auth.py",
+        "src/console/backend/api/csv_export.py",
+        "src/console/backend/api/documents.py",
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/auth/jwt.py",
+        "src/console/backend/config.py",
+        "src/console/backend/middleware/rate_limit.py",
+        "src/console/backend/services/oidc.py",
+        "src/console/frontend/src/api/auditLogs.ts",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/pages/AuditLogs.tsx",
+        "src/console/frontend/src/pages/Documents.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "src/console/frontend/vite.config.ts",
+        "tests/console/conftest.py",
+        "tests/console/test_auth.py",
+        "tests/console/test_exports_rate_limit.py",
+        "tests/integration/conftest.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T02:50:59.052Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 22 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "scripts/migrate-sqlite-to-neon.py",
+        "scripts/mvp-smoke.py",
+        "scripts/seed_demo_data.py",
+        "src/console/backend/api/audit_logs.py",
+        "src/console/backend/api/auth.py",
+        "src/console/backend/api/csv_export.py",
+        "src/console/backend/api/documents.py",
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/auth/jwt.py",
+        "src/console/backend/config.py",
+        "src/console/backend/middleware/rate_limit.py",
+        "src/console/backend/services/oidc.py",
+        "src/console/frontend/src/api/auditLogs.ts",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/pages/AuditLogs.tsx",
+        "src/console/frontend/src/pages/Documents.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "src/console/frontend/vite.config.ts",
+        "tests/console/conftest.py",
+        "tests/console/test_auth.py",
+        "tests/console/test_exports_rate_limit.py",
+        "tests/integration/conftest.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T02:51:38.112Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 22 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "scripts/migrate-sqlite-to-neon.py",
+        "scripts/mvp-smoke.py",
+        "scripts/seed_demo_data.py",
+        "src/console/backend/api/audit_logs.py",
+        "src/console/backend/api/auth.py",
+        "src/console/backend/api/csv_export.py",
+        "src/console/backend/api/documents.py",
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/auth/jwt.py",
+        "src/console/backend/config.py",
+        "src/console/backend/middleware/rate_limit.py",
+        "src/console/backend/services/oidc.py",
+        "src/console/frontend/src/api/auditLogs.ts",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/pages/AuditLogs.tsx",
+        "src/console/frontend/src/pages/Documents.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "src/console/frontend/vite.config.ts",
+        "tests/console/conftest.py",
+        "tests/console/test_auth.py",
+        "tests/console/test_exports_rate_limit.py",
+        "tests/integration/conftest.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T02:51:40.647Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 22 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "scripts/migrate-sqlite-to-neon.py",
+        "scripts/mvp-smoke.py",
+        "scripts/seed_demo_data.py",
+        "src/console/backend/api/audit_logs.py",
+        "src/console/backend/api/auth.py",
+        "src/console/backend/api/csv_export.py",
+        "src/console/backend/api/documents.py",
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/auth/jwt.py",
+        "src/console/backend/config.py",
+        "src/console/backend/middleware/rate_limit.py",
+        "src/console/backend/services/oidc.py",
+        "src/console/frontend/src/api/auditLogs.ts",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/pages/AuditLogs.tsx",
+        "src/console/frontend/src/pages/Documents.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "src/console/frontend/vite.config.ts",
+        "tests/console/conftest.py",
+        "tests/console/test_auth.py",
+        "tests/console/test_exports_rate_limit.py",
+        "tests/integration/conftest.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T02:51:50.033Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 22 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "scripts/migrate-sqlite-to-neon.py",
+        "scripts/mvp-smoke.py",
+        "scripts/seed_demo_data.py",
+        "src/console/backend/api/audit_logs.py",
+        "src/console/backend/api/auth.py",
+        "src/console/backend/api/csv_export.py",
+        "src/console/backend/api/documents.py",
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/auth/jwt.py",
+        "src/console/backend/config.py",
+        "src/console/backend/middleware/rate_limit.py",
+        "src/console/backend/services/oidc.py",
+        "src/console/frontend/src/api/auditLogs.ts",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/pages/AuditLogs.tsx",
+        "src/console/frontend/src/pages/Documents.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "src/console/frontend/vite.config.ts",
+        "tests/console/conftest.py",
+        "tests/console/test_auth.py",
+        "tests/console/test_exports_rate_limit.py",
+        "tests/integration/conftest.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T02:51:52.871Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 22 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "scripts/migrate-sqlite-to-neon.py",
+        "scripts/mvp-smoke.py",
+        "scripts/seed_demo_data.py",
+        "src/console/backend/api/audit_logs.py",
+        "src/console/backend/api/auth.py",
+        "src/console/backend/api/csv_export.py",
+        "src/console/backend/api/documents.py",
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/auth/jwt.py",
+        "src/console/backend/config.py",
+        "src/console/backend/middleware/rate_limit.py",
+        "src/console/backend/services/oidc.py",
+        "src/console/frontend/src/api/auditLogs.ts",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/pages/AuditLogs.tsx",
+        "src/console/frontend/src/pages/Documents.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "src/console/frontend/vite.config.ts",
+        "tests/console/conftest.py",
+        "tests/console/test_auth.py",
+        "tests/console/test_exports_rate_limit.py",
+        "tests/integration/conftest.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T03:46:19.043Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 22 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "scripts/migrate-sqlite-to-neon.py",
+        "scripts/mvp-smoke.py",
+        "scripts/seed_demo_data.py",
+        "src/console/backend/api/audit_logs.py",
+        "src/console/backend/api/auth.py",
+        "src/console/backend/api/csv_export.py",
+        "src/console/backend/api/documents.py",
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/auth/jwt.py",
+        "src/console/backend/config.py",
+        "src/console/backend/middleware/rate_limit.py",
+        "src/console/backend/services/oidc.py",
+        "src/console/frontend/src/api/auditLogs.ts",
+        "src/console/frontend/src/api/documents.ts",
+        "src/console/frontend/src/pages/AuditLogs.tsx",
+        "src/console/frontend/src/pages/Documents.tsx",
+        "src/console/frontend/src/store/auth.ts",
+        "src/console/frontend/vite.config.ts",
+        "tests/console/conftest.py",
+        "tests/console/test_auth.py",
+        "tests/console/test_exports_rate_limit.py",
+        "tests/integration/conftest.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T03:50:55.639Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/config.py",
+        "src/console/backend/migrations/versions/l2m3n4o5p6q7_add_documents_perf_indexes.py",
+        "src/console/backend/migrations/versions/m3n4o5p6q7r8_audit_logs_sequence_unique.py",
+        "src/console/backend/models/audit_log.py",
+        "src/console/backend/models/document.py",
+        "src/console/backend/services/audit_chain_service.py",
+        "tests/console/test_auth.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T03:51:09.643Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/config.py",
+        "src/console/backend/migrations/versions/l2m3n4o5p6q7_add_documents_perf_indexes.py",
+        "src/console/backend/migrations/versions/m3n4o5p6q7r8_audit_logs_sequence_unique.py",
+        "src/console/backend/models/audit_log.py",
+        "src/console/backend/models/document.py",
+        "src/console/backend/services/audit_chain_service.py",
+        "tests/console/test_auth.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T03:54:38.884Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/config.py",
+        "src/console/backend/migrations/versions/l2m3n4o5p6q7_add_documents_perf_indexes.py",
+        "src/console/backend/migrations/versions/m3n4o5p6q7r8_audit_logs_sequence_unique.py",
+        "src/console/backend/models/audit_log.py",
+        "src/console/backend/models/document.py",
+        "src/console/backend/services/audit_chain_service.py",
+        "tests/console/test_auth.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T03:55:07.542Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/config.py",
+        "src/console/backend/migrations/versions/l2m3n4o5p6q7_add_documents_perf_indexes.py",
+        "src/console/backend/migrations/versions/m3n4o5p6q7r8_audit_logs_sequence_unique.py",
+        "src/console/backend/models/audit_log.py",
+        "src/console/backend/models/document.py",
+        "src/console/backend/services/audit_chain_service.py",
+        "tests/console/test_auth.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T04:03:59.736Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/config.py",
+        "src/console/backend/migrations/versions/l2m3n4o5p6q7_add_documents_perf_indexes.py",
+        "src/console/backend/migrations/versions/m3n4o5p6q7r8_audit_logs_sequence_unique.py",
+        "src/console/backend/models/audit_log.py",
+        "src/console/backend/models/document.py",
+        "src/console/backend/services/audit_chain_service.py",
+        "tests/console/test_auth.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T04:04:03.066Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/config.py",
+        "src/console/backend/migrations/versions/l2m3n4o5p6q7_add_documents_perf_indexes.py",
+        "src/console/backend/migrations/versions/m3n4o5p6q7r8_audit_logs_sequence_unique.py",
+        "src/console/backend/models/audit_log.py",
+        "src/console/backend/models/document.py",
+        "src/console/backend/services/audit_chain_service.py",
+        "tests/console/test_auth.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T04:04:28.313Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/config.py",
+        "src/console/backend/migrations/versions/l2m3n4o5p6q7_add_documents_perf_indexes.py",
+        "src/console/backend/migrations/versions/m3n4o5p6q7r8_audit_logs_sequence_unique.py",
+        "src/console/backend/models/audit_log.py",
+        "src/console/backend/models/document.py",
+        "src/console/backend/services/audit_chain_service.py",
+        "tests/console/test_auth.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T04:04:56.207Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/config.py",
+        "src/console/backend/migrations/versions/l2m3n4o5p6q7_add_documents_perf_indexes.py",
+        "src/console/backend/migrations/versions/m3n4o5p6q7r8_audit_logs_sequence_unique.py",
+        "src/console/backend/models/audit_log.py",
+        "src/console/backend/models/document.py",
+        "src/console/backend/services/audit_chain_service.py",
+        "tests/console/test_auth.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T04:05:20.824Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/config.py",
+        "src/console/backend/migrations/versions/l2m3n4o5p6q7_add_documents_perf_indexes.py",
+        "src/console/backend/migrations/versions/m3n4o5p6q7r8_audit_logs_sequence_unique.py",
+        "src/console/backend/models/audit_log.py",
+        "src/console/backend/models/document.py",
+        "src/console/backend/services/audit_chain_service.py",
+        "tests/console/test_auth.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T04:08:26.161Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/config.py",
+        "src/console/backend/migrations/versions/l2m3n4o5p6q7_add_documents_perf_indexes.py",
+        "src/console/backend/migrations/versions/m3n4o5p6q7r8_audit_logs_sequence_unique.py",
+        "src/console/backend/models/audit_log.py",
+        "src/console/backend/models/document.py",
+        "src/console/backend/services/audit_chain_service.py",
+        "tests/console/test_auth.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T04:09:10.026Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/config.py",
+        "src/console/backend/migrations/versions/l2m3n4o5p6q7_add_documents_perf_indexes.py",
+        "src/console/backend/migrations/versions/m3n4o5p6q7r8_audit_logs_sequence_unique.py",
+        "src/console/backend/models/audit_log.py",
+        "src/console/backend/models/document.py",
+        "src/console/backend/services/audit_chain_service.py",
+        "tests/console/test_auth.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T04:13:00.902Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/config.py",
+        "src/console/backend/migrations/versions/l2m3n4o5p6q7_add_documents_perf_indexes.py",
+        "src/console/backend/migrations/versions/m3n4o5p6q7r8_audit_logs_sequence_unique.py",
+        "src/console/backend/models/audit_log.py",
+        "src/console/backend/models/document.py",
+        "src/console/backend/services/audit_chain_service.py",
+        "tests/console/test_auth.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T04:13:06.886Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/config.py",
+        "src/console/backend/migrations/versions/l2m3n4o5p6q7_add_documents_perf_indexes.py",
+        "src/console/backend/migrations/versions/m3n4o5p6q7r8_audit_logs_sequence_unique.py",
+        "src/console/backend/models/audit_log.py",
+        "src/console/backend/models/document.py",
+        "src/console/backend/services/audit_chain_service.py",
+        "tests/console/test_auth.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T04:13:31.179Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/config.py",
+        "src/console/backend/migrations/versions/l2m3n4o5p6q7_add_documents_perf_indexes.py",
+        "src/console/backend/migrations/versions/m3n4o5p6q7r8_audit_logs_sequence_unique.py",
+        "src/console/backend/models/audit_log.py",
+        "src/console/backend/models/document.py",
+        "src/console/backend/services/audit_chain_service.py",
+        "tests/console/test_auth.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T04:13:58.495Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/config.py",
+        "src/console/backend/migrations/versions/l2m3n4o5p6q7_add_documents_perf_indexes.py",
+        "src/console/backend/migrations/versions/m3n4o5p6q7r8_audit_logs_sequence_unique.py",
+        "src/console/backend/models/audit_log.py",
+        "src/console/backend/models/document.py",
+        "src/console/backend/services/audit_chain_service.py",
+        "tests/console/test_auth.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T04:18:02.579Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/config.py",
+        "src/console/backend/migrations/versions/l2m3n4o5p6q7_add_documents_perf_indexes.py",
+        "src/console/backend/migrations/versions/m3n4o5p6q7r8_audit_logs_sequence_unique.py",
+        "src/console/backend/models/audit_log.py",
+        "src/console/backend/models/document.py",
+        "src/console/backend/services/audit_chain_service.py",
+        "tests/console/test_auth.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T04:19:45.599Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/config.py",
+        "src/console/backend/migrations/versions/l2m3n4o5p6q7_add_documents_perf_indexes.py",
+        "src/console/backend/migrations/versions/m3n4o5p6q7r8_audit_logs_sequence_unique.py",
+        "src/console/backend/models/audit_log.py",
+        "src/console/backend/models/document.py",
+        "src/console/backend/services/audit_chain_service.py",
+        "tests/console/test_auth.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T04:21:29.750Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/config.py",
+        "src/console/backend/migrations/versions/l2m3n4o5p6q7_add_documents_perf_indexes.py",
+        "src/console/backend/migrations/versions/m3n4o5p6q7r8_audit_logs_sequence_unique.py",
+        "src/console/backend/models/audit_log.py",
+        "src/console/backend/models/document.py",
+        "src/console/backend/services/audit_chain_service.py",
+        "tests/console/test_auth.py"
+      ],
+      "truncated": false
+    },
+    {
+      "at": "2026-09-18T04:30:25.758Z",
+      "kind": "tdd_required",
+      "message": "テスト未整備の変更が 8 件あります。/tdd または tdd-guide agent で対応してください。",
+      "files": [
+        "src/console/backend/auth/dependencies.py",
+        "src/console/backend/config.py",
+        "src/console/backend/migrations/versions/l2m3n4o5p6q7_add_documents_perf_indexes.py",
+        "src/console/backend/migrations/versions/m3n4o5p6q7r8_audit_logs_sequence_unique.py",
+        "src/console/backend/models/audit_log.py",
+        "src/console/backend/models/document.py",
+        "src/console/backend/services/audit_chain_service.py",
+        "tests/console/test_auth.py"
+      ],
+      "truncated": false
     }
   ],
   "goal_rotation": {
@@ -664,5 +1475,16 @@
         "via": "finalize"
       }
     ]
+  },
+  "agent_teams_usage": {
+    "session_start_at": "2026-09-18T02:45:48.359Z",
+    "current_session": {
+      "team_create_count": 0,
+      "send_message_count": 5,
+      "teammates": [],
+      "patterns_used": [],
+      "last_activity_at": "2026-09-18T03:03:44.838Z"
+    },
+    "history": []
   }
 }

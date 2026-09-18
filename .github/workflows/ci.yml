@@ -143,6 +143,11 @@ jobs:
           assert not missing_cols, f"Missing columns: {missing_cols}"
           print(f"PostgreSQL schema parity OK: {len(model_tables)} tables")
           PY
+      - name: Verify PostgreSQL enum labels match model enums
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/civilpdf_test
+          PYTHONPATH: src/console/backend
+        run: python -m pytest tests/console/test_enum_parity.py -v --tb=short
 
   backend-security:
     name: Backend Security Scan

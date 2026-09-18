@@ -12,12 +12,16 @@ def _build_engine():
             connect_args={"check_same_thread": False},
             pool_pre_ping=True,
         )
-    # PostgreSQL / other — use connection pool
+    # PostgreSQL / other — use connection pool.
+    # connect_timeout bounds how long a probe or request waits on an unreachable
+    # database: without it a credential/network failure makes /health/ready and
+    # every DB-backed request hang instead of failing fast with 503/500.
     return create_engine(
         url,
         pool_pre_ping=True,
         pool_size=10,
         max_overflow=20,
+        connect_args={"connect_timeout": settings.db_connect_timeout_seconds},
     )
 
 

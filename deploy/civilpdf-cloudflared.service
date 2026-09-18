@@ -1,5 +1,14 @@
+# =============================================================================
+# ⛔ RETIRED（2026-09-18）: 公開トンネルは system unit
+#   /etc/systemd/system/civilpdf-dx-cloudflared.service
+#   （config: ~/.cloudflared/civilpdf-dx-config.yml → 127.0.0.1:18970）
+# が担当する。この user unit が参照していた ~/.cloudflared/civilpdf-config.yml は
+# 既に存在せず、compose 移行後に退役した。新規インストールしないこと。
+# 退役手順: docs/operations/runbook.md §2.1
+# =============================================================================
+
 [Unit]
-Description=CivilPDF-DX Console Cloudflare Tunnel (civilpdf.mirai-dx-platform.com)
+Description=CivilPDF-DX Console Cloudflare Tunnel (user unit) [RETIRED — use system civilpdf-dx-cloudflared]
 Documentation=https://github.com/Kensan196948G/CivilPDF-DX
 After=civilpdf-frontend.service
 

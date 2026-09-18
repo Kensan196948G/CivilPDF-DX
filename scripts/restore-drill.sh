@@ -15,12 +15,14 @@
 #   ./scripts/restore-drill.sh                      # latest backup, port 8199
 #   ./scripts/restore-drill.sh --backup ~/civildx-backups/<stamp>
 #   ./scripts/restore-drill.sh --port 8299 --keep   # keep temp dir for debugging
-#   ./scripts/restore-drill.sh --database-url "$DRILL_DATABASE_URL"  # PostgreSQL (Neon) バックアップ用
+#   ./scripts/restore-drill.sh --database-url "$DRILL_DATABASE_URL"  # PostgreSQL バックアップ用
 #
 set -euo pipefail
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 BACKEND_DIR="$PROJECT_DIR/src/console/backend"
+# shellcheck source=scripts/pg-tools.sh
+source "$PROJECT_DIR/scripts/pg-tools.sh"
 BACKUP_ROOT="${CIVILPDF_BACKUP_ROOT:-$HOME/civildx-backups}"
 PORT="${CIVILPDF_DRILL_PORT:-8199}"
 DRILL_DATABASE_URL="${DRILL_DATABASE_URL:-}"
@@ -60,28 +62,35 @@ log "drill start: backup=$BACKUP_DIR port=$PORT"
 
 WORK="$(mktemp -d /tmp/civildx-restore-drill.XXXXXX)"
 mkdir -p "$WORK/uploads"
-if [[ -d "$BACKUP_DIR/uploads" ]]; then
+# compose 本番のバックアップは uploads.tar.gz（named volume のアーカイブ）。
+# 従来の host PG / SQLite 構成は uploads/ ディレクトリ。両方に対応する。
+if [[ -f "$BACKUP_DIR/uploads.tar.gz" ]]; then
+  tar xzf "$BACKUP_DIR/uploads.tar.gz" -C "$WORK/uploads"
+elif [[ -d "$BACKUP_DIR/uploads" ]]; then
   cp -a "$BACKUP_DIR/uploads"/. "$WORK/uploads/"
 fi
 
 if [[ $PG_MODE -eq 1 ]]; then
+  # 復元先（訓練用DB）。compose 本番の db はホストにポート公開していないため、
+  # ホスト PostgreSQL の訓練用DB（civildx_drill・peer 認証）へ復元する。
+  # 既定は unix ソケット peer 認証（パスワード不要・ホストの postgres クラスタ）。
   if [[ -z "$DRILL_DATABASE_URL" ]]; then
-    log "ERROR: PostgreSQL backup requires --database-url または DRILL_DATABASE_URL"
-    exit 2
+    DRILL_DB="${CIVILPDF_DRILL_DB:-civildx_drill}"
+    if ! psql "postgresql://$(id -un)@/postgres?host=/var/run/postgresql" -tAc \
+        "select 1 from pg_database where datname='$DRILL_DB'" 2>/dev/null | grep -q 1; then
+      createdb "$DRILL_DB" 2>/dev/null || true
+    fi
+    DRILL_DATABASE_URL="postgresql://$(id -un)@/$DRILL_DB?host=/var/run/postgresql"
+    export DRILL_DATABASE_URL
   fi
-  PG_BIN=""
-  for d in /usr/lib/postgresql/*/bin; do
-    if [[ -x "$d/pg_restore" ]]; then PG_BIN="$d"; fi
-  done
-  if [[ -z "$PG_BIN" ]] && command -v pg_restore >/dev/null 2>&1; then
-    PG_BIN="$(dirname "$(command -v pg_restore)")"
-  fi
+  PG_BIN="$(select_pg_restore_for_dump "$BACKUP_DIR/civilpdf.dump" "$DRILL_DATABASE_URL")" || PG_BIN=""
   if [[ -z "$PG_BIN" ]]; then
-    log "ERROR: pg_restore がインストールされていません"
+    log "ERROR: このダンプを読める pg_restore が見つかりません"
     exit 2
   fi
+  warn_on_version_mismatch "$PG_BIN/pg_restore" "$DRILL_DATABASE_URL"
   "$PG_BIN/pg_restore" --list "$BACKUP_DIR/civilpdf.dump" >/dev/null
-  log "OK  PostgreSQL dump readable"
+  log "OK  PostgreSQL dump readable ($("$PG_BIN/pg_restore" --version 2>/dev/null))"
 fi
 
 cleanup() {
@@ -102,16 +111,32 @@ fail() { log "FAIL: $*"; FAIL=1; }
 
 # --- 1. integrity + alembic version ------------------------------------------
 if [[ $PG_MODE -eq 1 ]]; then
-  "$PG_BIN/pg_restore" --clean --if-exists --no-owner --no-acl \
-    --dbname "$DRILL_DATABASE_URL" "$BACKUP_DIR/civilpdf.dump" >/dev/null
-  log "OK  restored DB (pg_restore)"
+  # pg_restore exits 1 when it completed but had to ignore errors (for example
+  # `SET transaction_timeout` from a PG17+ source restored into a PG16 server).
+  # Under `set -e` that aborted the whole drill with no diagnosis, so the exit
+  # code is captured and classified: 0 = clean, 1 = restored with ignored
+  # errors, >=2 = real failure.
+  set +e
+  RESTORE_OUT="$("$PG_BIN/pg_restore" --clean --if-exists --no-owner --no-acl \
+    --dbname "$DRILL_DATABASE_URL" "$BACKUP_DIR/civilpdf.dump" 2>&1)"
+  RESTORE_RC=$?
+  set -e
+  if (( RESTORE_RC >= 2 )); then
+    fail "pg_restore failed (exit $RESTORE_RC)"
+    printf '%s\n' "$RESTORE_OUT" | tail -5 | tee -a "$LOGFILE"
+  elif (( RESTORE_RC == 1 )); then
+    log "WARN pg_restore reported ignored errors (exit 1) — 復元は継続"
+    printf '%s\n' "$RESTORE_OUT" | grep -i "無視されたエラー\|ignored" | tail -2 | tee -a "$LOGFILE" || true
+  else
+    log "OK  restored DB (pg_restore)"
+  fi
   if ! (
     cd "$BACKEND_DIR"
-    DATABASE_URL="$DRILL_DATABASE_URL" PYTHONPATH=. alembic upgrade head >/dev/null 2>&1
+    DATABASE_URL="$DRILL_DATABASE_URL" PYTHONPATH=. python3 -m alembic upgrade head >/dev/null 2>&1
   ); then
     fail "alembic upgrade head on restored PostgreSQL copy failed"
   fi
-  DB_VERSION="$(cd "$BACKEND_DIR" && DATABASE_URL="$DRILL_DATABASE_URL" PYTHONPATH=. alembic current 2>/dev/null | tail -1 | awk '{print $1}')"
+  DB_VERSION="$(cd "$BACKEND_DIR" && DATABASE_URL="$DRILL_DATABASE_URL" PYTHONPATH=. python3 -m alembic current 2>/dev/null | tail -1 | awk '{print $1}')"
 else
   cp "$BACKUP_DIR/civilpdf_dev.db" "$WORK/restored.db"
   python3 - "$WORK/restored.db" <<'PY'
@@ -128,7 +153,7 @@ PY
   # it on the restored copy so pre-migration backups are also validated.
   if ! (
     cd "$BACKEND_DIR"
-    DATABASE_URL="sqlite:///$WORK/restored.db" PYTHONPATH=. alembic upgrade head >/dev/null 2>&1
+    DATABASE_URL="sqlite:///$WORK/restored.db" PYTHONPATH=. python3 -m alembic upgrade head >/dev/null 2>&1
   ); then
     fail "alembic upgrade head on restored copy failed"
   fi
@@ -142,7 +167,7 @@ con.close()
 PY
 )"
 fi
-HEAD_VERSION="$(cd "$BACKEND_DIR" && alembic heads 2>/dev/null | awk '{print $1}' | head -1)"
+HEAD_VERSION="$(cd "$BACKEND_DIR" && python3 -m alembic heads 2>/dev/null | awk '{print $1}' | head -1)"
 if [[ "$DB_VERSION" == "$HEAD_VERSION" ]]; then
   log "OK  alembic upgrade head on restored copy -> $DB_VERSION"
 else
@@ -150,7 +175,12 @@ else
 fi
 
 # --- 2. uploads count ----------------------------------------------------------
-BACKUP_COUNT="$(find "$BACKUP_DIR/uploads" -type f 2>/dev/null | wc -l)"
+# compose 本番のバックアップは uploads.tar.gz、host PG / SQLite 構成は uploads/。
+if [[ -f "$BACKUP_DIR/uploads.tar.gz" ]]; then
+  BACKUP_COUNT="$(tar tzf "$BACKUP_DIR/uploads.tar.gz" | grep -vc '/$' || true)"
+else
+  BACKUP_COUNT="$(find "$BACKUP_DIR/uploads" -type f 2>/dev/null | wc -l)"
+fi
 RESTORED_COUNT="$(find "$WORK/uploads" -type f 2>/dev/null | wc -l)"
 if [[ "$BACKUP_COUNT" == "$RESTORED_COUNT" ]]; then
   log "OK  uploads files restored ($RESTORED_COUNT)"
@@ -194,7 +224,7 @@ PY
 fi
 SERVER_PID=$!
 
-# Neon のコールドスタートは 30 秒超かかることがあるため 90 秒まで待機する
+# 復元直後の初回接続は遅くなり得るため 90 秒まで待機する
 for _ in $(seq 1 90); do
   if curl -sS -o /dev/null --max-time 2 "http://127.0.0.1:$PORT/health" 2>/dev/null; then
     break

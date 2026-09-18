@@ -22,7 +22,7 @@
 
 | 用途                | URL                                         | 内容                                                       |
 | ------------------- | ------------------------------------------- | ---------------------------------------------------------- |
-| 本番                | https://civilpdf.mirai-dx-platform.com/     | 実運用（Neon PostgreSQL・本番 Secrets）                    |
+| 本番                | https://civilpdf.mirai-dx-platform.com/     | 実運用（ローカル PostgreSQL 16・本番 Secrets）             |
 | **MVP / Prototype** | https://civilpdf-mvp.mirai-dx-platform.com/ | SQLite・架空ダミーデータ・`civilpdf-mvp` Cloudflare Tunnel |
 
 ローカル確認は http://localhost:5183/（`docker compose -f docker-compose.mvp.yml up -d --build`）。
@@ -98,7 +98,7 @@ CSV 出力 → 権限棚卸し → DX 同期 → RBAC 拒否を実 HTTP で確�
 
 ## 7. 既知の制約（MVP スコープ）
 
-- データは SQLite（本番は Neon PostgreSQL）。検索は FTS5 で動作します。
+- データは SQLite（本番は**ローカル PostgreSQL 16**）。検索は FTS5 で動作します。
 - OIDC SSO は IdP 未接続のためボタンは 503 になります（`docs/deployment/oidc-sso-setup.md`）。
 - AI 分類/要約は API キー未設定のため 503（設定画面から有効化可能）。
 - レート制限はプロセス内メモリ（単一ワーカー前提）。水平スケール時は Redis へ移行。

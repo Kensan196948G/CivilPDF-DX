@@ -8,10 +8,14 @@ import { ElectronicDeliveryModal } from "../components/ElectronicDeliveryModal";
 vi.mock("../api/electronicDelivery", () => ({
   checkDeliveryReadiness: vi.fn(),
   downloadDeliveryZip: vi.fn(),
+  deliveryErrorMessage: vi
+    .fn()
+    .mockResolvedValue("ZIP 生成に失敗しました。"),
 }));
 
 import {
   checkDeliveryReadiness,
+  deliveryErrorMessage,
   downloadDeliveryZip,
 } from "../api/electronicDelivery";
 
@@ -44,7 +48,26 @@ const notReadyData = {
   document_count: 2,
   pdfa_compliant_count: 1,
   non_pdfa_documents: [{ id: "d-1", title: "設計図", filename: "design.pdf" }],
+  unreadable_documents: [],
   warnings: ["PDF/A 非準拠のファイルが含まれています"],
+};
+
+const unreadableData = {
+  ready: false,
+  document_count: 2,
+  pdfa_compliant_count: 2,
+  non_pdfa_documents: [],
+  unreadable_documents: [
+    {
+      id: "d-9",
+      title: "欠損図面",
+      filename: "missing.pdf",
+      reason: "ファイルが存在しません",
+    },
+  ],
+  warnings: [
+    "ファイルを読み取れない文書が 1 件あります（納品パッケージ内で 0 バイトになります）",
+  ],
 };
 
 describe("ElectronicDeliveryModal", () => {
@@ -164,6 +187,41 @@ describe("ElectronicDeliveryModal", () => {
       expect(
         screen.getByText("❌ ZIP 生成に失敗しました。"),
       ).toBeInTheDocument();
+    });
+  });
+
+  it("lists documents whose file cannot be read", async () => {
+    vi.mocked(checkDeliveryReadiness).mockResolvedValue(unreadableData);
+    render(<ElectronicDeliveryModal {...defaultProps} />, {
+      wrapper: makeWrapper(),
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByText("読み取れないファイル（納品パッケージにできません）:"),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByText(/欠損図面 — ファイルが存在しません/)).toBeInTheDocument();
+  });
+
+  it("surfaces the server's reason when packaging is refused", async () => {
+    const detail =
+      "ファイルを読み取れない文書が 1 件あるため、電子納品パッケージを生成できません: 欠損図面（ファイルが存在しません）。";
+    vi.mocked(checkDeliveryReadiness).mockResolvedValue(unreadableData);
+    vi.mocked(downloadDeliveryZip).mockRejectedValue(new Error("409"));
+    vi.mocked(deliveryErrorMessage).mockResolvedValue(detail);
+
+    const user = userEvent.setup();
+    render(<ElectronicDeliveryModal {...defaultProps} />, {
+      wrapper: makeWrapper(),
+    });
+    await waitFor(() => {
+      expect(
+        screen.getByRole("button", { name: /ZIP ダウンロード/ }),
+      ).toBeInTheDocument();
+    });
+    await user.click(screen.getByRole("button", { name: /ZIP ダウンロード/ }));
+    await waitFor(() => {
+      expect(screen.getByText(new RegExp("ファイルを読み取れない文書が 1 件あるため"))).toBeInTheDocument();
     });
   });
 

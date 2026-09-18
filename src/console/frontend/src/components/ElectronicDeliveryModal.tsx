@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useMutation } from '@tanstack/react-query'
 import {
   checkDeliveryReadiness,
+  deliveryErrorMessage,
   downloadDeliveryZip,
   type DeliveryReadinessResponse,
 } from '../api/electronicDelivery'
@@ -16,6 +17,7 @@ interface Props {
 
 export function ElectronicDeliveryModal({ projectId, projectName, projectCode, onClose }: Props) {
   const [downloaded, setDownloaded] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const dialogRef = useModalDialog(true, onClose)
 
   const readiness = useQuery<DeliveryReadinessResponse>({
@@ -25,10 +27,18 @@ export function ElectronicDeliveryModal({ projectId, projectName, projectCode, o
 
   const download = useMutation({
     mutationFn: () => downloadDeliveryZip(projectId, projectCode),
-    onSuccess: () => setDownloaded(true),
+    onSuccess: () => {
+      setErrorMessage(null)
+      setDownloaded(true)
+    },
+    onError: (err: unknown) => {
+      setDownloaded(false)
+      void deliveryErrorMessage(err).then(setErrorMessage)
+    },
   })
 
   const data = readiness.data
+  const unreadable = data?.unreadable_documents ?? []
 
   return (
     <div
@@ -85,6 +95,20 @@ export function ElectronicDeliveryModal({ projectId, projectName, projectCode, o
                   </ul>
                 </div>
               )}
+              {unreadable.length > 0 && (
+                <div className="mt-2">
+                  <div className="text-xs font-semibold text-red-700 mb-1">
+                    読み取れないファイル（納品パッケージにできません）:
+                  </div>
+                  <ul className="list-disc list-inside space-y-0.5">
+                    {unreadable.map((d) => (
+                      <li key={d.id} className="text-xs text-red-800 truncate">
+                        {d.title} — {d.reason}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {data.warnings.length > 0 && (
                 <div className="space-y-1 mt-1">
                   {data.warnings.map((w, i) => (
@@ -115,7 +139,7 @@ export function ElectronicDeliveryModal({ projectId, projectName, projectCode, o
 
         {download.isError && (
           <div className="bg-red-50 border border-red-200 rounded p-2 mb-4 text-xs text-red-700">
-            ❌ ZIP 生成に失敗しました。
+            ❌ {errorMessage ?? 'ZIP 生成に失敗しました。'}
           </div>
         )}
 

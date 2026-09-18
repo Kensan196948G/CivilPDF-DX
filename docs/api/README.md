@@ -81,8 +81,12 @@ https://<your-domain>/api/v1/
 | GET | `/api/v1/projects/{project_id}` | プロジェクト詳細 |
 | POST | `/api/v1/projects/{project_id}/members/{user_id}` | メンバー追加 |
 | DELETE | `/api/v1/projects/{project_id}/members/{user_id}` | メンバー削除 |
-| GET | `/api/v1/projects/{project_id}/electronic-delivery/check` | 電子納品チェック |
-| POST | `/api/v1/projects/{project_id}/electronic-delivery` | 電子納品 ZIP 生成 |
+| GET | `/api/v1/projects/{project_id}/electronic-delivery/check` | 電子納品チェック（`ready` は「そのまま梱包可能か」。読み取れない文書は `unreadable_documents` に列挙） |
+| POST | `/api/v1/projects/{project_id}/electronic-delivery` | 電子納品 ZIP 生成。読み取れない文書があると **409**（fail-closed）。`?allow_partial=true` で読み取れる分のみ生成（省略件数は `X-CivilPDF-Omitted-Documents` ヘッダ） |
+
+**電子納品パッケージの対象**: 削除申請済み（ごみ箱／GDPR 消去）の文書は常に除外されます。
+生成されるパッケージは常に内部整合（INDEX.XML のファイル名・サイズが ZIP 実体と一致）で、
+0 バイトの PDF は含まれません。生成は `electronic_delivery.generated` として監査チェーンに記録されます。
 
 ### 監査ログ / 統計
 
@@ -118,13 +122,23 @@ https://<your-domain>/api/v1/
 | GET/PUT | `/api/v1/m365/config` | M365 設定取得/更新（管理者） |
 | POST | `/api/v1/m365/test-connection` | M365 接続テスト（管理者） |
 | GET | `/api/v1/m365/users/lookup` | M365 ユーザー検索 |
-| POST | `/api/v1/ocr/process` | OCR 開始 |
-| GET | `/api/v1/ocr/jobs/{job_id}` | OCR 状態 |
-| GET | `/api/v1/ocr/jobs/{job_id}/result` | OCR 結果 |
+| POST | `/api/v1/ocr/process` | テキスト抽出 開始（**OCRではない**。下記注記参照） |
+| GET | `/api/v1/ocr/jobs/{job_id}` | 抽出ジョブ状態（可視文書のみ） |
+| GET | `/api/v1/ocr/jobs/{job_id}/result` | 抽出結果（可視文書のみ） |
 | POST | `/api/v1/ai/documents/{document_id}/classify` | AI 分類 |
 | POST | `/api/v1/ai/documents/{document_id}/extract` | 構造化抽出 |
 | GET | `/api/v1/ai/documents/{document_id}/summary` | AI 要約 |
 | GET/PUT | `/api/v1/ai-config` | AI 設定取得/更新（管理者） |
+
+> ⚠️ **`/api/v1/ocr/*` は OCR ではありません**（2026-09-18 実装確認）
+> pypdf による **PDF テキストレイヤ抽出**のみを提供します。OCR エンジン
+> （Tesseract 等）は依存に含まれないため、**画像のみのスキャンPDFは文字認識できません**。
+> その場合は `status="unsupported"` と理由を返し、`pages` は空になります
+> （以前は「結果に見える」プレースホルダ文字列を返していました）。
+> レスポンスの `engine` が実際の処理系（現在は `pypdf-text-layer`）を示します。
+> `language` / `enable_vertical` は受け取りますが現行エンジンは使用しません。
+> ジョブは DB に保存され、uvicorn の複数ワーカーから参照できます。
+> アクセスは文書の可視性（`assert_document_visible`）に従います。
 | POST | `/api/v1/ai-config/test` | AI 接続テスト（管理者） |
 
 ### 検索 / Editor 連携 / リビジョン / プライバシー / アプリ配布

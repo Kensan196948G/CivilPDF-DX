@@ -1,5 +1,14 @@
+# =============================================================================
+# ⛔ RETIRED（2026-09-18）: 本番アプリは docker compose スタックで稼働する。
+#   /etc/systemd/system/civilpdf-dx.service（compose up -d）
+#     + /etc/systemd/system/civilpdf-dx-cloudflared.service（tunnel）
+# このホスト直 uvicorn 構成は、Neon DATABASE_URL（2026-08-29 失効）を参照した
+# 旧世代の名残であり、compose 移行後に退役した。新規インストールしないこと。
+# 退役手順: docs/operations/runbook.md §2.1
+# =============================================================================
+
 [Unit]
-Description=CivilPDF-DX Console Backend (uvicorn 127.0.0.1:8180)
+Description=CivilPDF-DX Console Backend (uvicorn 127.0.0.1:8180) [RETIRED — use docker compose]
 Documentation=https://github.com/Kensan196948G/CivilPDF-DX
 
 [Service]

@@ -133,7 +133,8 @@ export function ViewerView({
     [documents, selectedDocId],
   );
 
-  const pageCount = selectedDoc?.page_count ?? 8;
+  // No document selected → no pages. Used to default to a fabricated 8.
+  const pageCount = selectedDoc?.page_count ?? 0;
 
   const zoom = ZOOM_LEVELS[zoomIndex];
 
@@ -240,14 +241,11 @@ export function ViewerView({
         },
       ]
     : [
-        { label: "ファイル名", value: "県道○○号_詳細図_Rev04.dwg" },
-        { label: "ファイルサイズ", value: "218 MB" },
-        { label: "ページ数", value: "8" },
-        { label: "PDF バージョン", value: "1.7" },
-        { label: "PDF/A 準拠", value: "非準拠" },
-        { label: "フォント埋込み", value: "部分的 (警告あり)" },
-        { label: "作成ソフト", value: "AutoCAD 2024" },
-        { label: "OCR 処理", value: "完了 (日本語)" },
+        // Previously showed a fabricated document (ファイル名 "県道○○号_詳細図_Rev04.dwg",
+        // 218 MB, AutoCAD 2024, "OCR 処理: 完了 (日本語)") whenever no document was
+        // selected — fake metadata presented as if it were a real file's
+        // properties, including an OCR result this system cannot produce.
+        { label: "状態", value: "選択された文書はありません" },
       ];
 
   const pageThumbs = Array.from({ length: pageCount }, (_, i) => i + 1);
@@ -456,10 +454,10 @@ export function ViewerView({
               >
                 <div>
                   <div style={{ fontSize: "11px", fontWeight: 700 }}>
-                    {selectedDoc?.title ?? "県道○○号線 道路改良工事"}
+                    {selectedDoc?.title ?? "文書が選択されていません"}
                   </div>
                   <div style={{ color: "#666", marginTop: "2px" }}>
-                    {selectedDoc?.document_type ?? "詳細図"} · p.{activePage}
+                    {selectedDoc?.document_type ?? "—"} · p.{activePage}
                     {selectedDoc && !selectedDoc.is_pdfa && (
                       <span style={{ color: "#c00", marginLeft: "8px" }}>
                         ⚠ PDF/A非準拠

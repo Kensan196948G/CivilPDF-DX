@@ -30,6 +30,11 @@ class Settings(BaseSettings):
     database_url: str = "sqlite:///./civilpdf_dev.db"
     redis_url: str = "redis://localhost:6379/0"
 
+    # Seconds to wait for a PostgreSQL connection before failing. Keeps
+    # /health/ready and DB-backed requests bounded when the database is
+    # unreachable instead of hanging until the client gives up.
+    db_connect_timeout_seconds: int = 5
+
     secret_key: str = "change-this-in-production"
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 60

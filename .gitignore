@@ -60,3 +60,10 @@ assets/fonts/**/*.ttf
 assets/fonts/**/*.otf
 assets/fonts/**/*.woff
 assets/fonts/**/*.woff2
+
+# Local runtime artifacts (agent tooling, not product code)
+.claude/claudeos/
+.claude/skills/*/
+.claude/settings.json.bak-*
+reports/agent-transcripts/
+test_write_probe.db

@@ -6,11 +6,18 @@ export interface NonPdfaDocumentInfo {
   filename: string
 }
 
+export interface UnreadableDocumentInfo extends NonPdfaDocumentInfo {
+  reason: string
+}
+
 export interface DeliveryReadinessResponse {
   ready: boolean
   document_count: number
   pdfa_compliant_count: number
   non_pdfa_documents: NonPdfaDocumentInfo[]
+  // Documents whose stored file cannot be read. They make ready=false and the
+  // backend refuses to package them unless allow_unreadable is requested.
+  unreadable_documents?: UnreadableDocumentInfo[]
   warnings: string[]
 }
 
@@ -37,4 +44,28 @@ export async function downloadDeliveryZip(projectId: string, projectCode: string
   a.click()
   document.body.removeChild(a)
   URL.revokeObjectURL(url)
+}
+
+/**
+ * Extract the server's explanation from a failed delivery request.
+ *
+ * The download uses `responseType: 'blob'`, so an error body also arrives as a
+ * Blob and has to be read as text before the JSON detail can be shown. Without
+ * this the operator only saw a generic failure and could not tell which
+ * document blocked the package (the backend answers 409 with that list).
+ */
+export async function deliveryErrorMessage(err: unknown): Promise<string> {
+  const fallback = 'ZIP 生成に失敗しました。'
+  const data = (err as { response?: { data?: unknown } } | undefined)?.response?.data
+  if (data instanceof Blob) {
+    try {
+      const parsed = JSON.parse(await data.text()) as { detail?: unknown }
+      if (typeof parsed?.detail === 'string') return parsed.detail
+    } catch {
+      return fallback
+    }
+    return fallback
+  }
+  const detail = (data as { detail?: unknown } | undefined)?.detail
+  return typeof detail === 'string' ? detail : fallback
 }

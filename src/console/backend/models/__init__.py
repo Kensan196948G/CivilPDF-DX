@@ -16,6 +16,7 @@ from models.consent import ConsentRecord, ConsentType
 from models.ai_setting import AiSetting
 from models.notification import Notification
 from models.dx_sync_metric import DxSyncMetric
+from models.ocr_job import OcrJob
 
 __all__ = [
     "Organization",
@@ -41,4 +42,5 @@ __all__ = [
     "AiSetting",
     "Notification",
     "DxSyncMetric",
+    "OcrJob",
 ]

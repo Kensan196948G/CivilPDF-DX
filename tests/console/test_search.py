@@ -278,3 +278,72 @@ class TestReindex:
             headers={"Authorization": f"Bearer {viewer_token}"},
         )
         assert resp.status_code == 403
+
+class TestSearchQueryCost:
+    """Search must not issue one query per hit (N+1 on a hot read path).
+
+    Regression: the hit filter called ``document_visible`` per row, which loaded
+    the document one id at a time — up to ``limit`` (<=100) extra SELECTs.
+    """
+
+    def _search_select_count(self, client, headers, db_session, query):
+        from sqlalchemy import event
+
+        bind = db_session.get_bind()
+        statements = []
+
+        def _record(conn, cursor, statement, parameters, context, executemany):
+            statements.append(statement)
+
+        event.listen(bind, "before_cursor_execute", _record)
+        try:
+            resp = client.get(
+                "/api/v1/search/documents", params={"q": query}, headers=headers
+            )
+            assert resp.status_code == 200, resp.text
+        finally:
+            event.remove(bind, "before_cursor_execute", _record)
+        return len([s for s in statements if s.lstrip().upper().startswith("SELECT")])
+
+    def test_query_count_does_not_grow_with_hit_count(
+        self, client, auth_headers, db_session
+    ):
+        from models.document import Document, DocumentStatus, DocumentType
+        from models.user import Project, User
+
+        owner = db_session.query(User).filter(User.email == "admin@example.com").one()
+
+        def seed(count, code):
+            project = Project(name=f"検索N+1 {code}", code=code)
+            db_session.add(project)
+            db_session.flush()
+            for i in range(count):
+                db_session.add(
+                    Document(
+                        title=f"N1検索対象 {code}-{i}",
+                        filename=f"n1_{code}_{i}.pdf",
+                        file_size=10,
+                        document_type=DocumentType.REPORT,
+                        status=DocumentStatus.DRAFT,
+                        project_id=project.id,
+                        owner_id=owner.id,
+                        ocr_text="共通キーワード N1SEARCH 検索対象",
+                        tags=[],
+                        extra_data={},
+                    )
+                )
+            db_session.commit()
+
+        seed(2, "N1-A")
+        small = self._search_select_count(
+            client, auth_headers, db_session, "N1SEARCH"
+        )
+
+        seed(10, "N1-B")
+        big = self._search_select_count(client, auth_headers, db_session, "N1SEARCH")
+
+        assert big <= small + 2, (
+            "search SELECT count grew with the number of hits, so the visibility "
+            f"filter is still per-hit: 2 hits -> {small} SELECTs, "
+            f"12 hits -> {big} SELECTs"
+        )

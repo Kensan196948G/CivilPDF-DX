@@ -15,6 +15,10 @@ vi.mock('../api/notifications', () => ({
   markRead: vi.fn(),
   markAllRead: vi.fn(),
 }))
+// The shell renders the workflow badge from stats pending_approvals.
+vi.mock('../api/stats', () => ({
+  getStats: vi.fn().mockResolvedValue({ pending_approvals: 0 }),
+}))
 
 import { getMe } from '../api/auth'
 

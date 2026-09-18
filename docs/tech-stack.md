@@ -51,8 +51,8 @@ graph TB
     end
 
     subgraph DATA["🗄️ データ層"]
-        POSTGRES["PostgreSQL 16 / Neon\n（移行推奨・正本）"]
-        SQLITE["SQLite 3\n（現行暫定・開発・テスト）"]
+        POSTGRES["PostgreSQL 16\n（ローカル・本番正本）"]
+        SQLITE["SQLite 3\n（開発・テスト）"]
         FILES["📁 ファイルストレージ\nuploads/"]
         FTS["SQLite FTS5\n全文検索インデックス"]
     end
@@ -233,9 +233,9 @@ graph LR
         SQLITE_FILE["SQLite（ファイル）\nローカル開発"]
     end
 
-    subgraph PROD["🚀 本番環境（移行推奨）"]
-        POSTGRES["PostgreSQL 16 / Neon\nACID 保証・高並列"]
-        SQLITE_PROD["SQLite（現行暫定）"]
+    subgraph PROD["🚀 本番環境"]
+        POSTGRES["PostgreSQL 16（ローカル）\nACID 保証・高並列"]
+        SQLITE_PROD["SQLite（開発・テスト）"]
     end
 
     ORM["SQLAlchemy 2.0\nasync ORM"] --> DEV
@@ -249,8 +249,8 @@ graph LR
 | ------------------ | ---------- | -------------------------------------------------------- |
 | 🗄️ **SQLAlchemy**  | 2.0.36     | async ORM・マッパー・クエリビルダー                      |
 | 📋 **Alembic**     | 1.14.0     | スキーマバージョン管理・ゼロダウンタイムマイグレーション |
-| 🐘 **PostgreSQL**  | 16         | 本番 DB 正本（移行推奨・Neon 可。全文検索は FTS/tsvector 設計） |
-| 🗄️ **SQLite**     | 3.x        | 現行本番の暫定 DB・開発/テスト。移行完了まで運用継続     |
+| 🐘 **PostgreSQL**  | 16         | 本番 DB 正本（ローカル PostgreSQL・現行は compose の db コンテナ。全文検索は FTS/tsvector 設計） |
+| 🗄️ **SQLite**     | 3.x        | 開発/テスト用 DB（本番は PostgreSQL）     |
 | 🔍 **SQLite FTS5** | 組み込み   | 日本語全文検索（unicode61 トークナイザー）               |
 
 ### データモデル（主要テーブル）
@@ -578,9 +578,13 @@ main → （手動） → Docker build → 本番サーバーへ
 
 ### ADR-001: SQLite → PostgreSQL 移行戦略
 
-- **決定**: 開発・テストは SQLite。本番の正本は PostgreSQL 16 / Neon へ移行（2026-08-12 時点では本番は SQLite の暫定運用）
-- **理由**: 開発環境の簡便性 + 本番の ACID 保証・スケーラビリティ。利用前提の「DB 正本は Neon PostgreSQL」を満たすため
-- **トレードオフ**: SQLite の FTS5 全文検索は PostgreSQL では tsvector 等へ置換が必要。移行手順は [docs/deployment/neon-postgresql-migration.md](deployment/neon-postgresql-migration.md)
+- **決定**: 開発・テストは SQLite。**本番の正本はホスト上のローカル PostgreSQL 16**
+  （現行は compose スタックの db コンテナ・named volume。2026-08-12 に SQLite から Neon へ移行 →
+  2026-09-18 に Neon を廃止しローカル PostgreSQL へ完全移行）
+- **理由**: 開発環境の簡便性 + 本番の ACID 保証。運用を外部サービスへ依存させない
+  （Neon は 2026-08-29 の認証情報失効で本番が停止し、ホスト側だけでは復旧できなかった）
+- **トレードオフ**: SQLite の FTS5 全文検索は PostgreSQL では tsvector 等へ置換が必要。
+  運用・移設手順は [docs/deployment/local-postgresql.md](deployment/local-postgresql.md)
 
 ### ADR-002: JWT ステートレス認証
 
@@ -618,7 +622,7 @@ main → （手動） → Docker build → 本番サーバーへ
 | 🌐 API リファレンス     | [docs/api/README.md](api/README.md)                                             |
 | 🗄️ DB 設計書            | [docs/database-design.md](database-design.md)                                   |
 | 📋 要件定義書           | [docs/requirements.md](requirements.md)                                         |
-| 🐘 Neon/PostgreSQL 移行  | [docs/deployment/neon-postgresql-migration.md](deployment/neon-postgresql-migration.md) |
+| 🐘 ローカル PostgreSQL 運用 | [docs/deployment/local-postgresql.md](deployment/local-postgresql.md) |
 | 🔑 秘密鍵管理・ローテーション | [docs/deployment/secret-management.md](deployment/secret-management.md)     |
 | 🔢 バージョン管理       | [docs/deployment/version-management.md](deployment/version-management.md)       |
 

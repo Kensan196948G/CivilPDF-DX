@@ -437,6 +437,7 @@ function handle(config: InternalAxiosRequestConfig): unknown {
       non_pdfa_documents: nonPdfa
         .slice(0, 10)
         .map((d) => ({ id: d.id, title: d.title, filename: d.filename })),
+      unreadable_documents: [],
       warnings:
         nonPdfa.length > 0
           ? [`PDF/A 非準拠の文書が ${nonPdfa.length} 件あります（モック判定）`]
