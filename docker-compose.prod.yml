@@ -77,7 +77,9 @@ services:
     ports:
       - "${FRONTEND_PORT:-8080}:80"
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost/ >/dev/null 2>&1 || exit 1"]
+      # 127.0.0.1 を明示する（alpine の localhost は ::1 へ解決され、nginx は
+      # IPv4 のみ LISTEN のため接続拒否になる。イメージ内蔵の HEALTHCHECK と同じ理由）
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/ >/dev/null 2>&1 || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
