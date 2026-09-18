@@ -8,6 +8,39 @@
 
 ## [Unreleased]
 
+### 2026-09-18 (8) — 本番DBを Neon からローカル PostgreSQL へ移行（データ移設・テスト隔離）
+
+ユーザー判断により **Neon を廃止し、ローカル PostgreSQL を本番DBとする**方針へ移行した。
+本項はデータ移設と、その過程で発見したテスト隔離欠陥の修正を記録する。
+
+#### データ移設（Neon → ローカル PostgreSQL）
+- **復旧可能な最新の本番データを特定**: Neon の認証情報は失効しており直接読み出せないため、
+  唯一の有効なバックアップ `~/civildx-backups/20260828T083204Z/civilpdf.dump`
+  （2026-08-28、17テーブルの実データを含む）を使用した。08-29 以降のバックアップは
+  すべて 0 バイトで使用不可
+- **移設先**: 新規データベース `civildx_prod` を作成し、そこへ復元 →
+  `alembic upgrade head`（`k1l2m3n4o5p6` → `o5p6q7r8s9t0`）
+- 復元時のエラーは **PG17+ の `SET transaction_timeout` 1件のみ**（PG16 では無視される良性）
+- 検証: schema parity OK（17テーブル）、`users` 1件（管理者 `admin`/ADMIN/ACTIVE）と
+  `audit_logs` 1件が保持、`audit_logs` の UNIQUE インデックスと `ocr_jobs` も作成済み
+- **重要**: 08-28 時点で `documents` は 0 件だった。`uploads/` にある PDF 1,307件（バックアップ内）
+  / 2,007件（現行）は、いずれも DB 行から参照されていない**テスト成果物**である
+- 認証情報は **Unix ソケットの peer 認証**（`host=/var/run/postgresql`）を使うため、
+  パスワードを `env` に保存しない構成にできる
+
+#### 🚨 テストが本番のアップロード領域を汚染していた（修正）
+- `conftest.py` が `UPLOAD_DIR` を隔離していなかったため、`config.upload_dir` の既定値
+  `~/civildx/uploads`（＝本番のアップロード保存先）へテストが実ファイルを書き込んでいた。
+  当該ディレクトリは DB から参照されない PDF が約 2,000 件に達し、
+  **1 日のテスト実行で 700 件増加**していた
+- 修正: `tests/console/conftest.py` と `tests/integration/conftest.py` で
+  `UPLOAD_DIR` をセッション毎の一時ディレクトリに設定し、終了時に削除
+- 検証: 修正前に 47 テストで増加していたのが、修正後は **25 テスト実行で増加 0 件**、
+  一時ディレクトリの残留も 0
+- 再発防止: `tests/console/test_environment_isolation.py` を追加し、
+  ①既定の本番パスと異なること ②書き込み可能であること ③`DATABASE_URL` が
+  リモート（neon.tech 等）を指していないこと を常時検証
+
 ### 2026-09-18 (7) — スマホでの操作要素サイズを実測し是正（WCAG 2.5.8）
 
 前項で「横スクロールが出ないこと」は確認したが、それは**スマホ可読性の十分条件ではない**。

@@ -1,7 +1,9 @@
 """Shared test fixtures for console API tests."""
 
+import shutil
 import sys
 import os
+import tempfile
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src/console/backend"))
 
@@ -9,6 +11,14 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../src/console/ba
 # strong test secrets when the app is imported with DEBUG=false.
 os.environ.setdefault("SECRET_KEY", "unit-test-secret-key-value-32bytes-minimum")
 os.environ.setdefault("TIMESTAMP_HMAC_KEY", "unit-test-hmac-key-value-32bytes-minimum")
+
+# Keep uploads out of the deployed storage location. config.upload_dir defaults
+# to ~/civildx/uploads, which on this host is the *production* upload directory,
+# so every document-upload test wrote real files there: it had grown to ~2,000
+# PDFs that no database row referenced (700 from a single day of test runs).
+# Assigned through os.environ (not a module-level variable) so the setup block
+# stays "allowed before imports" for ruff's E402 rule.
+os.environ["UPLOAD_DIR"] = tempfile.mkdtemp(prefix="civilpdf-test-uploads-")
 
 import pytest
 from fastapi.testclient import TestClient
@@ -27,6 +37,13 @@ engine_test = create_engine(
     SQLALCHEMY_TEST_URL, connect_args={"check_same_thread": False}
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine_test)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _cleanup_isolated_upload_dir():
+    """Remove the throwaway upload directory once the session ends."""
+    yield
+    shutil.rmtree(os.environ.get("UPLOAD_DIR", ""), ignore_errors=True)
 
 
 @pytest.fixture(autouse=True)
