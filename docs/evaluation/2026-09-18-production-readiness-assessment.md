@@ -254,3 +254,51 @@ OCR（画像からの文字認識）ではない。根拠:
 - 付随して判明: 復元元の時点で `documents` は 0 件。`uploads/` の PDF は DB 行から参照されない
   **テスト成果物**であり、テストが本番保存先を汚染していた（2026-09-18 に隔離を修正）
 - 詳細: `docs/deployment/local-postgresql.md`（旧 `neon-postgresql-migration.md`）
+
+---
+
+## 11. 追記（2026-09-18 夜・PR #136）: 本番実体の確定と運用系の完全移行
+
+本書 §10.4 の「ローカル PostgreSQL（civildx_prod）移行」には続きがある。**公開URLの実体を
+実測で確定し、運用系をその実体へ完全移行した**（PR #136・CI 12/12 success・マージ済み）。
+
+### 11.1 本番実体の確定（実測）
+
+- 公開URL `civilpdf.mirai-dx-platform.com`（200）の実体は **docker compose スタック**
+  （`civilpdf-dx`: frontend nginx :18970 → backend → db）。audit_logs はこの db コンテナに
+  書き込まれていた（検証リクエストで件数が増えることを確認）
+- `deploy/` の systemd ユニット群（uvicorn 8180 / vite preview 5182 / user cloudflared）は
+  **Neon の失効した DATABASE_URL を参照した旧世代**が稼働残留したままだった:
+  - 旧 `civilpdf-backup.service`: 毎日 02:30 に Neon へ pg_dump → **21日間失敗**。
+    本番DB（compose の db）は一度もバックアップされていなかった
+  - 旧 `civilpdf-monitor.service`: frontend 5182 を監視 → 5 分毎 DEGRADED（誤監視）
+- ホスト直 `civildx_prod` は §10.4 の移設先として構築したもので、本番からは使われていない
+
+### 11.2 修正した実障害
+
+| # | 障害 | 修正 |
+|---|---|---|
+| 1 | 本番DBがバックアップゼロ（21日間失敗） | backup-production.sh に compose モード（db コンテナ内 pg_dump・認証不要・版数必然一致）を実装。**本番DBの初の有効バックアップを取得**（42,882バイト・17テーブル・コンテナ内+ホスト両方の pg_restore で検証） |
+| 2 | prune が 60 秒 SIGTERM で中断し「半分削除されたバックアップ」を残す | ユニットに TimeoutStartSec=10min。半分削除 8/26 世代（dump のみ欠落）を実測して削除 |
+| 3 | frontend コンテナの healthcheck が 58,073 回連続 unhealthy | HEALTHCHECK の localhost（→ ::1）を 127.0.0.1 明示へ（nginx は IPv4 のみ LISTEN） |
+| 4 | 監視の DB readiness が SPA fallback 200 で偽陽性 | nginx に /health/ready passthrough を追加 + healthcheck は backend コンテナ内で直接検証 |
+| 5 | retention-job.py が依存欠落環境で誤 exit code（1） | 引数検証を backend import の前に移動（exit 2 を保証） |
+| 6 | CSV 413 定数が starlette 0.4x に存在しない | HTTP_413_REQUEST_ENTITY_TOO_LARGE へ統一（2 テスト失敗を解消） |
+| 7 | restore-drill の alembic 呼び出しが PATH 依存で黙死（rc=127・fail ログ無し） | python3 -m alembic に統一 |
+| 8 | 復元訓練が compose バックアップ（uploads.tar.gz）を読めない | 両形式対応 + 訓練用DB（civildx_drill）自動構築。**DRILL PASS を実測** |
+
+### 11.3 検証（2026-09-18 実測・PR #136 の CI 12/12 success と同一内容）
+
+- backend: 482 passed / 4 skipped（486 collected）
+- frontend: lint 0 / build OK / vitest 277 passed / Playwright E2E 25 passed
+- ruff 0.8.6（CI と同一版数）: src/console/backend 全チェック・format OK
+- ops 実走: バックアップ PASS（6.1秒）・復元訓練 DRILL PASS・healthcheck は旧 backend イメージ
+  （8/29 ビルド）の readiness 欠落を正しく検出（新イメージ デプロイ待ちの正当な DEGRADED）
+
+### 11.4 デプロイ待ちの作業（マージ後に実施）
+
+1. 本番チェックアウトを main（60ff8f3）へ更新
+2. `docker compose -f docker-compose.prod.yml up -d --build`（healthcheck 修正 +
+   /health/ready passthrough + 9コミット分の機能を含む新イメージ）
+3. 旧ユニット退役（Runbook §2.1）と運用ユニット更新（install-systemd.sh）
+4. healthcheck 全項目緑を確認

@@ -7,9 +7,9 @@
     "phase_mode": "release-ready"
   },
   "phase": {
-    "current": "improvement",
+    "current": "production-migration-complete",
     "week": 4,
-    "milestone": "Phase 8 全完了（P1〜P5）・CTO Production Ready 宣言済み（2026-06-03）。Phase 9: P1（Issue #38 電子納品 ZIP 実ファイル同梱テスト）+ P2（Issue #39 モーダルコンポーネントテスト15件）に加え、機能ページを Enterprise シェルへ統合（Phase 8 機能を実アプリで到達可能化）+ 認証再水和バグ修正 + Playwright E2E 導入 + CI に frontend vitest/e2e 追加（2026-06-09）。全テスト397件通過（backend 234 + e2e 20 + frontend vitest 132 + playwright 3 + org_filter 8）。 / 2026-06-12: WebUI モックモード追加（PR #43）+ verify フェーズ正規完了（CI 8ジョブ x2 pass・Codex Review・secret scan・pytest 262/vitest 142） / 2026-06-17: MVP Release Candidate — ViewerView 実API連携（PR #46 merged）+ pip-audit 6 CVE 修正（PR #47 merged）。main CI 8/8 success・vitest 152/152・本番依存脆弱性0・pip-audit クリーン・blocker 0。全テスト424件 / 2026-06-20: DashboardView UsersSubView 実API連携（PR #49 merged・Issue #48 closed）— listUsers() 実API切替・vitest 13件追加。全テスト437件（frontend vitest 165件）。vitest v2→v4 upgrade + npm audit fix（PR #68）— npm audit 0 vulnerabilities 完全解消・全テスト460件（frontend 174件）。 / 2026-06-21: コンソール全メニュー実データ化スプリント完了（PR #69-#73 merged）— deprecated HTTP status 定数更新(#69)・M365実API化(#70)・セキュリティページ実データ化(#71)・ダッシュボード完全実API化(#72)・配信API v0.1.0-beta整合(#73)。dead views 4件削除(PR #75 pending human merge)。全テスト522件（backend 287 + e2e 20 + frontend vitest 212 + playwright 3）"
+    "milestone": "2026-09-18: PR #136 マージ — 本番DBを Neon からローカル PostgreSQL（compose の db コンテナ）へ完全移行し、運用系（backup/monitor/drill/retention）を実本番構成へ統合。Neon 依存ゼロ。実測: 本番DB初バックアップ PASS・復元訓練 DRILL PASS・CI 12/12。残: 本番 compose イメージの再ビルド・デプロイと post-deploy 検証（新イメージに /health/ready・healthcheck 修正・9コミット分の機能を含む）"
   },
   "kpi": {
     "ci_success_rate": 1,
@@ -46,8 +46,8 @@
     "stable": true,
     "deploy_ready": true,
     "deploy_ready_note": "2026-06-20 CTO 再評価: 本番認証フローは完備（Login.tsx パスワード+M365 / api/auth login+getMe / axios Bearer+401 refresh / EnterpriseLayout ログアウト / PR #60 で本番ゲート有効）。テスト: Login 4 + ProtectedRoute redirect 2 + getInitialAuthState PROD/DEV 3 + authStore 4。当初の『ログイン UI 未実装』判断は誤りで、ログイン UI は最初から存在し #55/#56 がそれを意図的にバイパスしていた。PR #60 でバイパスを DEV 限定化し本番は完成済みログインフローを使用。残る本番化作業は人間タスク（管理者ユーザー作成 scripts/create_admin.py・docker compose・secrets 設定）のみ。",
-    "last_pr": 123,
-    "last_pr_status": "merged (2026-08-06) — PR #112 本番適用済み（migration h4x5y6z7a8b9 適用・ExecStartPre 稼働・backup timer 有効）。PR #113 HTML セキュリティヘッダー付与も merged・本番反映済み。",
+    "last_pr": 136,
+    "last_pr_status": "merged (2026-09-18) — 本番DBをNeonからローカルPostgreSQLへ完全移行 + 運用系をcompose実体へ統合。CI 12/12 success。本番実体（civilpdf-dx composeスタック）の特定・旧systemd運用系（Neon失効認証情報を参照）の退役・backup compose モード（本番DB初の有効バックアップ取得 42,882バイト）・restore-drill DRILL PASS（civildx_drill・alembic head・認証フロー）・frontend healthcheck 58,073回失敗の修正（IPv6/IPv4）・/health/ready passthrough（監視の偽陽性解消）・retention-job exit code 修正・CSV 413 定数互換修正。検証: backend 482 passed/4 skipped・frontend vitest 277・Playwright 25・ruff 0.8.6 clean。デプロイ（main 60ff8f3 の compose 再ビルド）は残作業。",
     "last_merged_pr": 123,
     "mvp_20260813": {
       "status": "GO（MVP 公開済み・検証 15/15 PASS）",
