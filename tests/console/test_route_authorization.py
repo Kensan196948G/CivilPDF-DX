@@ -21,6 +21,18 @@ from fastapi.routing import APIRoute
 from auth.dependencies import get_current_user
 from main import app
 
+# FastAPI >= 0.137 keeps included routers behind lazy wrapper nodes; the names
+# are private so they may be absent on older versions (the CI pins 0.136.3 where
+# app.routes is still flat). Guard the import so the module loads everywhere.
+try:  # pragma: no cover - trivially version-dependent
+    from fastapi.routing import _EffectiveRouteContext, _IncludedRouter
+
+    _HAS_LAZY_INCLUDE = True
+except ImportError:  # fastapi < 0.137
+    _IncludedRouter = None  # type: ignore[assignment,misc]
+    _EffectiveRouteContext = None  # type: ignore[assignment,misc]
+    _HAS_LAZY_INCLUDE = False
+
 # Routes that must work without a bearer token, by design. Every entry is
 # asserted to exist, so a stale entry fails the suite instead of silently
 # widening the allowlist.
@@ -40,15 +52,33 @@ PUBLIC_API_ROUTES: set[tuple[str, str]] = {
 _HTTP_METHODS = {"GET", "POST", "PUT", "PATCH", "DELETE"}
 
 
-def _api_routes() -> list[APIRoute]:
-    routes = []
-    for route in app.routes:
-        if not isinstance(route, APIRoute):
-            continue
-        if not route.path.startswith("/api/"):
-            continue
-        routes.append(route)
-    return routes
+def _api_routes() -> list[tuple[str, APIRoute]]:
+    """Flatten the mounted API surface into ``(path, route)`` pairs.
+
+    FastAPI >= 0.137 represents ``include_router`` with lazy ``_IncludedRouter``
+    nodes: ``app.routes`` no longer contains the leaf ``APIRoute`` objects, only
+    the wrapper. The leaves (and their real prefixed paths) live behind
+    ``effective_candidates()``. Walking that tree keeps this inventory working
+    on both the old flat layout and the new lazy one.
+    """
+    collected: list[tuple[str, APIRoute]] = []
+
+    def _walk(entries, prefix: str = "") -> None:
+        for entry in entries:
+            if _HAS_LAZY_INCLUDE and isinstance(entry, _IncludedRouter):
+                _walk(
+                    entry.effective_candidates(),
+                    prefix + entry.include_context.prefix,
+                )
+            elif _HAS_LAZY_INCLUDE and isinstance(entry, _EffectiveRouteContext):
+                route = entry.original_route
+                if isinstance(route, APIRoute):
+                    collected.append((prefix + route.path, route))
+            elif isinstance(entry, APIRoute):
+                collected.append((prefix + entry.path, entry))
+
+    _walk(app.routes)
+    return [(path, route) for path, route in collected if path.startswith("/api/")]
 
 
 def _dependency_calls(dependant) -> set:
@@ -68,16 +98,19 @@ def _route_methods(route: APIRoute) -> set[str]:
 def _find_unprotected(
     routes, allowlist: set[tuple[str, str]] = PUBLIC_API_ROUTES
 ) -> list[str]:
-    """Return ``"METHOD /path"`` for every API route with no auth dependency."""
+    """Return ``"METHOD /path"`` for every API route with no auth dependency.
+
+    ``routes`` is the ``(path, APIRoute)`` pairs from :func:`_api_routes`.
+    """
     unprotected: list[str] = []
-    for route in routes:
-        if not isinstance(route, APIRoute) or not route.path.startswith("/api/"):
+    for path, route in routes:
+        if not isinstance(route, APIRoute) or not path.startswith("/api/"):
             continue
         for method in sorted(_route_methods(route)):
-            if (method, route.path) in allowlist:
+            if (method, path) in allowlist:
                 continue
             if get_current_user not in _dependency_calls(route.dependant):
-                unprotected.append(f"{method} {route.path}")
+                unprotected.append(f"{method} {path}")
     return unprotected
 
 
@@ -89,8 +122,8 @@ def test_api_route_inventory_is_not_empty():
 
 def test_dependency_introspection_works():
     """Guard the guard: a known-protected route must resolve get_current_user."""
-    for route in _api_routes():
-        if route.path == "/api/v1/documents/" and "GET" in route.methods:
+    for path, route in _api_routes():
+        if path == "/api/v1/documents/" and "GET" in route.methods:
             assert get_current_user in _dependency_calls(route.dependant)
             return
     raise AssertionError("GET /api/v1/documents/ not found — inventory changed")
@@ -114,7 +147,9 @@ def test_guard_detects_a_route_that_forgets_authentication():
     def allowlisted_ok(user=Depends(get_current_user)):  # noqa: ARG001
         return {}
 
-    found = _find_unprotected(probe.routes)
+    found = _find_unprotected(
+        [(r.path, r) for r in probe.routes if isinstance(r, APIRoute)]
+    )
     assert "GET /api/v1/unprotected" in found, "the guard failed to flag a bare route"
     assert "GET /api/v1/protected" not in found
     assert "GET /api/v1/documents/" not in found
@@ -130,7 +165,9 @@ def test_guard_honours_the_allowlist():
     def login_without_token():
         return {}
 
-    assert _find_unprotected(probe.routes) == []
+    assert _find_unprotected(
+        [(r.path, r) for r in probe.routes if isinstance(r, APIRoute)]
+    ) == []
 
 
 def test_every_api_route_requires_authentication_unless_allowlisted():
@@ -147,7 +184,7 @@ def test_every_api_route_requires_authentication_unless_allowlisted():
 
 def test_public_allowlist_has_no_stale_entries():
     """A removed endpoint must not linger in the allowlist (it would hide one)."""
-    existing = {(m, r.path) for r in _api_routes() for m in _route_methods(r)}
+    existing = {(m, p) for p, r in _api_routes() for m in _route_methods(r)}
     stale = sorted(PUBLIC_API_ROUTES - existing)
     assert not stale, f"PUBLIC_API_ROUTES lists routes that no longer exist: {stale}"
 
@@ -155,10 +192,10 @@ def test_public_allowlist_has_no_stale_entries():
 def test_public_endpoints_are_few_and_deliberate():
     """Make widening the unauthenticated surface a visible, reviewable act."""
     public_api = [
-        (m, r.path)
-        for r in _api_routes()
+        (m, p)
+        for p, r in _api_routes()
         for m in _route_methods(r)
-        if (m, r.path) in PUBLIC_API_ROUTES
+        if (m, p) in PUBLIC_API_ROUTES
     ]
     assert len(public_api) == len(PUBLIC_API_ROUTES), (
         "the allowlist and the router disagree on the public surface: "
